@@ -7,7 +7,7 @@ OBJS = \
 	megistbuild.o \
 	megistbuildbuffers.o \
 	megistget.o \
-	megistproc.o \
+	megistpathproc.o \
 	megistscan.o \
 	megistsplit.o \
 	megistutil.o \
