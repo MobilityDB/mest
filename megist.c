@@ -102,7 +102,7 @@ megisthandler(PG_FUNCTION_ARGS)
 	amroutine->ambeginscan = gistbeginscan;
 	amroutine->amrescan = gistrescan;
 	amroutine->amgettuple = NULL;
-	amroutine->amgetbitmap = gistgetbitmap;
+	amroutine->amgetbitmap = megistgetbitmap;
 	amroutine->amendscan = gistendscan;
 	amroutine->ammarkpos = NULL;
 	amroutine->amrestrpos = NULL;
