@@ -3,19 +3,39 @@ ME-GiST Indexing
 
 This directory contains an implementation of ME-GiST indexing for Postgres.
 
-The ME-GiST index stands for Multi-Entry Generalized Search Tree.
-It is a variation of the GiST index that allows more efficient indexing of
+The ME-GiST index stands for Multi-Entry Generalized Search Tree.\
+It is a variation of the GiST index that allows for more efficient indexing of
 complex and composite data types.
 
+The extension on its own only adds a Multi-Entry R-Tree for the PostgreSQL *path* type.\
+For more advanced uses of the ME-GiST index, see the example use-cases below.
+
+Dependencies
+------------
+- [PostgreSQL 15](https://www.postgresql.org/)
+
+Installation
+------------
+Compiling and installing the extension
+```
+make
+sudo make install
+```
+
+Using the extension to create a Multi-Entry R-Tree on the path column from the table `paths(id int, p path)`
+```sql
+CREATE EXTENSION megist;
+CREATE INDEX paths_megist_path on paths using megist(path);
+```
 
 Example use-cases
 -----------------
 
 Below are some extension using the ME-GiST index to index complex data types.
 
-  * Indexing PostGIS linestrings: TODO
-  * Indexing MobilityDB trajectories: TODO
-  * Indexing JSON data: TODO
+  * PostGIS linestrings: TODO
+  * MobilityDB trajectories: [megist-mobilitydb](https://github.com/mschoema/megist-mobilitydb)
+  * JSON data: TODO
 
 
 Author:
