@@ -29,6 +29,24 @@
 #include "megist.h"
 
 /*
+ * Define parameters for TID hash table code generation. The interface is
+ * *also* declared in megist.h (to generate the types, which are externally
+ * visible).
+ */
+#define SH_PREFIX tidtable
+#define SH_ELEMENT_TYPE TIDTableEntry
+#define SH_KEY_TYPE ItemPointerData
+#define SH_KEY tid
+#define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
+#define SH_EQUAL(tb, a, b) ItemPointerEquals(&a, &b)
+// #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0
+#define SH_SCOPE extern
+#define SH_STORE_HASH
+#define SH_GET_HASH(tb, a) a->hash
+#define SH_DEFINE
+#include "lib/simplehash.h"
+
+/*
  * gistkillitems() -- set LP_DEAD state for items an indexscan caller has
  * told us were killed.
  *
@@ -415,8 +433,9 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 	maxoff = PageGetMaxOffsetNumber(page);
 	for (i = FirstOffsetNumber; i <= maxoff; i = OffsetNumberNext(i))
 	{
-		ItemId		iid = PageGetItemId(page, i);
-		IndexTuple	it;
+		ItemId			iid = PageGetItemId(page, i);
+		IndexTuple		it;
+		bool 		found;
 		bool		match;
 		bool		recheck;
 		bool		recheck_distances;
@@ -457,6 +476,11 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 		}
 		else if (scan->numberOfOrderBys == 0 && GistPageIsLeaf(page))
 		{
+			/* Check TID for deduplication */
+			tidtable_insert(so->tidtable, it->t_tid, &found);
+			if (found)
+				continue;
+
 			/*
 			 * Non-ordered scan, so report tuples in so->pageData[]
 			 */
@@ -626,6 +650,9 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 	{
 		/* Begin the scan by processing the root page */
 		GISTSearchItem fakeItem;
+
+		/* Create the hash table of TID's for deduplication */
+		so->tidtable = tidtable_create(so->tidtableCxt, 128, so);
 
 		pgstat_count_index_scan(scan->indexRelation);
 

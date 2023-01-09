@@ -16,6 +16,8 @@
 #ifndef MEGIST_H
 #define MEGIST_H
 
+#include "common/hashfn.h"
+
 /*
  * amproc indexes for ME-GiST indexes.
  */
@@ -69,6 +71,9 @@ typedef struct MEGISTScanOpaqueData
     MEGISTSTATE  *megiststate;      /* index information, see above */
     Oid          *orderByTypes;   /* datatypes of ORDER BY expressions */
 
+    struct tidtable_hash *tidtable;   /* hash table of TID's */
+    MemoryContext tidtableCxt;     /* context holding the TID hashtable */
+
     pairingheap *queue;         /* queue of unvisited items */
     MemoryContext queueCxt;     /* context holding the queue */
     bool        qual_ok;        /* false if qual can never be satisfied */
@@ -92,6 +97,24 @@ typedef struct MEGISTScanOpaqueData
 } MEGISTScanOpaqueData;
 
 typedef MEGISTScanOpaqueData *MEGISTScanOpaque;
+
+/*
+ * The hashtable entries are represented by this data structure.
+ */
+typedef struct TIDTableEntry
+{
+    ItemPointerData tid;        /* TID (hashtable key) */
+    uint32          hash;       /* hash value (cached) */
+    char            status;     /* hash status */
+} TIDTableEntry;
+
+/* define parameters necessary to generate the TID hash table interface */
+#define SH_PREFIX tidtable
+#define SH_ELEMENT_TYPE TIDTableEntry
+#define SH_KEY_TYPE ItemPointerData
+#define SH_SCOPE extern
+#define SH_DECLARE
+#include "lib/simplehash.h"
 
 /* megist.c */
 extern bool megistinsert(Relation r, Datum *values, bool *isnull,

@@ -96,6 +96,7 @@ megistbeginscan(Relation r, int nkeys, int norderbys)
 	megiststate->tempCxt = createTempGistContext();
 	so->queue = NULL;
 	so->queueCxt = megiststate->scanCxt;	/* see gistrescan */
+	so->tidtableCxt = megiststate->scanCxt;	/* see gistrescan */
 
 	/* workspaces with size dependent on numberOfOrderBys: */
 	so->distances = palloc(sizeof(so->distances[0]) * scan->numberOfOrderBys);
@@ -145,6 +146,9 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 	 * context.  If we do rescan more than once, the first queue is just left
 	 * for dead until end of scan; this small wastage seems worth the savings
 	 * in the common case.
+	 * 
+	 * Currently, we do the same for the TID hashtable context.
+	 * TODO: see if this needs to be changed
 	 */
 	if (so->queue == NULL)
 	{
@@ -158,12 +162,16 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 		so->queueCxt = AllocSetContextCreate(so->megiststate->scanCxt,
 											 "GiST queue context",
 											 ALLOCSET_DEFAULT_SIZES);
+		so->tidtableCxt = AllocSetContextCreate(so->megiststate->scanCxt,
+											 "GiST tidtable context",
+											 ALLOCSET_DEFAULT_SIZES);
 		first_time = false;
 	}
 	else
 	{
 		/* third or later time through */
 		MemoryContextReset(so->queueCxt);
+		MemoryContextReset(so->tidtableCxt);
 		first_time = false;
 	}
 

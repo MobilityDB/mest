@@ -99,11 +99,11 @@ megisthandler(PG_FUNCTION_ARGS)
 	amroutine->ambuildphasename = NULL;
 	amroutine->amvalidate = megistvalidate;
 	amroutine->amadjustmembers = megistadjustmembers;
-	amroutine->ambeginscan = gistbeginscan;
-	amroutine->amrescan = gistrescan;
-	amroutine->amgettuple = NULL;
+	amroutine->ambeginscan = megistbeginscan;
+	amroutine->amrescan = megistrescan;
+	amroutine->amgettuple = megistgettuple;
 	amroutine->amgetbitmap = megistgetbitmap;
-	amroutine->amendscan = gistendscan;
+	amroutine->amendscan = megistendscan;
 	amroutine->ammarkpos = NULL;
 	amroutine->amrestrpos = NULL;
 	amroutine->amestimateparallelscan = NULL;
