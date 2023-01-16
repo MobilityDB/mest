@@ -902,6 +902,8 @@ megistExtractItups(MEGISTSTATE *megiststate, Relation index,
 			nentries[i] = 1;
 			entries[i] = (Datum *) palloc(sizeof(Datum));
 			entries[i][0] = (Datum) 0;
+			nullFlags[i] = (bool *) palloc(sizeof(bool));
+			nullFlags[i][0] = true;
 			continue;
 		}
 		/* OK, call the opclass's extractValueFn */
@@ -944,7 +946,10 @@ megistExtractItups(MEGISTSTATE *megiststate, Relation index,
 		for (j = 0; j < nattrs; j++)
 		{
 			if (i < nentries[j])
+			{
 				itups_values[i][j] = entries[j][i];
+				itups_isnull[i][j] = nullFlags[j][i];
+			}
 			else
 			{
 				itups_values[i][j] = (Datum) 0;
