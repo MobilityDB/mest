@@ -47,6 +47,24 @@
 #include "lib/simplehash.h"
 
 /*
+ * Define parameters for TID Distance hash table code generation. The interface is
+ * *also* declared in megist.h (to generate the types, which are externally
+ * visible).
+ */
+#define SH_PREFIX tidisttable
+#define SH_ELEMENT_TYPE TIDISTTableEntry
+#define SH_KEY_TYPE ItemPointerData
+#define SH_KEY tid
+#define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
+#define SH_EQUAL(tb, a, b) ItemPointerEquals(&a, &b)
+// #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0
+#define SH_SCOPE extern
+#define SH_STORE_HASH
+#define SH_GET_HASH(tb, a) a->hash
+#define SH_DEFINE
+#include "lib/simplehash.h"
+
+/*
  * gistkillitems() -- set LP_DEAD state for items an indexscan caller has
  * told us were killed.
  *
@@ -509,29 +527,76 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 			 * search.
 			 */
 			GISTSearchItem *item;
-			int			nOrderBys = scan->numberOfOrderBys;
+			TIDISTTableEntry *entry;
+			int i, result = 0, nOrderBys = scan->numberOfOrderBys;
 
 			oldcxt = MemoryContextSwitchTo(so->queueCxt);
 
-			/* Create new GISTSearchItem for this item */
-			item = palloc(SizeOfGISTSearchItem(scan->numberOfOrderBys));
-
 			if (GistPageIsLeaf(page))
 			{
-				/* Creating heap-tuple GISTSearchItem */
-				item->blkno = InvalidBlockNumber;
-				item->data.heap.heapPtr = it->t_tid;
-				item->data.heap.recheck = recheck;
-				item->data.heap.recheckDistances = recheck_distances;
+				/* Check TID for deduplication */
+				entry = tidisttable_insert(so->tidisttable, it->t_tid, &found);
+				item = entry->item;
+				if (found)
+				{
+					for (i = 0; i < nOrderBys && result != 0; i++)
+					{
+						if (so->distances[i].isnull)
+						{
+							if (!item->distances[i].isnull)
+								result = -1;
+						}
+						else if (item->distances[i].isnull)
+							result = 1;
+						else
+						{
+							result = -float8_cmp_internal(so->distances[i].value,
+																						item->distances[i].value);
+						}
+					}
 
-				/*
-				 * In an index-only scan, also fetch the data from the tuple.
-				 */
-				if (scan->xs_want_itup)
-					item->data.heap.recontup = megistFetchTuple(megiststate, r, it);
+					/* If new distance data is smaller */
+					if (result == 1)
+					{
+						/* Re-insert it into the queue using new distance data */
+						pairingheap_remove(so->queue, &entry->item->phNode);
+						memcpy(entry->item->distances, so->distances,
+							   sizeof(entry->item->distances[0]) * nOrderBys);
+						pairingheap_add(so->queue, &entry->item->phNode);
+					}
+				}
+				else
+				{
+					/* Create new GISTSearchItem for this item */
+					item = palloc(SizeOfGISTSearchItem(scan->numberOfOrderBys));
+
+					/* Store pointer to item in hash table entry */
+					entry->item = item;
+
+					/* Creating heap-tuple GISTSearchItem */
+					item->blkno = InvalidBlockNumber;
+					item->data.heap.heapPtr = it->t_tid;
+					item->data.heap.recheck = recheck;
+					item->data.heap.recheckDistances = recheck_distances;
+
+					/*
+					 * In an index-only scan, also fetch the data from the tuple.
+					 */
+					if (scan->xs_want_itup)
+						item->data.heap.recontup = megistFetchTuple(megiststate, r, it);
+
+					/* Insert it into the queue using new distance data */
+					memcpy(item->distances, so->distances,
+						   sizeof(item->distances[0]) * nOrderBys);
+
+					pairingheap_add(so->queue, &item->phNode);
+				}
 			}
 			else
 			{
+				/* Create new GISTSearchItem for this item */
+				item = palloc(SizeOfGISTSearchItem(scan->numberOfOrderBys));
+				
 				/* Creating index-page GISTSearchItem */
 				item->blkno = ItemPointerGetBlockNumber(&it->t_tid);
 
@@ -541,13 +606,13 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 				 * atomically.
 				 */
 				item->data.parentlsn = BufferGetLSNAtomic(buffer);
+
+				/* Insert it into the queue using new distance data */
+				memcpy(item->distances, so->distances,
+					   sizeof(item->distances[0]) * nOrderBys);
+
+				pairingheap_add(so->queue, &item->phNode);
 			}
-
-			/* Insert it into the queue using new distance data */
-			memcpy(item->distances, so->distances,
-				   sizeof(item->distances[0]) * nOrderBys);
-
-			pairingheap_add(so->queue, &item->phNode);
 
 			MemoryContextSwitchTo(oldcxt);
 		}
@@ -653,6 +718,7 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 
 		/* Create the hash table of TID's for deduplication */
 		so->tidtable = tidtable_create(so->tidtableCxt, 128, so);
+		so->tidisttable = tidisttable_create(so->queueCxt, 128, so);
 
 		pgstat_count_index_scan(scan->indexRelation);
 

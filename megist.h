@@ -74,6 +74,8 @@ typedef struct MEGISTScanOpaqueData
     struct tidtable_hash *tidtable;   /* hash table of TID's */
     MemoryContext tidtableCxt;     /* context holding the TID hashtable */
 
+    struct tidisttable_hash *tidisttable; /* hash table of TID's storing 
+                                            GISTSearchItem pointer */
     pairingheap *queue;         /* queue of unvisited items */
     MemoryContext queueCxt;     /* context holding the queue */
     bool        qual_ok;        /* false if qual can never be satisfied */
@@ -111,6 +113,25 @@ typedef struct TIDTableEntry
 /* define parameters necessary to generate the TID hash table interface */
 #define SH_PREFIX tidtable
 #define SH_ELEMENT_TYPE TIDTableEntry
+#define SH_KEY_TYPE ItemPointerData
+#define SH_SCOPE extern
+#define SH_DECLARE
+#include "lib/simplehash.h"
+
+/*
+ * The hashtable entries are represented by this data structure.
+ */
+typedef struct TIDISTTableEntry
+{
+    ItemPointerData tid;        /* TID (hashtable key) */
+    GISTSearchItem *item;       /* Searh item storing the distances */
+    uint32          hash;       /* hash value (cached) */
+    char            status;     /* hash status */
+} TIDISTTableEntry;
+
+/* define parameters necessary to generate the TID hash table interface */
+#define SH_PREFIX tidisttable
+#define SH_ELEMENT_TYPE TIDISTTableEntry
 #define SH_KEY_TYPE ItemPointerData
 #define SH_SCOPE extern
 #define SH_DECLARE
