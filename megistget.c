@@ -539,19 +539,27 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 				item = entry->item;
 				if (found)
 				{
-					for (i = 0; i < nOrderBys && result != 0; i++)
+					for (i = 0; i < nOrderBys; i++)
 					{
 						if (so->distances[i].isnull)
 						{
 							if (!item->distances[i].isnull)
+							{
 								result = -1;
+								break;
+							}
 						}
 						else if (item->distances[i].isnull)
+						{
 							result = 1;
+							break;
+						}
 						else
 						{
 							result = -float8_cmp_internal(so->distances[i].value,
 																						item->distances[i].value);
+							if (result != 0)
+								break;
 						}
 					}
 
