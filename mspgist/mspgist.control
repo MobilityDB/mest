@@ -1,0 +1,5 @@
+# mspgist extension
+comment = 'mspgist access method'
+default_version = '1.0'
+module_pathname = '$libdir/mspgist'
+relocatable = true
