@@ -1,9 +1,7 @@
-ME-GiST Indexing
-================
+Multi-Entry GiST Indexing
+=========================
 
-This directory contains an implementation of ME-GiST indexing for Postgres.
-
-The ME-GiST index stands for Multi-Entry Generalized Search Tree.\
+This directory contains an implementation of the Multi-Entry GiST access method for Postgres.
 It is a variation of the GiST index that allows for more efficient indexing of
 complex and composite data types.
 
@@ -34,7 +32,7 @@ Example use-cases
 Below are some extension using the ME-GiST index to index complex data types.
 
   * PostGIS linestrings: TODO
-  * MobilityDB trajectories: [megist-mobilitydb](https://github.com/mschoema/megist-mobilitydb)
+  * MobilityDB trajectories: [megist-mobilitydb](https://github.com/mschoema/megist/megist-mobilitydb)
   * JSON data: TODO
 
 
