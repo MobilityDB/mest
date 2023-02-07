@@ -1,16 +1,20 @@
-Multi-Entry SP-GiST Indexing
-============================
+Multi-Entry GiST Indexing for MobilityDB
+========================================
 
-This directory contains an implementation of the Multi-Entry SP-GiST access method for Postgres.
-It is a variation of the SP-GiST index that allows for more efficient indexing of
-complex and composite data types.
-
-The extension on its own only adds the access method handler, but no index implementations.\
-For uses of the Multi-Entry SP-GiST index, see the example use-cases below.
+This directory contains an implementation of Multi-Entry GiST indexes for MobilityDB data types.
 
 Dependencies
 ------------
 - [PostgreSQL 15](https://www.postgresql.org/)
+- [MobilityDB 1.1 (latest version of the develop branch)](https://github.com/MobilityDB/MobilityDB)
+- [MEOS (latest version of the develop branch of MobilityDB)](https://www.libmeos.org/)
+- [megist](megist/megist#readme)
+
+You should also set the following in postgresql.conf depending on the version of PostGIS and MobilityDB you have installed (below we use PostGIS 3, MobilityDB 1.1):
+
+```
+shared_preload_libraries = 'postgis-3,libMobilityDB-1.1'
+```
 
 Installation
 ------------
@@ -20,20 +24,11 @@ make
 sudo make install
 ```
 
-Creating the extension in a PostgreSQL database
+Using the extension to create a Multi-Entry R-Tree on the tgeompoint column `trip` from the table `trips(id, trip)`
 ```sql
-CREATE EXTENSION mspgist;
+CREATE EXTENSION megist_mobilitydb CASCADE;
+CREATE INDEX trips_megist_trip on trips using megist(trip);
 ```
 
-Example use-cases
------------------
-
-Below are some extension using the Multi-Entry SP-GiST index to index complex data types.
-
-  * PostGIS GeometryCollections and LineString: TODO
-  * MobilityDB Trajectories: [mspgist-mobilitydb](https://github.com/mschoema/megist/mspgist-mobilitydb)
-  * JSON Data: TODO
-
-
 Author:
-	Maxime Schoemans	<maxime.schoemans@ulb.be>
+  Maxime Schoemans  <maxime.schoemans@ulb.be>

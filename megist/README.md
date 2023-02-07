@@ -32,7 +32,7 @@ Example use-cases
 Below are some extension using the Multi-Entry SP-GiST index to index complex data types.
 
   * PostGIS GeometryCollections and LineString: TODO
-  * MobilityDB Trajectories: [megist-mobilitydb](https://github.com/mschoema/megist/megist-mobilitydb)
+  * MobilityDB Trajectories: [megist-mobilitydb](megist/megist-mobilitydb#readme)
 
 
 Author:

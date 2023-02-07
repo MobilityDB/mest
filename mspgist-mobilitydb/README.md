@@ -8,7 +8,7 @@ Dependencies
 - [PostgreSQL 15](https://www.postgresql.org/)
 - [MobilityDB 1.1 (latest version of the develop branch)](https://github.com/MobilityDB/MobilityDB)
 - [MEOS (latest version of the develop branch of MobilityDB)](https://www.libmeos.org/)
-- [mspgist](https://github.com/mschoema/megist/mspgist)
+- [mspgist](megist/mspgist#readme)
 
 You should also set the following in postgresql.conf depending on the version of PostGIS and MobilityDB you have installed (below we use PostGIS 3, MobilityDB 1.1):
 
