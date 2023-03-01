@@ -10,9 +10,9 @@ Contents
 
 The repository contains 4 PostgreSQL extensions split into 4 separate folders:
 
-- [megist](megist): 
+- [mgist](mgist): 
     - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL *path* type.
-- [megist-mobilitydb](megist-mobilitydb): 
+- [mgist-mobilitydb](mgist-mobilitydb): 
     - contains the implementation of a multi-entry R-tree for the MobilityDB *tgeompoint* type.
 - [mspgist](mspgist): 
     - contains the Multi-Entry SP-GiST access method.

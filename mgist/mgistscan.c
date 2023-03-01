@@ -22,7 +22,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 /*
  * Pairing heap comparison function for the GISTSearchItem queue
@@ -72,31 +72,31 @@ pairingheap_GISTSearchItem_cmp(const pairingheap_node *a, const pairingheap_node
  */
 
 IndexScanDesc
-megistbeginscan(Relation r, int nkeys, int norderbys)
+mgistbeginscan(Relation r, int nkeys, int norderbys)
 {
 	IndexScanDesc scan;
-	MEGISTSTATE  *megiststate;
-	MEGISTScanOpaque so;
+	MGISTSTATE  *mgiststate;
+	MGISTScanOpaque so;
 	MemoryContext oldCxt;
 
 	scan = RelationGetIndexScan(r, nkeys, norderbys);
 
 	/* First, set up a GISTSTATE with a scan-lifespan memory context */
-	megiststate = initMEGISTstate(scan->indexRelation);
+	mgiststate = initMGISTstate(scan->indexRelation);
 
 	/*
 	 * Everything made below is in the scanCxt, or is a child of the scanCxt,
 	 * so it'll all go away automatically in gistendscan.
 	 */
-	oldCxt = MemoryContextSwitchTo(megiststate->scanCxt);
+	oldCxt = MemoryContextSwitchTo(mgiststate->scanCxt);
 
 	/* initialize opaque data */
-	so = (MEGISTScanOpaque) palloc0(sizeof(MEGISTScanOpaqueData));
-	so->megiststate = megiststate;
-	megiststate->tempCxt = createTempGistContext();
+	so = (MGISTScanOpaque) palloc0(sizeof(MGISTScanOpaqueData));
+	so->mgiststate = mgiststate;
+	mgiststate->tempCxt = createTempGistContext();
 	so->queue = NULL;
-	so->queueCxt = megiststate->scanCxt;	/* see gistrescan */
-	so->tidtableCxt = megiststate->scanCxt;	/* see gistrescan */
+	so->queueCxt = mgiststate->scanCxt;	/* see gistrescan */
+	so->tidtableCxt = mgiststate->scanCxt;	/* see gistrescan */
 
 	/* workspaces with size dependent on numberOfOrderBys: */
 	so->distances = palloc(sizeof(so->distances[0]) * scan->numberOfOrderBys);
@@ -126,11 +126,11 @@ megistbeginscan(Relation r, int nkeys, int norderbys)
 }
 
 void
-megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
+mgistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 			 ScanKey orderbys, int norderbys)
 {
 	/* nkeys and norderbys arguments are ignored */
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 	bool		first_time;
 	int			i;
 	MemoryContext oldCxt;
@@ -153,16 +153,16 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 	if (so->queue == NULL)
 	{
 		/* first time through */
-		Assert(so->queueCxt == so->megiststate->scanCxt);
+		Assert(so->queueCxt == so->mgiststate->scanCxt);
 		first_time = true;
 	}
-	else if (so->queueCxt == so->megiststate->scanCxt)
+	else if (so->queueCxt == so->mgiststate->scanCxt)
 	{
 		/* second time through */
-		so->queueCxt = AllocSetContextCreate(so->megiststate->scanCxt,
+		so->queueCxt = AllocSetContextCreate(so->mgiststate->scanCxt,
 											 "GiST queue context",
 											 ALLOCSET_DEFAULT_SIZES);
-		so->tidtableCxt = AllocSetContextCreate(so->megiststate->scanCxt,
+		so->tidtableCxt = AllocSetContextCreate(so->mgiststate->scanCxt,
 											 "GiST tidtable context",
 											 ALLOCSET_DEFAULT_SIZES);
 		first_time = false;
@@ -194,26 +194,26 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 		 */
 		natts = RelationGetNumberOfAttributes(scan->indexRelation);
 		nkeyatts = IndexRelationGetNumberOfKeyAttributes(scan->indexRelation);
-		so->megiststate->fetchTupdesc = CreateTemplateTupleDesc(natts);
+		so->mgiststate->fetchTupdesc = CreateTemplateTupleDesc(natts);
 		for (attno = 1; attno <= nkeyatts; attno++)
 		{
-			TupleDescInitEntry(so->megiststate->fetchTupdesc, attno, NULL,
+			TupleDescInitEntry(so->mgiststate->fetchTupdesc, attno, NULL,
 							   scan->indexRelation->rd_opcintype[attno - 1],
 							   -1, 0);
 		}
 
 		for (; attno <= natts; attno++)
 		{
-			/* taking opcintype from megiststate->tupdesc */
-			TupleDescInitEntry(so->megiststate->fetchTupdesc, attno, NULL,
-							   TupleDescAttr(so->megiststate->leafTupdesc,
+			/* taking opcintype from mgiststate->tupdesc */
+			TupleDescInitEntry(so->mgiststate->fetchTupdesc, attno, NULL,
+							   TupleDescAttr(so->mgiststate->leafTupdesc,
 											 attno - 1)->atttypid,
 							   -1, 0);
 		}
-		scan->xs_hitupdesc = so->megiststate->fetchTupdesc;
+		scan->xs_hitupdesc = so->mgiststate->fetchTupdesc;
 
 		/* Also create a memory context that will hold the returned tuples */
-		so->pageDataCxt = AllocSetContextCreate(so->megiststate->scanCxt,
+		so->pageDataCxt = AllocSetContextCreate(so->mgiststate->scanCxt,
 												"GiST page data context",
 												ALLOCSET_DEFAULT_SIZES);
 	}
@@ -267,8 +267,8 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 			 * of function implementing filtering operator.
 			 */
 			fmgr_info_copy(&(skey->sk_func),
-						   &(so->megiststate->consistentFn[skey->sk_attno - 1]),
-						   so->megiststate->scanCxt);
+						   &(so->mgiststate->consistentFn[skey->sk_attno - 1]),
+						   so->mgiststate->scanCxt);
 
 			/* Restore prior fn_extra pointers, if not first time */
 			if (!first_time)
@@ -313,7 +313,7 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 		for (i = 0; i < scan->numberOfOrderBys; i++)
 		{
 			ScanKey		skey = scan->orderByData + i;
-			FmgrInfo   *finfo = &(so->megiststate->distanceFn[skey->sk_attno - 1]);
+			FmgrInfo   *finfo = &(so->mgiststate->distanceFn[skey->sk_attno - 1]);
 
 			/* Check we actually have a distance function ... */
 			if (!OidIsValid(finfo->fn_oid))
@@ -339,7 +339,7 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 			 * Copy distance support function to ScanKey structure instead of
 			 * function implementing ordering operator.
 			 */
-			fmgr_info_copy(&(skey->sk_func), finfo, so->megiststate->scanCxt);
+			fmgr_info_copy(&(skey->sk_func), finfo, so->mgiststate->scanCxt);
 
 			/* Restore prior fn_extra pointers, if not first time */
 			if (!first_time)
@@ -355,13 +355,13 @@ megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
 }
 
 void
-megistendscan(IndexScanDesc scan)
+mgistendscan(IndexScanDesc scan)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 
 	/*
 	 * freeGISTstate is enough to clean up everything made by gistbeginscan,
 	 * as well as the queueCxt if there is a separate context for it.
 	 */
-	freeMEGISTstate(so->megiststate);
+	freeMGISTstate(so->mgiststate);
 }

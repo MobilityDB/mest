@@ -23,7 +23,7 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 static GISTNodeBufferPage *gistAllocateNewPageBuffer(GISTBuildBuffers *gfbb);
 static void gistAddLoadedBuffer(GISTBuildBuffers *gfbb,
@@ -116,7 +116,7 @@ gistInitBuildBuffers(int pagesPerBuffer, int levelStep, int maxLevel)
  * doesn't exist yet.
  */
 GISTNodeBuffer *
-megistGetNodeBuffer(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststate,
+mgistGetNodeBuffer(GISTBuildBuffers *gfbb, MGISTSTATE *mgiststate,
 				    BlockNumber nodeBlocknum, int level)
 {
 	GISTNodeBuffer *nodeBuffer;
@@ -536,7 +536,7 @@ typedef struct
  * in 'splitinfo' to include the tuples in the buffers.
  */
 void
-megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststate,
+mgistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MGISTSTATE *mgiststate,
 								  Relation r, int level,
 								  Buffer buffer, List *splitinfo)
 {
@@ -604,7 +604,7 @@ megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststa
 		GISTNodeBuffer *newNodeBuffer;
 
 		/* Decompress parent index tuple of node buffer page. */
-		megistDeCompressAtt(megiststate, r,
+		mgistDeCompressAtt(mgiststate, r,
 							si->downlink, NULL, (OffsetNumber) 0,
 							relocationBuffersInfos[i].entry,
 							relocationBuffersInfos[i].isnull);
@@ -616,7 +616,7 @@ megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststa
 		 * were relinked to the temporary buffer, so the original one is now
 		 * empty.
 		 */
-		newNodeBuffer = megistGetNodeBuffer(gfbb, megiststate, BufferGetBlockNumber(si->buf), level);
+		newNodeBuffer = mgistGetNodeBuffer(gfbb, mgiststate, BufferGetBlockNumber(si->buf), level);
 
 		relocationBuffersInfos[i].nodeBuffer = newNodeBuffer;
 		relocationBuffersInfos[i].splitinfo = si;
@@ -641,7 +641,7 @@ megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststa
 		IndexTuple	newtup;
 		RelocationBufferInfo *targetBufferInfo;
 
-		megistDeCompressAtt(megiststate, r,
+		mgistDeCompressAtt(mgiststate, r,
 							itup, NULL, (OffsetNumber) 0, entry, isnull);
 
 		/* default to using first page (shouldn't matter) */
@@ -672,7 +672,7 @@ megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststa
 				float		usize;
 
 				/* Compute penalty for this column. */
-				usize = megistpenalty(megiststate, j,
+				usize = mgistpenalty(mgiststate, j,
 									  &splitPageInfo->entry[j],
 									  splitPageInfo->isnull[j],
 									  &entry[j], isnull[j]);
@@ -732,11 +732,11 @@ megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb, MEGISTSTATE *megiststa
 		gistPushItupToNodeBuffer(gfbb, targetBufferInfo->nodeBuffer, itup);
 
 		/* Adjust the downlink for this page, if needed. */
-		newtup = megistgetadjusted(r, targetBufferInfo->splitinfo->downlink,
-								   itup, megiststate);
+		newtup = mgistgetadjusted(r, targetBufferInfo->splitinfo->downlink,
+								   itup, mgiststate);
 		if (newtup)
 		{
-			megistDeCompressAtt(megiststate, r,
+			mgistDeCompressAtt(mgiststate, r,
 								newtup, NULL, (OffsetNumber) 0,
 								targetBufferInfo->entry,
 								targetBufferInfo->isnull);

@@ -27,7 +27,7 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 /*
  * Write itup vector to page, has no control of free space.
@@ -154,7 +154,7 @@ gistfillitupvec(IndexTuple *vec, int veclen, int *memlen)
  * Resulting Datums aren't compressed.
  */
 void
-megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
+mgistMakeUnionItVec(MGISTSTATE *mgiststate, IndexTuple *itvec, int len,
 					 Datum *attr, bool *isnull)
 {
 	int			i;
@@ -163,7 +163,7 @@ megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
 
 	evec = (GistEntryVector *) palloc((len + 2) * sizeof(GISTENTRY) + GEVHDRSZ);
 
-	for (i = 0; i < megiststate->nonLeafTupdesc->natts; i++)
+	for (i = 0; i < mgiststate->nonLeafTupdesc->natts; i++)
 	{
 		int			j;
 
@@ -174,12 +174,12 @@ megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
 			Datum		datum;
 			bool		IsNull;
 
-			datum = index_getattr(itvec[j], i + 1, megiststate->leafTupdesc,
+			datum = index_getattr(itvec[j], i + 1, mgiststate->leafTupdesc,
 								  &IsNull);
 			if (IsNull)
 				continue;
 
-			megistdentryinit(megiststate, i,
+			mgistdentryinit(mgiststate, i,
 						   evec->vector + evec->n,
 						   datum,
 						   NULL, NULL, (OffsetNumber) 0,
@@ -203,8 +203,8 @@ megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
 			}
 
 			/* Make union and store in attr array */
-			attr[i] = FunctionCall2Coll(&megiststate->unionFn[i],
-										megiststate->supportCollation[i],
+			attr[i] = FunctionCall2Coll(&mgiststate->unionFn[i],
+										mgiststate->supportCollation[i],
 										PointerGetDatum(evec),
 										PointerGetDatum(&attrsize));
 
@@ -218,21 +218,21 @@ megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
  * method to the specified IndexTuple vector.
  */
 IndexTuple
-megistunion(Relation r, IndexTuple *itvec, int len, MEGISTSTATE *megiststate)
+mgistunion(Relation r, IndexTuple *itvec, int len, MGISTSTATE *mgiststate)
 {
 	Datum		attr[INDEX_MAX_KEYS];
 	bool		isnull[INDEX_MAX_KEYS];
 
-	megistMakeUnionItVec(megiststate, itvec, len, attr, isnull);
+	mgistMakeUnionItVec(mgiststate, itvec, len, attr, isnull);
 
-	return megistFormTuple(megiststate, r, attr, isnull, false);
+	return mgistFormTuple(mgiststate, r, attr, isnull, false);
 }
 
 /*
  * makes union of two key
  */
 void
-megistMakeUnionKey(MEGISTSTATE *megiststate, int attno,
+mgistMakeUnionKey(MGISTSTATE *mgiststate, int attno,
 				   GISTENTRY *entry1, bool isnull1,
 				   GISTENTRY *entry2, bool isnull2,
 				   Datum *dst, bool *dstisnull)
@@ -272,20 +272,20 @@ megistMakeUnionKey(MEGISTSTATE *megiststate, int attno,
 		}
 
 		*dstisnull = false;
-		*dst = FunctionCall2Coll(&megiststate->unionFn[attno],
-								 megiststate->supportCollation[attno],
+		*dst = FunctionCall2Coll(&mgiststate->unionFn[attno],
+								 mgiststate->supportCollation[attno],
 								 PointerGetDatum(evec),
 								 PointerGetDatum(&dstsize));
 	}
 }
 
 bool
-megistKeyIsEQ(MEGISTSTATE *megiststate, int attno, Datum a, Datum b)
+mgistKeyIsEQ(MGISTSTATE *mgiststate, int attno, Datum a, Datum b)
 {
 	bool		result;
 
-	FunctionCall3Coll(&megiststate->equalFn[attno],
-					  megiststate->supportCollation[attno],
+	FunctionCall3Coll(&mgiststate->equalFn[attno],
+					  mgiststate->supportCollation[attno],
 					  a, b,
 					  PointerGetDatum(&result));
 	return result;
@@ -295,7 +295,7 @@ megistKeyIsEQ(MEGISTSTATE *megiststate, int attno, Datum a, Datum b)
  * Decompress all keys in tuple
  */
 void
-megistDeCompressAtt(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple, Page p,
+mgistDeCompressAtt(MGISTSTATE *mgiststate, Relation r, IndexTuple tuple, Page p,
 					OffsetNumber o, GISTENTRY *attdata, bool *isnull)
 {
 	int			i;
@@ -304,8 +304,8 @@ megistDeCompressAtt(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple, Page
 	{
 		Datum		datum;
 
-		datum = index_getattr(tuple, i + 1, megiststate->leafTupdesc, &isnull[i]);
-		megistdentryinit(megiststate, i, &attdata[i],
+		datum = index_getattr(tuple, i + 1, mgiststate->leafTupdesc, &isnull[i]);
+		mgistdentryinit(mgiststate, i, &attdata[i],
 						 datum, r, p, o,
 						 false, isnull[i]);
 	}
@@ -315,7 +315,7 @@ megistDeCompressAtt(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple, Page
  * Forms union of oldtup and addtup, if union == oldtup then return NULL
  */
 IndexTuple
-megistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MEGISTSTATE *megiststate)
+mgistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MGISTSTATE *mgiststate)
 {
 	bool		neednew = false;
 	GISTENTRY	oldentries[INDEX_MAX_KEYS],
@@ -327,15 +327,15 @@ megistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MEGISTSTATE 
 	IndexTuple	newtup = NULL;
 	int			i;
 
-	megistDeCompressAtt(megiststate, r, oldtup, NULL,
+	mgistDeCompressAtt(mgiststate, r, oldtup, NULL,
 					  (OffsetNumber) 0, oldentries, oldisnull);
 
-	megistDeCompressAtt(megiststate, r, addtup, NULL,
+	mgistDeCompressAtt(mgiststate, r, addtup, NULL,
 					  (OffsetNumber) 0, addentries, addisnull);
 
 	for (i = 0; i < IndexRelationGetNumberOfKeyAttributes(r); i++)
 	{
-		megistMakeUnionKey(megiststate, i,
+		mgistMakeUnionKey(mgiststate, i,
 						   oldentries + i, oldisnull[i],
 						   addentries + i, addisnull[i],
 						   attr + i, isnull + i);
@@ -351,7 +351,7 @@ megistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MEGISTSTATE 
 		if (!addisnull[i])
 		{
 			if (oldisnull[i] ||
-				!megistKeyIsEQ(megiststate, i, oldentries[i].key, attr[i]))
+				!mgistKeyIsEQ(mgiststate, i, oldentries[i].key, attr[i]))
 				neednew = true;
 		}
 	}
@@ -359,7 +359,7 @@ megistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MEGISTSTATE 
 	if (neednew)
 	{
 		/* need to update key */
-		newtup = megistFormTuple(megiststate, r, attr, isnull, false);
+		newtup = mgistFormTuple(mgiststate, r, attr, isnull, false);
 		newtup->t_tid = oldtup->t_tid;
 	}
 
@@ -373,8 +373,8 @@ megistgetadjusted(Relation r, IndexTuple oldtup, IndexTuple addtup, MEGISTSTATE 
  * Returns the index of the page entry to insert into.
  */
 OffsetNumber
-megistchoose(Relation r, Page p, IndexTuple it,	/* it has compressed entry */
-			 MEGISTSTATE *megiststate)
+mgistchoose(Relation r, Page p, IndexTuple it,	/* it has compressed entry */
+			 MGISTSTATE *mgiststate)
 {
 	OffsetNumber result;
 	OffsetNumber maxoff;
@@ -387,7 +387,7 @@ megistchoose(Relation r, Page p, IndexTuple it,	/* it has compressed entry */
 
 	Assert(!GistPageIsLeaf(p));
 
-	megistDeCompressAtt(megiststate, r,
+	mgistDeCompressAtt(mgiststate, r,
 					  it, NULL, (OffsetNumber) 0,
 					  identry, isnull);
 
@@ -453,11 +453,11 @@ megistchoose(Relation r, Page p, IndexTuple it,	/* it has compressed entry */
 			bool		IsNull;
 
 			/* Compute penalty for this column. */
-			datum = index_getattr(itup, j + 1, megiststate->leafTupdesc,
+			datum = index_getattr(itup, j + 1, mgiststate->leafTupdesc,
 								  &IsNull);
-			megistdentryinit(megiststate, j, &entry, datum, r, p, i,
+			mgistdentryinit(mgiststate, j, &entry, datum, r, p, i,
 						   false, IsNull);
-			usize = megistpenalty(megiststate, j, &entry, IsNull,
+			usize = mgistpenalty(mgiststate, j, &entry, IsNull,
 								&identry[j], isnull[j]);
 			if (usize > 0)
 				zero_penalty = false;
@@ -546,7 +546,7 @@ megistchoose(Relation r, Page p, IndexTuple it,	/* it has compressed entry */
  * initialize a GiST entry with a decompressed version of key
  */
 void
-megistdentryinit(MEGISTSTATE *megiststate, int nkey, GISTENTRY *e,
+mgistdentryinit(MGISTSTATE *mgiststate, int nkey, GISTENTRY *e,
 				 Datum k, Relation r, Page pg, OffsetNumber o,
 				 bool l, bool isNull)
 {
@@ -557,12 +557,12 @@ megistdentryinit(MEGISTSTATE *megiststate, int nkey, GISTENTRY *e,
 		gistentryinit(*e, k, r, pg, o, l);
 
 		/* there may not be a decompress function in opclass */
-		if (!OidIsValid(megiststate->decompressFn[nkey].fn_oid))
+		if (!OidIsValid(mgiststate->decompressFn[nkey].fn_oid))
 			return;
 
 		dep = (GISTENTRY *)
-			DatumGetPointer(FunctionCall1Coll(&megiststate->decompressFn[nkey],
-											  megiststate->supportCollation[nkey],
+			DatumGetPointer(FunctionCall1Coll(&mgiststate->decompressFn[nkey],
+											  mgiststate->supportCollation[nkey],
 											  PointerGetDatum(e)));
 		/* decompressFn may just return the given pointer */
 		if (dep != e)
@@ -574,16 +574,16 @@ megistdentryinit(MEGISTSTATE *megiststate, int nkey, GISTENTRY *e,
 }
 
 IndexTuple
-megistFormTuple(MEGISTSTATE *megiststate, Relation r,
+mgistFormTuple(MGISTSTATE *mgiststate, Relation r,
 				Datum *attdata, bool *isnull, bool isleaf)
 {
 	Datum		compatt[INDEX_MAX_KEYS];
 	IndexTuple	res;
 
-	megistCompressValues(megiststate, r, attdata, isnull, isleaf, compatt);
+	mgistCompressValues(mgiststate, r, attdata, isnull, isleaf, compatt);
 
-	res = index_form_tuple(isleaf ? megiststate->leafTupdesc :
-						   megiststate->nonLeafTupdesc,
+	res = index_form_tuple(isleaf ? mgiststate->leafTupdesc :
+						   mgiststate->nonLeafTupdesc,
 						   compatt, isnull);
 
 	/*
@@ -595,7 +595,7 @@ megistFormTuple(MEGISTSTATE *megiststate, Relation r,
 }
 
 void
-megistCompressValues(MEGISTSTATE *megiststate, Relation r,
+mgistCompressValues(MGISTSTATE *mgiststate, Relation r,
 				   Datum *attdata, bool *isnull, bool isleaf, Datum *compatt)
 {
 	int			i;
@@ -615,10 +615,10 @@ megistCompressValues(MEGISTSTATE *megiststate, Relation r,
 			gistentryinit(centry, attdata[i], r, NULL, (OffsetNumber) 0,
 						  isleaf);
 			/* there may not be a compress function in opclass */
-			if (OidIsValid(megiststate->compressFn[i].fn_oid))
+			if (OidIsValid(mgiststate->compressFn[i].fn_oid))
 				cep = (GISTENTRY *)
-					DatumGetPointer(FunctionCall1Coll(&megiststate->compressFn[i],
-													  megiststate->supportCollation[i],
+					DatumGetPointer(FunctionCall1Coll(&mgiststate->compressFn[i],
+													  mgiststate->supportCollation[i],
 													  PointerGetDatum(&centry)));
 			else
 				cep = &centry;
@@ -645,7 +645,7 @@ megistCompressValues(MEGISTSTATE *megiststate, Relation r,
  * initialize a GiST entry with fetched value in key field
  */
 static Datum
-megistFetchAtt(MEGISTSTATE *megiststate, int nkey, Datum k, Relation r)
+mgistFetchAtt(MGISTSTATE *mgiststate, int nkey, Datum k, Relation r)
 {
 	GISTENTRY	fentry;
 	GISTENTRY  *fep;
@@ -653,8 +653,8 @@ megistFetchAtt(MEGISTSTATE *megiststate, int nkey, Datum k, Relation r)
 	gistentryinit(fentry, k, r, NULL, (OffsetNumber) 0, false);
 
 	fep = (GISTENTRY *)
-		DatumGetPointer(FunctionCall1Coll(&megiststate->fetchFn[nkey],
-										  megiststate->supportCollation[nkey],
+		DatumGetPointer(FunctionCall1Coll(&mgiststate->fetchFn[nkey],
+										  mgiststate->supportCollation[nkey],
 										  PointerGetDatum(&fentry)));
 
 	/* fetchFn set 'key', return it to the caller */
@@ -666,9 +666,9 @@ megistFetchAtt(MEGISTSTATE *megiststate, int nkey, Datum k, Relation r)
  * Returns a new HeapTuple containing the originally-indexed data.
  */
 HeapTuple
-megistFetchTuple(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple)
+mgistFetchTuple(MGISTSTATE *mgiststate, Relation r, IndexTuple tuple)
 {
-	MemoryContext oldcxt = MemoryContextSwitchTo(megiststate->tempCxt);
+	MemoryContext oldcxt = MemoryContextSwitchTo(mgiststate->tempCxt);
 	Datum		fetchatt[INDEX_MAX_KEYS];
 	bool		isnull[INDEX_MAX_KEYS];
 	int			i;
@@ -677,16 +677,16 @@ megistFetchTuple(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple)
 	{
 		Datum		datum;
 
-		datum = index_getattr(tuple, i + 1, megiststate->leafTupdesc, &isnull[i]);
+		datum = index_getattr(tuple, i + 1, mgiststate->leafTupdesc, &isnull[i]);
 
-		if (megiststate->fetchFn[i].fn_oid != InvalidOid)
+		if (mgiststate->fetchFn[i].fn_oid != InvalidOid)
 		{
 			if (!isnull[i])
-				fetchatt[i] = megistFetchAtt(megiststate, i, datum, r);
+				fetchatt[i] = mgistFetchAtt(mgiststate, i, datum, r);
 			else
 				fetchatt[i] = (Datum) 0;
 		}
-		else if (megiststate->compressFn[i].fn_oid == InvalidOid)
+		else if (mgiststate->compressFn[i].fn_oid == InvalidOid)
 		{
 			/*
 			 * If opclass does not provide compress method that could change
@@ -714,26 +714,26 @@ megistFetchTuple(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple)
 	 */
 	for (; i < r->rd_att->natts; i++)
 	{
-		fetchatt[i] = index_getattr(tuple, i + 1, megiststate->leafTupdesc,
+		fetchatt[i] = index_getattr(tuple, i + 1, mgiststate->leafTupdesc,
 									&isnull[i]);
 	}
 	MemoryContextSwitchTo(oldcxt);
 
-	return heap_form_tuple(megiststate->fetchTupdesc, fetchatt, isnull);
+	return heap_form_tuple(mgiststate->fetchTupdesc, fetchatt, isnull);
 }
 
 float
-megistpenalty(MEGISTSTATE *megiststate, int attno,
+mgistpenalty(MGISTSTATE *mgiststate, int attno,
 			  GISTENTRY *orig, bool isNullOrig,
 			  GISTENTRY *add, bool isNullAdd)
 {
 	float		penalty = 0.0;
 
-	if (megiststate->penaltyFn[attno].fn_strict == false ||
+	if (mgiststate->penaltyFn[attno].fn_strict == false ||
 		(isNullOrig == false && isNullAdd == false))
 	{
-		FunctionCall3Coll(&megiststate->penaltyFn[attno],
-						  megiststate->supportCollation[attno],
+		FunctionCall3Coll(&mgiststate->penaltyFn[attno],
+						  mgiststate->supportCollation[attno],
 						  PointerGetDatum(orig),
 						  PointerGetDatum(add),
 						  PointerGetDatum(&penalty));

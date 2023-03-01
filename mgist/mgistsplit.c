@@ -28,7 +28,7 @@
 #include "access/gist_private.h"
 #include "utils/rel.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 typedef struct
 {
@@ -46,7 +46,7 @@ typedef struct
  * gistunionsubkey.
  */
 static void
-megistunionsubkeyvec(MEGISTSTATE *megiststate, IndexTuple *itvec,
+mgistunionsubkeyvec(MGISTSTATE *mgiststate, IndexTuple *itvec,
 					 GistSplitUnion *gsvp)
 {
 	IndexTuple *cleanedItVec;
@@ -63,7 +63,7 @@ megistunionsubkeyvec(MEGISTSTATE *megiststate, IndexTuple *itvec,
 		cleanedItVec[cleanedLen++] = itvec[gsvp->entries[i] - 1];
 	}
 
-	megistMakeUnionItVec(megiststate, cleanedItVec, cleanedLen,
+	mgistMakeUnionItVec(mgiststate, cleanedItVec, cleanedLen,
 						 gsvp->attr, gsvp->isnull);
 
 	pfree(cleanedItVec);
@@ -79,7 +79,7 @@ megistunionsubkeyvec(MEGISTSTATE *megiststate, IndexTuple *itvec,
  * key doesn't change at all".  Penalty functions aren't 100% accurate.
  */
 static void
-megistunionsubkey(MEGISTSTATE *megiststate, IndexTuple *itvec, GistSplitVector *spl)
+mgistunionsubkey(MGISTSTATE *mgiststate, IndexTuple *itvec, GistSplitVector *spl)
 {
 	GistSplitUnion gsvp;
 
@@ -90,14 +90,14 @@ megistunionsubkey(MEGISTSTATE *megiststate, IndexTuple *itvec, GistSplitVector *
 	gsvp.attr = spl->spl_lattr;
 	gsvp.isnull = spl->spl_lisnull;
 
-	megistunionsubkeyvec(megiststate, itvec, &gsvp);
+	mgistunionsubkeyvec(mgiststate, itvec, &gsvp);
 
 	gsvp.entries = spl->splitVector.spl_right;
 	gsvp.len = spl->splitVector.spl_nright;
 	gsvp.attr = spl->spl_rattr;
 	gsvp.isnull = spl->spl_risnull;
 
-	megistunionsubkeyvec(megiststate, itvec, &gsvp);
+	mgistunionsubkeyvec(mgiststate, itvec, &gsvp);
 }
 
 /*
@@ -112,7 +112,7 @@ megistunionsubkey(MEGISTSTATE *megiststate, IndexTuple *itvec, GistSplitVector *
  * Returns number of don't-cares found.
  */
 static int
-mefindDontCares(Relation r, MEGISTSTATE *megiststate, GISTENTRY *valvec,
+mefindDontCares(Relation r, MGISTSTATE *mgiststate, GISTENTRY *valvec,
 				GistSplitVector *spl, int attno)
 {
 	int			i;
@@ -131,7 +131,7 @@ mefindDontCares(Relation r, MEGISTSTATE *megiststate, GISTENTRY *valvec,
 	for (i = 0; i < spl->splitVector.spl_nleft; i++)
 	{
 		int			j = spl->splitVector.spl_left[i];
-		float		penalty = megistpenalty(megiststate, attno, &entry, false,
+		float		penalty = mgistpenalty(mgiststate, attno, &entry, false,
 											&valvec[j], false);
 
 		if (penalty == 0.0)
@@ -147,7 +147,7 @@ mefindDontCares(Relation r, MEGISTSTATE *megiststate, GISTENTRY *valvec,
 	for (i = 0; i < spl->splitVector.spl_nright; i++)
 	{
 		int			j = spl->splitVector.spl_right[i];
-		float		penalty = megistpenalty(megiststate, attno, &entry, false,
+		float		penalty = mgistpenalty(mgiststate, attno, &entry, false,
 											&valvec[j], false);
 
 		if (penalty == 0.0)
@@ -199,27 +199,27 @@ removeDontCares(OffsetNumber *a, int *len, const bool *dontcare)
  * at attno.
  */
 static void
-meplaceOne(Relation r, MEGISTSTATE *megiststate, GistSplitVector *v,
+meplaceOne(Relation r, MGISTSTATE *mgiststate, GistSplitVector *v,
 		   IndexTuple itup, OffsetNumber off, int attno)
 {
 	GISTENTRY	identry[INDEX_MAX_KEYS];
 	bool		isnull[INDEX_MAX_KEYS];
 	bool		toLeft = true;
 
-	megistDeCompressAtt(megiststate, r, itup, NULL, (OffsetNumber) 0,
+	mgistDeCompressAtt(mgiststate, r, itup, NULL, (OffsetNumber) 0,
 					  identry, isnull);
 
-	for (; attno < megiststate->nonLeafTupdesc->natts; attno++)
+	for (; attno < mgiststate->nonLeafTupdesc->natts; attno++)
 	{
 		float		lpenalty,
 					rpenalty;
 		GISTENTRY	entry;
 
 		gistentryinit(entry, v->spl_lattr[attno], r, NULL, 0, false);
-		lpenalty = megistpenalty(megiststate, attno, &entry, v->spl_lisnull[attno],
+		lpenalty = mgistpenalty(mgiststate, attno, &entry, v->spl_lisnull[attno],
 							   identry + attno, isnull[attno]);
 		gistentryinit(entry, v->spl_rattr[attno], r, NULL, 0, false);
-		rpenalty = megistpenalty(megiststate, attno, &entry, v->spl_risnull[attno],
+		rpenalty = mgistpenalty(mgiststate, attno, &entry, v->spl_risnull[attno],
 							   identry + attno, isnull[attno]);
 
 		if (lpenalty != rpenalty)
@@ -257,7 +257,7 @@ do {	\
  * PickSplit method didn't do so.
  */
 static void
-mesupportSecondarySplit(Relation r, MEGISTSTATE *megiststate, int attno,
+mesupportSecondarySplit(Relation r, MGISTSTATE *mgiststate, int attno,
 					  GIST_SPLITVEC *sv, Datum oldL, Datum oldR)
 {
 	bool		leaveOnLeft = true,
@@ -277,10 +277,10 @@ mesupportSecondarySplit(Relation r, MEGISTSTATE *megiststate, int attno,
 		float		penalty1,
 					penalty2;
 
-		penalty1 = megistpenalty(megiststate, attno, &entryL, false, &entrySL, false) +
-			megistpenalty(megiststate, attno, &entryR, false, &entrySR, false);
-		penalty2 = megistpenalty(megiststate, attno, &entryL, false, &entrySR, false) +
-			megistpenalty(megiststate, attno, &entryR, false, &entrySL, false);
+		penalty1 = mgistpenalty(mgiststate, attno, &entryL, false, &entrySL, false) +
+			mgistpenalty(mgiststate, attno, &entryR, false, &entrySR, false);
+		penalty2 = mgistpenalty(mgiststate, attno, &entryL, false, &entrySR, false) +
+			mgistpenalty(mgiststate, attno, &entryR, false, &entrySL, false);
 
 		if (penalty1 > penalty2)
 			leaveOnLeft = false;
@@ -301,8 +301,8 @@ mesupportSecondarySplit(Relation r, MEGISTSTATE *megiststate, int attno,
 		 * don't-cares at the outer recursion level, not the tuples that went
 		 * into determining the passed-down left and right union keys.)
 		 */
-		penalty1 = megistpenalty(megiststate, attno, entry1, false, &entrySL, false);
-		penalty2 = megistpenalty(megiststate, attno, entry1, false, &entrySR, false);
+		penalty1 = mgistpenalty(mgiststate, attno, entry1, false, &entrySL, false);
+		penalty2 = mgistpenalty(mgiststate, attno, entry1, false, &entrySR, false);
 
 		if (penalty1 < penalty2)
 			leaveOnLeft = sv->spl_ldatum_exists;
@@ -327,11 +327,11 @@ mesupportSecondarySplit(Relation r, MEGISTSTATE *megiststate, int attno,
 	}
 
 	if (sv->spl_ldatum_exists)
-		megistMakeUnionKey(megiststate, attno, &entryL, false, &entrySL, false,
+		mgistMakeUnionKey(mgiststate, attno, &entryL, false, &entrySL, false,
 						 &sv->spl_ldatum, &tmpBool);
 
 	if (sv->spl_rdatum_exists)
-		megistMakeUnionKey(megiststate, attno, &entryR, false, &entrySR, false,
+		mgistMakeUnionKey(mgiststate, attno, &entryR, false, &entrySR, false,
 						 &sv->spl_rdatum, &tmpBool);
 
 	sv->spl_ldatum_exists = sv->spl_rdatum_exists = false;
@@ -343,7 +343,7 @@ mesupportSecondarySplit(Relation r, MEGISTSTATE *megiststate, int attno,
  * That is a bug of user-defined picksplit but we don't want to fail.
  */
 static void
-megenericPickSplit(MEGISTSTATE *megiststate, GistEntryVector *entryvec, GIST_SPLITVEC *v, int attno)
+megenericPickSplit(MGISTSTATE *mgiststate, GistEntryVector *entryvec, GIST_SPLITVEC *v, int attno)
 {
 	OffsetNumber i,
 				maxoff;
@@ -380,16 +380,16 @@ megenericPickSplit(MEGISTSTATE *megiststate, GistEntryVector *entryvec, GIST_SPL
 	evec->n = v->spl_nleft;
 	memcpy(evec->vector, entryvec->vector + FirstOffsetNumber,
 		   sizeof(GISTENTRY) * evec->n);
-	v->spl_ldatum = FunctionCall2Coll(&megiststate->unionFn[attno],
-									  megiststate->supportCollation[attno],
+	v->spl_ldatum = FunctionCall2Coll(&mgiststate->unionFn[attno],
+									  mgiststate->supportCollation[attno],
 									  PointerGetDatum(evec),
 									  PointerGetDatum(&nbytes));
 
 	evec->n = v->spl_nright;
 	memcpy(evec->vector, entryvec->vector + FirstOffsetNumber + v->spl_nleft,
 		   sizeof(GISTENTRY) * evec->n);
-	v->spl_rdatum = FunctionCall2Coll(&megiststate->unionFn[attno],
-									  megiststate->supportCollation[attno],
+	v->spl_rdatum = FunctionCall2Coll(&mgiststate->unionFn[attno],
+									  mgiststate->supportCollation[attno],
 									  PointerGetDatum(evec),
 									  PointerGetDatum(&nbytes));
 }
@@ -414,8 +414,8 @@ megenericPickSplit(MEGISTSTATE *megiststate, GistEntryVector *entryvec, GIST_SPL
  * A true result implies there is at least one more index column.
  */
 static bool
-megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitVector *v,
-				  IndexTuple *itup, int len, MEGISTSTATE *megiststate)
+mgistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitVector *v,
+				  IndexTuple *itup, int len, MGISTSTATE *mgiststate)
 {
 	GIST_SPLITVEC *sv = &v->splitVector;
 
@@ -432,8 +432,8 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 	 * Let the opclass-specific PickSplit method do its thing.  Note that at
 	 * this point we know there are no null keys in the entryvec.
 	 */
-	FunctionCall2Coll(&megiststate->picksplitFn[attno],
-					  megiststate->supportCollation[attno],
+	FunctionCall2Coll(&mgiststate->picksplitFn[attno],
+					  mgiststate->supportCollation[attno],
 					  PointerGetDatum(entryvec),
 					  PointerGetDatum(sv));
 
@@ -459,7 +459,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 		sv->spl_rdatum = v->spl_rattr[attno];
 
 		/* Do a generic split */
-		megenericPickSplit(megiststate, entryvec, sv, attno);
+		megenericPickSplit(mgiststate, entryvec, sv, attno);
 	}
 	else
 	{
@@ -472,7 +472,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 
 	/* Clean up if PickSplit didn't take care of a secondary split */
 	if (sv->spl_ldatum_exists || sv->spl_rdatum_exists)
-		mesupportSecondarySplit(r, megiststate, attno, sv,
+		mesupportSecondarySplit(r, mgiststate, attno, sv,
 								v->spl_lattr[attno], v->spl_rattr[attno]);
 
 	/* emit union datums computed by PickSplit back to v arrays */
@@ -487,7 +487,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 	 */
 	v->spl_dontcare = NULL;
 
-	if (attno + 1 < megiststate->nonLeafTupdesc->natts)
+	if (attno + 1 < mgiststate->nonLeafTupdesc->natts)
 	{
 		int			NumDontCare;
 
@@ -496,7 +496,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 		 * if so, the split is certainly degenerate, so tell caller to
 		 * re-split with the next column.
 		 */
-		if (megistKeyIsEQ(megiststate, attno, sv->spl_ldatum, sv->spl_rdatum))
+		if (mgistKeyIsEQ(mgiststate, attno, sv->spl_ldatum, sv->spl_rdatum))
 			return true;
 
 		/*
@@ -505,7 +505,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 		 */
 		v->spl_dontcare = (bool *) palloc0(sizeof(bool) * (entryvec->n + 1));
 
-		NumDontCare = mefindDontCares(r, megiststate, entryvec->vector, v, attno);
+		NumDontCare = mefindDontCares(r, mgiststate, entryvec->vector, v, attno);
 
 		if (NumDontCare > 0)
 		{
@@ -542,7 +542,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 			 * values down to user-defined PickSplit methods with
 			 * spl_ldatum_exists/spl_rdatum_exists set true.
 			 */
-			megistunionsubkey(megiststate, itup, v);
+			mgistunionsubkey(mgiststate, itup, v);
 
 			if (NumDontCare == 1)
 			{
@@ -564,7 +564,7 @@ megistUserPicksplit(Relation r, GistEntryVector *entryvec, int attno, GistSplitV
 				Assert(toMove < entryvec->n);
 
 				/* ... and assign it to cheaper side */
-				meplaceOne(r, megiststate, v, itup[toMove - 1], toMove, attno + 1);
+				meplaceOne(r, mgiststate, v, itup[toMove - 1], toMove, attno + 1);
 
 				/*
 				 * At this point the union keys are wrong, but we don't care
@@ -607,7 +607,7 @@ gistSplitHalf(GIST_SPLITVEC *v, int len)
  * page: page being split
  * itup: array of IndexTuples to be processed
  * len: number of IndexTuples to be processed (must be at least 2)
- * megiststate: additional info about index
+ * mgiststate: additional info about index
  * v: working state and output area
  * attno: column we are working on (zero-based index)
  *
@@ -622,8 +622,8 @@ gistSplitHalf(GIST_SPLITVEC *v, int len)
  * recurse to the next column by passing attno+1.
  */
 void
-megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
-			   MEGISTSTATE *megiststate, GistSplitVector *v, int attno)
+mgistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
+			   MGISTSTATE *mgiststate, GistSplitVector *v, int attno)
 {
 	GistEntryVector *entryvec;
 	OffsetNumber *offNullTuples;
@@ -641,9 +641,9 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 		Datum		datum;
 		bool		IsNull;
 
-		datum = index_getattr(itup[i - 1], attno + 1, megiststate->leafTupdesc,
+		datum = index_getattr(itup[i - 1], attno + 1, mgiststate->leafTupdesc,
 							  &IsNull);
-		megistdentryinit(megiststate, attno, &(entryvec->vector[i]),
+		mgistdentryinit(mgiststate, attno, &(entryvec->vector[i]),
 						 datum, r, page, i,
 						 false, IsNull);
 		if (IsNull)
@@ -659,8 +659,8 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 		 */
 		v->spl_risnull[attno] = v->spl_lisnull[attno] = true;
 
-		if (attno + 1 < megiststate->nonLeafTupdesc->natts)
-			megistSplitByKey(r, page, itup, len, megiststate, v, attno + 1);
+		if (attno + 1 < mgiststate->nonLeafTupdesc->natts)
+			mgistSplitByKey(r, page, itup, len, mgiststate, v, attno + 1);
 		else
 			gistSplitHalf(&v->splitVector, len);
 	}
@@ -685,10 +685,10 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 				v->splitVector.spl_left[v->splitVector.spl_nleft++] = i;
 
 		/* Compute union keys, unless outer recursion level will handle it */
-		if (attno == 0 && megiststate->nonLeafTupdesc->natts == 1)
+		if (attno == 0 && mgiststate->nonLeafTupdesc->natts == 1)
 		{
 			v->spl_dontcare = NULL;
-			megistunionsubkey(megiststate, itup, v);
+			mgistunionsubkey(mgiststate, itup, v);
 		}
 	}
 	else
@@ -696,13 +696,13 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 		/*
 		 * All keys are not-null, so apply user-defined PickSplit method
 		 */
-		if (megistUserPicksplit(r, entryvec, attno, v, itup, len, megiststate))
+		if (mgistUserPicksplit(r, entryvec, attno, v, itup, len, mgiststate))
 		{
 			/*
 			 * Splitting on attno column is not optimal, so consider
 			 * redistributing don't-care tuples according to the next column
 			 */
-			Assert(attno + 1 < megiststate->nonLeafTupdesc->natts);
+			Assert(attno + 1 < mgiststate->nonLeafTupdesc->natts);
 
 			if (v->spl_dontcare == NULL)
 			{
@@ -710,7 +710,7 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 				 * This split was actually degenerate, so ignore it altogether
 				 * and just split according to the next column.
 				 */
-				megistSplitByKey(r, page, itup, len, megiststate, v, attno + 1);
+				mgistSplitByKey(r, page, itup, len, mgiststate, v, attno + 1);
 			}
 			else
 			{
@@ -746,7 +746,7 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 				memcpy(backupSplit.spl_right, v->splitVector.spl_right, sizeof(OffsetNumber) * v->splitVector.spl_nright);
 
 				/* Recursively decide how to split the don't-care tuples */
-				megistSplitByKey(r, page, newitup, newlen, megiststate, v, attno + 1);
+				mgistSplitByKey(r, page, newitup, newlen, mgiststate, v, attno + 1);
 
 				/* Merge result of subsplit with non-don't-care tuples */
 				for (i = 0; i < v->splitVector.spl_nleft; i++)
@@ -773,9 +773,9 @@ megistSplitByKey(Relation r, Page page, IndexTuple *itup, int len,
 	 * that PickSplit (or the special cases above) produced correct union
 	 * datums.
 	 */
-	if (attno == 0 && megiststate->nonLeafTupdesc->natts > 1)
+	if (attno == 0 && mgiststate->nonLeafTupdesc->natts > 1)
 	{
 		v->spl_dontcare = NULL;
-		megistunionsubkey(megiststate, itup, v);
+		mgistunionsubkey(mgiststate, itup, v);
 	}
 }

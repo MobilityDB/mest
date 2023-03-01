@@ -22,8 +22,8 @@ sudo make install
 
 Using the extension to create a Multi-Entry R-Tree on the path column from the table `paths(id int, p path)`
 ```sql
-CREATE EXTENSION megist CASCADE;
-CREATE INDEX paths_megist_path on paths using megist(path);
+CREATE EXTENSION mgist CASCADE;
+CREATE INDEX paths_mgist_path on paths using mgist(path);
 ```
 
 Example use-cases
@@ -32,7 +32,7 @@ Example use-cases
 Below are some extension using the Multi-Entry SP-GiST index to index complex data types.
 
   * PostGIS GeometryCollections and LineString: TODO
-  * MobilityDB Trajectories: [megist-mobilitydb](../megist-mobilitydb)
+  * MobilityDB Trajectories: [mgist-mobilitydb](../mgist-mobilitydb)
 
 
 Contact:

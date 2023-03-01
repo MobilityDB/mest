@@ -1,0 +1,5 @@
+# mgist extension
+comment = 'mgist access method'
+default_version = '1.0'
+module_pathname = '$libdir/mgist'
+relocatable = true

@@ -1,5 +1,0 @@
-# megist_mobilitydb extension
-comment = 'megist_mobilitydb - Multi Entry R-Tree for tgeompoint using ME-GiST'
-default_version = '1.0'
-module_pathname = '$libdir/megist_mobilitydb'
-requires = 'mobilitydb, megist'

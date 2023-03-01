@@ -48,7 +48,7 @@
 #include "utils/rel.h"
 #include "utils/tuplesort.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 /* Step of index tuples for check whether to switch to buffering build mode */
 #define BUFFERING_MODE_SWITCH_CHECK_STEP 256
@@ -85,7 +85,7 @@ typedef struct
 {
 	Relation	indexrel;
 	Relation	heaprel;
-	MEGISTSTATE *megiststate;
+	MGISTSTATE *mgiststate;
 
 	Size		freespace;		/* amount of free space to leave on pages */
 
@@ -113,7 +113,7 @@ typedef struct
 	int			ready_num_pages;
 	BlockNumber ready_blknos[XLR_MAX_BLOCK_ID];
 	Page		ready_pages[XLR_MAX_BLOCK_ID];
-} MEGISTBuildState;
+} MGISTBuildState;
 
 #define GIST_SORTED_BUILD_PAGE_NUM 4
 
@@ -135,57 +135,57 @@ typedef struct GistSortedBuildLevelState
 
 /* prototypes for private functions */
 
-static void megistSortedBuildCallback(Relation index, ItemPointer tid,
+static void mgistSortedBuildCallback(Relation index, ItemPointer tid,
 									  Datum *values, bool *isnull,
 									  bool tupleIsAlive, void *state);
-static void megist_indexsortbuild(MEGISTBuildState *state);
-static void megist_indexsortbuild_levelstate_add(MEGISTBuildState *state,
+static void mgist_indexsortbuild(MGISTBuildState *state);
+static void mgist_indexsortbuild_levelstate_add(MGISTBuildState *state,
 												 GistSortedBuildLevelState *levelstate,
 												 IndexTuple itup);
-static void megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
+static void mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 												   GistSortedBuildLevelState *levelstate);
-static void megist_indexsortbuild_flush_ready_pages(MEGISTBuildState *state);
+static void mgist_indexsortbuild_flush_ready_pages(MGISTBuildState *state);
 
-static void megistInitBuffering(MEGISTBuildState *buildstate);
-static int	mecalculatePagesPerBuffer(MEGISTBuildState *buildstate, int levelStep);
-static void megistBuildCallback(Relation index,
+static void mgistInitBuffering(MGISTBuildState *buildstate);
+static int	mecalculatePagesPerBuffer(MGISTBuildState *buildstate, int levelStep);
+static void mgistBuildCallback(Relation index,
 							 	ItemPointer tid,
 								Datum *values,
 								bool *isnull,
 								bool tupleIsAlive,
 								void *state);
-static void megistBufferingBuildInsert(MEGISTBuildState *buildstate,
+static void mgistBufferingBuildInsert(MGISTBuildState *buildstate,
 									   IndexTuple itup);
-static bool megistProcessItup(MEGISTBuildState *buildstate, IndexTuple itup,
+static bool mgistProcessItup(MGISTBuildState *buildstate, IndexTuple itup,
 							  BlockNumber startblkno, int startlevel);
-static BlockNumber megistbufferinginserttuples(MEGISTBuildState *buildstate,
+static BlockNumber mgistbufferinginserttuples(MGISTBuildState *buildstate,
 											   Buffer buffer, int level,
 											   IndexTuple *itup, int ntup, OffsetNumber oldoffnum,
 											   BlockNumber parentblk, OffsetNumber downlinkoffnum);
-static Buffer megistBufferingFindCorrectParent(MEGISTBuildState *buildstate,
+static Buffer mgistBufferingFindCorrectParent(MGISTBuildState *buildstate,
 											   BlockNumber childblkno, int level,
 											   BlockNumber *parentblk,
 											   OffsetNumber *downlinkoffnum);
-static void megistProcessEmptyingQueue(MEGISTBuildState *buildstate);
-static void megistEmptyAllBuffers(MEGISTBuildState *buildstate);
+static void mgistProcessEmptyingQueue(MGISTBuildState *buildstate);
+static void mgistEmptyAllBuffers(MGISTBuildState *buildstate);
 static int	gistGetMaxLevel(Relation index);
 
-static void megistInitParentMap(MEGISTBuildState *buildstate);
-static void megistMemorizeParent(MEGISTBuildState *buildstate, BlockNumber child,
+static void mgistInitParentMap(MGISTBuildState *buildstate);
+static void mgistMemorizeParent(MGISTBuildState *buildstate, BlockNumber child,
 								 BlockNumber parent);
-static void megistMemorizeAllDownlinks(MEGISTBuildState *buildstate, Buffer parent);
-static BlockNumber megistGetParent(MEGISTBuildState *buildstate, BlockNumber child);
+static void mgistMemorizeAllDownlinks(MGISTBuildState *buildstate, Buffer parent);
+static BlockNumber mgistGetParent(MGISTBuildState *buildstate, BlockNumber child);
 
 
 /*
  * Main entry point to GiST index build.
  */
 IndexBuildResult *
-megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
+mgistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 {
 	IndexBuildResult *result;
 	double		reltuples;
-	MEGISTBuildState mebuildstate;
+	MGISTBuildState mebuildstate;
 	MemoryContext oldcxt = CurrentMemoryContext;
 	int			fillfactor;
 	Oid			SortSupportFnOids[INDEX_MAX_KEYS];
@@ -202,14 +202,14 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 	mebuildstate.indexrel = index;
 	mebuildstate.heaprel = heap;
 	mebuildstate.sortstate = NULL;
-	mebuildstate.megiststate = initMEGISTstate(index);
+	mebuildstate.mgiststate = initMGISTstate(index);
 
 	/*
 	 * Create a temporary memory context that is reset once for each tuple
 	 * processed.  (Note: we don't bother to make this a child of the
 	 * giststate's scanCxt, so we have to delete it separately at the end.)
 	 */
-	mebuildstate.megiststate->tempCxt = createTempMEGistContext();
+	mebuildstate.mgiststate->tempCxt = createTempMGistContext();
 
 	/*
 	 * Choose build strategy.  First check whether the user specified to use
@@ -277,7 +277,7 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 
 		/* Scan the table, adding all tuples to the tuplesort */
 		reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
-										   megistSortedBuildCallback,
+										   mgistSortedBuildCallback,
 										   (void *) &mebuildstate, NULL);
 
 		/*
@@ -285,7 +285,7 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		 */
 		tuplesort_performsort(mebuildstate.sortstate);
 
-		megist_indexsortbuild(&mebuildstate);
+		mgist_indexsortbuild(&mebuildstate);
 
 		tuplesort_end(mebuildstate.sortstate);
 	}
@@ -316,7 +316,7 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 
 		/* Scan the table, inserting all the tuples to the index. */
 		reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
-										   megistBuildCallback,
+										   mgistBuildCallback,
 										   (void *) &mebuildstate, NULL);
 
 		/*
@@ -326,7 +326,7 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		if (mebuildstate.buildMode == GIST_BUFFERING_ACTIVE)
 		{
 			elog(DEBUG1, "all tuples processed, emptying buffers");
-			megistEmptyAllBuffers(&mebuildstate);
+			mgistEmptyAllBuffers(&mebuildstate);
 			gistFreeBuildBuffers(mebuildstate.gfbb);
 		}
 
@@ -344,9 +344,9 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 
 	/* okay, all heap tuples are indexed */
 	MemoryContextSwitchTo(oldcxt);
-	MemoryContextDelete(mebuildstate.megiststate->tempCxt);
+	MemoryContextDelete(mebuildstate.mgiststate->tempCxt);
 
-	freeMEGISTstate(mebuildstate.megiststate);
+	freeMGISTstate(mebuildstate.mgiststate);
 
 	/*
 	 * Return statistics
@@ -368,21 +368,21 @@ megistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
  * Per-tuple callback for table_index_build_scan.
  */
 static void
-megistSortedBuildCallback(Relation index,
+mgistSortedBuildCallback(Relation index,
 						  ItemPointer tid,
 						  Datum *values,
 						  bool *isnull,
 						  bool tupleIsAlive,
 						  void *state)
 {
-	MEGISTBuildState *mebuildstate = (MEGISTBuildState *) state;
+	MGISTBuildState *mebuildstate = (MGISTBuildState *) state;
 	MemoryContext oldCtx;
 	Datum		compressed_values[INDEX_MAX_KEYS];
 
-	oldCtx = MemoryContextSwitchTo(mebuildstate->megiststate->tempCxt);
+	oldCtx = MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
 
 	/* Form an index tuple and point it at the heap tuple */
-	megistCompressValues(mebuildstate->megiststate, index,
+	mgistCompressValues(mebuildstate->mgiststate, index,
 						 values, isnull,
 						 true, compressed_values);
 
@@ -392,7 +392,7 @@ megistSortedBuildCallback(Relation index,
 								  compressed_values, isnull);
 
 	MemoryContextSwitchTo(oldCtx);
-	MemoryContextReset(mebuildstate->megiststate->tempCxt);
+	MemoryContextReset(mebuildstate->mgiststate->tempCxt);
 
 	/* Update tuple count. */
 	mebuildstate->indtuples += 1;
@@ -402,7 +402,7 @@ megistSortedBuildCallback(Relation index,
  * Build GiST index from bottom up from pre-sorted tuples.
  */
 static void
-megist_indexsortbuild(MEGISTBuildState *mebuildstate)
+mgist_indexsortbuild(MGISTBuildState *mebuildstate)
 {
 	IndexTuple	itup;
 	GistSortedBuildLevelState *levelstate;
@@ -433,8 +433,8 @@ megist_indexsortbuild(MEGISTBuildState *mebuildstate)
 	 */
 	while ((itup = tuplesort_getindextuple(mebuildstate->sortstate, true)) != NULL)
 	{
-		megist_indexsortbuild_levelstate_add(mebuildstate, levelstate, itup);
-		MemoryContextReset(mebuildstate->megiststate->tempCxt);
+		mgist_indexsortbuild_levelstate_add(mebuildstate, levelstate, itup);
+		MemoryContextReset(mebuildstate->mgiststate->tempCxt);
 	}
 
 	/*
@@ -447,7 +447,7 @@ megist_indexsortbuild(MEGISTBuildState *mebuildstate)
 	{
 		GistSortedBuildLevelState *parent;
 
-		megist_indexsortbuild_levelstate_flush(mebuildstate, levelstate);
+		mgist_indexsortbuild_levelstate_flush(mebuildstate, levelstate);
 		parent = levelstate->parent;
 		for (int i = 0; i < GIST_SORTED_BUILD_PAGE_NUM; i++)
 			if (levelstate->pages[i])
@@ -456,7 +456,7 @@ megist_indexsortbuild(MEGISTBuildState *mebuildstate)
 		levelstate = parent;
 	}
 
-	megist_indexsortbuild_flush_ready_pages(mebuildstate);
+	mgist_indexsortbuild_flush_ready_pages(mebuildstate);
 
 	/* Write out the root */
 	PageSetLSN(levelstate->pages[0], GistBuildLSN);
@@ -488,7 +488,7 @@ megist_indexsortbuild(MEGISTBuildState *mebuildstate)
  * a new page first.
  */
 static void
-megist_indexsortbuild_levelstate_add(MEGISTBuildState *mebuildstate,
+mgist_indexsortbuild_levelstate_add(MGISTBuildState *mebuildstate,
 									 GistSortedBuildLevelState *levelstate,
 									 IndexTuple itup)
 {
@@ -504,7 +504,7 @@ megist_indexsortbuild_levelstate_add(MEGISTBuildState *mebuildstate,
 
 		if (levelstate->current_page + 1 == GIST_SORTED_BUILD_PAGE_NUM)
 		{
-			megist_indexsortbuild_levelstate_flush(mebuildstate, levelstate);
+			mgist_indexsortbuild_levelstate_flush(mebuildstate, levelstate);
 		}
 		else
 			levelstate->current_page++;
@@ -520,7 +520,7 @@ megist_indexsortbuild_levelstate_add(MEGISTBuildState *mebuildstate,
 }
 
 static void
-megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
+mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 									   GistSortedBuildLevelState *levelstate)
 {
 	GistSortedBuildLevelState *parent;
@@ -534,7 +534,7 @@ megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
 
 	CHECK_FOR_INTERRUPTS();
 
-	oldCtx = MemoryContextSwitchTo(state->megiststate->tempCxt);
+	oldCtx = MemoryContextSwitchTo(state->mgiststate->tempCxt);
 
 	/* Get index tuples from first page */
 	itvec = gistextractpage(levelstate->pages[0], &vect_len);
@@ -551,14 +551,14 @@ megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
 		}
 
 		/* Apply picksplit to list of all collected tuples */
-		dist = megistSplit(state->indexrel, levelstate->pages[0], itvec, vect_len, state->megiststate);
+		dist = mgistSplit(state->indexrel, levelstate->pages[0], itvec, vect_len, state->mgiststate);
 	}
 	else
 	{
 		/* Create splitted layout from single page */
 		dist = (SplitedPageLayout *) palloc0(sizeof(SplitedPageLayout));
-		union_tuple = megistunion(state->indexrel, itvec, vect_len,
-								  state->megiststate);
+		union_tuple = mgistunion(state->indexrel, itvec, vect_len,
+								  state->mgiststate);
 		dist->itup = union_tuple;
 		dist->list = gistfillitupvec(itvec, vect_len, &(dist->lenlist));
 		dist->block.num = vect_len;
@@ -594,7 +594,7 @@ megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
 		union_tuple = dist->itup;
 
 		if (state->ready_num_pages == XLR_MAX_BLOCK_ID)
-			megist_indexsortbuild_flush_ready_pages(state);
+			mgist_indexsortbuild_flush_ready_pages(state);
 
 		/*
 		 * The page is now complete. Assign a block number to it, and add it
@@ -637,12 +637,12 @@ megist_indexsortbuild_levelstate_flush(MEGISTBuildState *state,
 
 			levelstate->parent = parent;
 		}
-		megist_indexsortbuild_levelstate_add(state, parent, union_tuple);
+		mgist_indexsortbuild_levelstate_add(state, parent, union_tuple);
 	}
 }
 
 static void
-megist_indexsortbuild_flush_ready_pages(MEGISTBuildState *state)
+mgist_indexsortbuild_flush_ready_pages(MGISTBuildState *state)
 {
 	if (state->ready_num_pages == 0)
 		return;
@@ -689,7 +689,7 @@ megist_indexsortbuild_flush_ready_pages(MEGISTBuildState *state)
  * GIST_BUFFERING_ACTIVE.
  */
 static void
-megistInitBuffering(MEGISTBuildState *mebuildstate)
+mgistInitBuffering(MGISTBuildState *mebuildstate)
 {
 	Relation	index = mebuildstate->indexrel;
 	int			pagesPerBuffer;
@@ -834,7 +834,7 @@ megistInitBuffering(MEGISTBuildState *mebuildstate)
 	mebuildstate->gfbb = gistInitBuildBuffers(pagesPerBuffer, levelStep,
 											gistGetMaxLevel(index));
 
-	megistInitParentMap(mebuildstate);
+	mgistInitParentMap(mebuildstate);
 
 	mebuildstate->buildMode = GIST_BUFFERING_ACTIVE;
 
@@ -850,7 +850,7 @@ megistInitBuffering(MEGISTBuildState *mebuildstate)
  * at the next lower level.
  */
 static int
-mecalculatePagesPerBuffer(MEGISTBuildState *mebuildstate, int levelStep)
+mecalculatePagesPerBuffer(MGISTBuildState *mebuildstate, int levelStep)
 {
 	double		pagesPerBuffer;
 	double		avgIndexTuplesPerPage;
@@ -880,7 +880,7 @@ mecalculatePagesPerBuffer(MEGISTBuildState *mebuildstate, int levelStep)
 }
 
 IndexTuple *
-megistExtractItups(MEGISTSTATE *megiststate, Relation index,
+mgistExtractItups(MGISTSTATE *mgiststate, Relation index,
 				  Datum *values, bool *isnull, int32 *nitups)
 {
 	int 		 nattrs = IndexRelationGetNumberOfKeyAttributes(index);
@@ -909,8 +909,8 @@ megistExtractItups(MEGISTSTATE *megiststate, Relation index,
 		/* OK, call the opclass's extractValueFn */
 		nullFlags[i] = NULL;			/* in case extractValue doesn't set it */
 		entries[i] = (Datum *)
-			DatumGetPointer(FunctionCall3Coll(&megiststate->extractValueFn[i],
-										  megiststate->supportCollation[i],
+			DatumGetPointer(FunctionCall3Coll(&mgiststate->extractValueFn[i],
+										  mgiststate->supportCollation[i],
 										  values[i],
 										  PointerGetDatum(&nentries[i]),
 										  PointerGetDatum(&nullFlags[i])));
@@ -960,7 +960,7 @@ megistExtractItups(MEGISTSTATE *megiststate, Relation index,
 
 	itups = (IndexTuple *) palloc(sizeof(IndexTuple) * (*nitups));
 	for (i = 0; i < (*nitups); i++)
-		itups[i] = megistFormTuple(megiststate, index,
+		itups[i] = mgistFormTuple(mgiststate, index,
 					itups_values[i], itups_isnull[i], true);
 
 	return itups;
@@ -970,22 +970,22 @@ megistExtractItups(MEGISTSTATE *megiststate, Relation index,
  * Per-tuple callback for table_index_build_scan.
  */
 static void
-megistBuildCallback(Relation index,
+mgistBuildCallback(Relation index,
 					ItemPointer tid,
 					Datum *values,
 					bool *isnull,
 					bool tupleIsAlive,
 					void *state)
 {
-	MEGISTBuildState *mebuildstate = (MEGISTBuildState *) state;
+	MGISTBuildState *mebuildstate = (MGISTBuildState *) state;
 	IndexTuple *itups;
 	int32 nitups;
 	MemoryContext oldCtx;
 
-	oldCtx = MemoryContextSwitchTo(mebuildstate->megiststate->tempCxt);
+	oldCtx = MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
 
 	/* form a set of index tuples and point them at the heap tuple */
-	itups = megistExtractItups(mebuildstate->megiststate,
+	itups = mgistExtractItups(mebuildstate->mgiststate,
 		index, values, isnull, &nitups);
 
 	for (int i = 0; i < nitups; ++i)
@@ -996,7 +996,7 @@ megistBuildCallback(Relation index,
 		if (mebuildstate->buildMode == GIST_BUFFERING_ACTIVE)
 		{
 			/* We have buffers, so use them. */
-			megistBufferingBuildInsert(mebuildstate, itups[i]);
+			mgistBufferingBuildInsert(mebuildstate, itups[i]);
 		}
 		else
 		{
@@ -1004,8 +1004,8 @@ megistBuildCallback(Relation index,
 			 * There's no buffers (yet). Since we already have the index relation
 			 * locked, we call gistdoinsert directly.
 			 */
-			megistdoinsert(index, itups[i], mebuildstate->freespace,
-						   mebuildstate->megiststate, mebuildstate->heaprel, true);
+			mgistdoinsert(index, itups[i], mebuildstate->freespace,
+						   mebuildstate->mgiststate, mebuildstate->heaprel, true);
 		}
 
 		/* Update tuple count and total size. */
@@ -1014,7 +1014,7 @@ megistBuildCallback(Relation index,
 	}
 
 	MemoryContextSwitchTo(oldCtx);
-	MemoryContextReset(mebuildstate->megiststate->tempCxt);
+	MemoryContextReset(mebuildstate->mgiststate->tempCxt);
 
 	if (mebuildstate->buildMode == GIST_BUFFERING_ACTIVE &&
 		mebuildstate->indtuples % BUFFERING_MODE_TUPLE_SIZE_STATS_TARGET == 0)
@@ -1045,7 +1045,7 @@ megistBuildCallback(Relation index,
 		 * Index doesn't fit in effective cache anymore. Try to switch to
 		 * buffering build mode.
 		 */
-		megistInitBuffering(mebuildstate);
+		mgistInitBuffering(mebuildstate);
 	}
 }
 
@@ -1053,13 +1053,13 @@ megistBuildCallback(Relation index,
  * Insert function for buffering index build.
  */
 static void
-megistBufferingBuildInsert(MEGISTBuildState *mebuildstate, IndexTuple itup)
+mgistBufferingBuildInsert(MGISTBuildState *mebuildstate, IndexTuple itup)
 {
 	/* Insert the tuple to buffers. */
-	megistProcessItup(mebuildstate, itup, 0, mebuildstate->gfbb->rootlevel);
+	mgistProcessItup(mebuildstate, itup, 0, mebuildstate->gfbb->rootlevel);
 
 	/* If we filled up (half of a) buffer, process buffer emptying. */
-	megistProcessEmptyingQueue(mebuildstate);
+	mgistProcessEmptyingQueue(mebuildstate);
 }
 
 /*
@@ -1069,10 +1069,10 @@ megistBufferingBuildInsert(MEGISTBuildState *mebuildstate, IndexTuple itup)
  * index tuples anymore).
  */
 static bool
-megistProcessItup(MEGISTBuildState *mebuildstate, IndexTuple itup,
+mgistProcessItup(MGISTBuildState *mebuildstate, IndexTuple itup,
 				BlockNumber startblkno, int startlevel)
 {
-	MEGISTSTATE  *megiststate = mebuildstate->megiststate;
+	MGISTSTATE  *mgiststate = mebuildstate->mgiststate;
 	GISTBuildBuffers *gfbb = mebuildstate->gfbb;
 	Relation	indexrel = mebuildstate->indexrel;
 	BlockNumber childblkno;
@@ -1117,22 +1117,22 @@ megistProcessItup(MEGISTBuildState *mebuildstate, IndexTuple itup,
 		LockBuffer(buffer, GIST_EXCLUSIVE);
 
 		page = (Page) BufferGetPage(buffer);
-		childoffnum = megistchoose(indexrel, page, itup, megiststate);
+		childoffnum = mgistchoose(indexrel, page, itup, mgiststate);
 		iid = PageGetItemId(page, childoffnum);
 		idxtuple = (IndexTuple) PageGetItem(page, iid);
 		childblkno = ItemPointerGetBlockNumber(&(idxtuple->t_tid));
 
 		if (level > 1)
-			megistMemorizeParent(mebuildstate, childblkno, blkno);
+			mgistMemorizeParent(mebuildstate, childblkno, blkno);
 
 		/*
 		 * Check that the key representing the target child node is consistent
 		 * with the key we're inserting. Update it if it's not.
 		 */
-		newtup = megistgetadjusted(indexrel, idxtuple, itup, megiststate);
+		newtup = mgistgetadjusted(indexrel, idxtuple, itup, mgiststate);
 		if (newtup)
 		{
-			blkno = megistbufferinginserttuples(mebuildstate,
+			blkno = mgistbufferinginserttuples(mebuildstate,
 												buffer,
 												level,
 												&newtup,
@@ -1162,7 +1162,7 @@ megistProcessItup(MEGISTBuildState *mebuildstate, IndexTuple itup,
 		GISTNodeBuffer *childNodeBuffer;
 
 		/* Find the buffer or create a new one */
-		childNodeBuffer = megistGetNodeBuffer(gfbb, megiststate, blkno, level);
+		childNodeBuffer = mgistGetNodeBuffer(gfbb, mgiststate, blkno, level);
 
 		/* Add index tuple to it */
 		gistPushItupToNodeBuffer(gfbb, childNodeBuffer, itup);
@@ -1178,7 +1178,7 @@ megistProcessItup(MEGISTBuildState *mebuildstate, IndexTuple itup,
 		Assert(level == 0);
 		buffer = ReadBuffer(indexrel, blkno);
 		LockBuffer(buffer, GIST_EXCLUSIVE);
-		megistbufferinginserttuples(mebuildstate, buffer, level,
+		mgistbufferinginserttuples(mebuildstate, buffer, level,
 									&itup, 1, InvalidOffsetNumber,
 									parentblkno, downlinkoffnum);
 		/* gistbufferinginserttuples() released the buffer */
@@ -1200,7 +1200,7 @@ megistProcessItup(MEGISTBuildState *mebuildstate, IndexTuple itup,
  * and unpin it.
  */
 static BlockNumber
-megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int level,
+mgistbufferinginserttuples(MGISTBuildState *mebuildstate, Buffer buffer, int level,
 						  IndexTuple *itup, int ntup, OffsetNumber oldoffnum,
 						  BlockNumber parentblk, OffsetNumber downlinkoffnum)
 {
@@ -1209,9 +1209,9 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 	bool		is_split;
 	BlockNumber placed_to_blk = InvalidBlockNumber;
 
-	is_split = megistplacetopage(mebuildstate->indexrel,
+	is_split = mgistplacetopage(mebuildstate->indexrel,
 								 mebuildstate->freespace,
-								 mebuildstate->megiststate,
+								 mebuildstate->mgiststate,
 								 buffer,
 								 itup, ntup, oldoffnum, &placed_to_blk,
 								 InvalidBuffer,
@@ -1252,14 +1252,14 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 				Buffer		childbuf = ReadBuffer(mebuildstate->indexrel, childblkno);
 
 				LockBuffer(childbuf, GIST_SHARE);
-				megistMemorizeAllDownlinks(mebuildstate, childbuf);
+				mgistMemorizeAllDownlinks(mebuildstate, childbuf);
 				UnlockReleaseBuffer(childbuf);
 
 				/*
 				 * Also remember that the parent of the new child page is the
 				 * root block.
 				 */
-				megistMemorizeParent(mebuildstate, childblkno, GIST_ROOT_BLKNO);
+				mgistMemorizeParent(mebuildstate, childblkno, GIST_ROOT_BLKNO);
 			}
 		}
 	}
@@ -1280,7 +1280,7 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 
 		/* Parent may have changed since we memorized this path. */
 		parentBuffer =
-			megistBufferingFindCorrectParent(mebuildstate,
+			mgistBufferingFindCorrectParent(mebuildstate,
 											 BufferGetBlockNumber(buffer),
 											 level,
 											 &parentblk,
@@ -1293,8 +1293,8 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 		 * with the tuples already on the pages, but also the tuples in the
 		 * buffers that will eventually be inserted to them.
 		 */
-		megistRelocateBuildBuffersOnSplit(gfbb,
-										  mebuildstate->megiststate,
+		mgistRelocateBuildBuffersOnSplit(gfbb,
+										  mebuildstate->mgiststate,
 										  mebuildstate->indexrel,
 										  level,
 										  buffer, splitinfo);
@@ -1315,7 +1315,7 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 			 * update the map again.
 			 */
 			if (level > 0)
-				megistMemorizeParent(mebuildstate,
+				mgistMemorizeParent(mebuildstate,
 									 BufferGetBlockNumber(splitinfo->buf),
 									 BufferGetBlockNumber(parentBuffer));
 
@@ -1326,7 +1326,7 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 			 * harm).
 			 */
 			if (level > 1)
-				megistMemorizeAllDownlinks(mebuildstate, splitinfo->buf);
+				mgistMemorizeAllDownlinks(mebuildstate, splitinfo->buf);
 
 			/*
 			 * Since there's no concurrent access, we can release the lower
@@ -1337,7 +1337,7 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
 		}
 
 		/* Insert them into parent. */
-		megistbufferinginserttuples(mebuildstate, parentBuffer, level + 1,
+		mgistbufferinginserttuples(mebuildstate, parentBuffer, level + 1,
 									downlinks, ndownlinks, downlinkoffnum,
 									InvalidBlockNumber, InvalidOffsetNumber);
 
@@ -1369,7 +1369,7 @@ megistbufferinginserttuples(MEGISTBuildState *mebuildstate, Buffer buffer, int l
  * with concurrent inserts.
  */
 static Buffer
-megistBufferingFindCorrectParent(MEGISTBuildState *mebuildstate,
+mgistBufferingFindCorrectParent(MGISTBuildState *mebuildstate,
 								 BlockNumber childblkno, int level,
 								 BlockNumber *parentblkno,
 								 OffsetNumber *downlinkoffnum)
@@ -1381,7 +1381,7 @@ megistBufferingFindCorrectParent(MEGISTBuildState *mebuildstate,
 	OffsetNumber off;
 
 	if (level > 0)
-		parent = megistGetParent(mebuildstate, childblkno);
+		parent = mgistGetParent(mebuildstate, childblkno);
 	else
 	{
 		/*
@@ -1443,7 +1443,7 @@ megistBufferingFindCorrectParent(MEGISTBuildState *mebuildstate,
  * process finished, e.g. until buffers emptying stack is empty.
  */
 static void
-megistProcessEmptyingQueue(MEGISTBuildState *mebuildstate)
+mgistProcessEmptyingQueue(MGISTBuildState *mebuildstate)
 {
 	GISTBuildBuffers *gfbb = mebuildstate->gfbb;
 
@@ -1493,7 +1493,7 @@ megistProcessEmptyingQueue(MEGISTBuildState *mebuildstate)
 			 * threshold, but we might as well keep flushing tuples from it
 			 * until we fill a lower-level buffer.
 			 */
-			if (megistProcessItup(mebuildstate, itup, emptyingNodeBuffer->nodeBlocknum, emptyingNodeBuffer->level))
+			if (mgistProcessItup(mebuildstate, itup, emptyingNodeBuffer->nodeBlocknum, emptyingNodeBuffer->level))
 			{
 				/*
 				 * A lower level buffer filled up. Stop emptying this buffer,
@@ -1503,7 +1503,7 @@ megistProcessEmptyingQueue(MEGISTBuildState *mebuildstate)
 			}
 
 			/* Free all the memory allocated during index tuple processing */
-			MemoryContextReset(mebuildstate->megiststate->tempCxt);
+			MemoryContextReset(mebuildstate->mgiststate->tempCxt);
 		}
 	}
 }
@@ -1516,13 +1516,13 @@ megistProcessEmptyingQueue(MEGISTBuildState *mebuildstate)
  * be inserted to after this call.
  */
 static void
-megistEmptyAllBuffers(MEGISTBuildState *mebuildstate)
+mgistEmptyAllBuffers(MGISTBuildState *mebuildstate)
 {
 	GISTBuildBuffers *gfbb = mebuildstate->gfbb;
 	MemoryContext oldCtx;
 	int			i;
 
-	oldCtx = MemoryContextSwitchTo(mebuildstate->megiststate->tempCxt);
+	oldCtx = MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
 
 	/*
 	 * Iterate through the levels from top to bottom.
@@ -1554,9 +1554,9 @@ megistEmptyAllBuffers(MEGISTBuildState *mebuildstate)
 					nodeBuffer->queuedForEmptying = true;
 					gfbb->bufferEmptyingQueue =
 						lcons(nodeBuffer, gfbb->bufferEmptyingQueue);
-					MemoryContextSwitchTo(mebuildstate->megiststate->tempCxt);
+					MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
 				}
-				megistProcessEmptyingQueue(mebuildstate);
+				mgistProcessEmptyingQueue(mebuildstate);
 			}
 			else
 				gfbb->buffersOnLevels[i] =
@@ -1660,7 +1660,7 @@ typedef struct
 } ParentMapEntry;
 
 static void
-megistInitParentMap(MEGISTBuildState *mebuildstate)
+mgistInitParentMap(MGISTBuildState *mebuildstate)
 {
 	HASHCTL		hashCtl;
 
@@ -1674,7 +1674,7 @@ megistInitParentMap(MEGISTBuildState *mebuildstate)
 }
 
 static void
-megistMemorizeParent(MEGISTBuildState *mebuildstate, BlockNumber child, BlockNumber parent)
+mgistMemorizeParent(MGISTBuildState *mebuildstate, BlockNumber child, BlockNumber parent)
 {
 	ParentMapEntry *entry;
 	bool		found;
@@ -1690,7 +1690,7 @@ megistMemorizeParent(MEGISTBuildState *mebuildstate, BlockNumber child, BlockNum
  * Scan all downlinks on a page, and memorize their parent.
  */
 static void
-megistMemorizeAllDownlinks(MEGISTBuildState *mebuildstate, Buffer parentbuf)
+mgistMemorizeAllDownlinks(MGISTBuildState *mebuildstate, Buffer parentbuf)
 {
 	OffsetNumber maxoff;
 	OffsetNumber off;
@@ -1706,12 +1706,12 @@ megistMemorizeAllDownlinks(MEGISTBuildState *mebuildstate, Buffer parentbuf)
 		IndexTuple	idxtuple = (IndexTuple) PageGetItem(page, iid);
 		BlockNumber childblkno = ItemPointerGetBlockNumber(&(idxtuple->t_tid));
 
-		megistMemorizeParent(mebuildstate, childblkno, parentblkno);
+		mgistMemorizeParent(mebuildstate, childblkno, parentblkno);
 	}
 }
 
 static BlockNumber
-megistGetParent(MEGISTBuildState *mebuildstate, BlockNumber child)
+mgistGetParent(MGISTBuildState *mebuildstate, BlockNumber child)
 {
 	ParentMapEntry *entry;
 	bool		found;

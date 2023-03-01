@@ -172,12 +172,12 @@ gist_path_compress(PG_FUNCTION_ARGS)
 	PG_RETURN_POINTER(retval);
 }
 
-PG_FUNCTION_INFO_V1(megist_path_compress);
+PG_FUNCTION_INFO_V1(mgist_path_compress);
 /*
  * GiST compress for path: represent a path by its bounding box
  */
 Datum
-megist_path_compress(PG_FUNCTION_ARGS)
+mgist_path_compress(PG_FUNCTION_ARGS)
 {	
 	GISTENTRY  *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
 	PG_RETURN_POINTER(entry);
@@ -270,12 +270,12 @@ path_split(PATH *path, int32 *count)
 	return result;
 }
 
-PG_FUNCTION_INFO_V1(megist_path_extract);
+PG_FUNCTION_INFO_V1(mgist_path_extract);
 /*
  * extractValue support function
  */
 Datum
-megist_path_extract(PG_FUNCTION_ARGS)
+mgist_path_extract(PG_FUNCTION_ARGS)
 {
 	PATH	   *path = PG_GETARG_PATH_P(0);
 	int32	   *nkeys = (int32 *) PG_GETARG_POINTER(1);

@@ -28,21 +28,21 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 PG_MODULE_MAGIC;
 
 /* non-export function prototypes */
-static void megistfixsplit(GISTInsertState *state, MEGISTSTATE *megiststate);
-static bool megistinserttuple(GISTInsertState *state, GISTInsertStack *stack,
-							  MEGISTSTATE *megiststate, IndexTuple tuple, OffsetNumber oldoffnum);
-static bool megistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
-							   MEGISTSTATE *megiststate,
+static void mgistfixsplit(GISTInsertState *state, MGISTSTATE *mgiststate);
+static bool mgistinserttuple(GISTInsertState *state, GISTInsertStack *stack,
+							  MGISTSTATE *mgiststate, IndexTuple tuple, OffsetNumber oldoffnum);
+static bool mgistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
+							   MGISTSTATE *mgiststate,
 							   IndexTuple *tuples, int ntup, OffsetNumber oldoffnum,
 							   Buffer leftchild, Buffer rightchild,
 							   bool unlockbuf, bool unlockleftchild);
-static void megistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
-							  MEGISTSTATE *megiststate, List *splitinfo, bool unlockbuf);
+static void mgistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
+							  MGISTSTATE *mgiststate, List *splitinfo, bool unlockbuf);
 static void gistprunepage(Relation rel, Page page, Buffer buffer,
 						  Relation heapRel);
 
@@ -56,18 +56,18 @@ static void gistprunepage(Relation rel, Page page, Buffer buffer,
 } while(0)
 
 
-PG_FUNCTION_INFO_V1(megisthandler);
+PG_FUNCTION_INFO_V1(mgisthandler);
 /*
  * GiST handler function: return IndexAmRoutine with access method parameters
  * and callbacks.
  */
 Datum
-megisthandler(PG_FUNCTION_ARGS)
+mgisthandler(PG_FUNCTION_ARGS)
 {
 	IndexAmRoutine *amroutine = makeNode(IndexAmRoutine);
 
 	amroutine->amstrategies = 0;
-	amroutine->amsupport = MEGISTNProcs;
+	amroutine->amsupport = MGISTNProcs;
 	amroutine->amoptsprocnum = GIST_OPTIONS_PROC;
 	amroutine->amcanorder = false;
 	amroutine->amcanorderbyop = true;
@@ -87,9 +87,9 @@ megisthandler(PG_FUNCTION_ARGS)
 		VACUUM_OPTION_PARALLEL_BULKDEL | VACUUM_OPTION_PARALLEL_COND_CLEANUP;
 	amroutine->amkeytype = InvalidOid;
 
-	amroutine->ambuild = megistbuild;
+	amroutine->ambuild = mgistbuild;
 	amroutine->ambuildempty = gistbuildempty;
-	amroutine->aminsert = megistinsert;
+	amroutine->aminsert = mgistinsert;
 	amroutine->ambulkdelete = gistbulkdelete;
 	amroutine->amvacuumcleanup = gistvacuumcleanup;
 	amroutine->amcanreturn = gistcanreturn;
@@ -97,13 +97,13 @@ megisthandler(PG_FUNCTION_ARGS)
 	amroutine->amoptions = gistoptions;
 	amroutine->amproperty = gistproperty;
 	amroutine->ambuildphasename = NULL;
-	amroutine->amvalidate = megistvalidate;
-	amroutine->amadjustmembers = megistadjustmembers;
-	amroutine->ambeginscan = megistbeginscan;
-	amroutine->amrescan = megistrescan;
-	amroutine->amgettuple = megistgettuple;
-	amroutine->amgetbitmap = megistgetbitmap;
-	amroutine->amendscan = megistendscan;
+	amroutine->amvalidate = mgistvalidate;
+	amroutine->amadjustmembers = mgistadjustmembers;
+	amroutine->ambeginscan = mgistbeginscan;
+	amroutine->amrescan = mgistrescan;
+	amroutine->amgettuple = mgistgettuple;
+	amroutine->amgetbitmap = mgistgetbitmap;
+	amroutine->amendscan = mgistendscan;
 	amroutine->ammarkpos = NULL;
 	amroutine->amrestrpos = NULL;
 	amroutine->amestimateparallelscan = NULL;
@@ -122,7 +122,7 @@ megisthandler(PG_FUNCTION_ARGS)
  * memory management.
  */
 MemoryContext
-createTempMEGistContext(void)
+createTempMGistContext(void)
 {
 	return AllocSetContextCreate(CurrentMemoryContext,
 								 "ME-GiST temporary context",
@@ -159,41 +159,41 @@ gistbuildempty(Relation index)
  *	  It doesn't do any work; just locks the relation and passes the buck.
  */
 bool
-megistinsert(Relation r, Datum *values, bool *isnull,
+mgistinsert(Relation r, Datum *values, bool *isnull,
 			 ItemPointer ht_ctid, Relation heapRel,
 			 IndexUniqueCheck checkUnique,
 			 bool indexUnchanged,
 			 IndexInfo *indexInfo)
 {
-	MEGISTSTATE  *megiststate = (MEGISTSTATE *) indexInfo->ii_AmCache;
+	MGISTSTATE  *mgiststate = (MGISTSTATE *) indexInfo->ii_AmCache;
 	IndexTuple *itups;
 	int32 nitups;
 	MemoryContext oldCxt;
 
 	/* Initialize GISTSTATE cache if first call in this statement */
-	if (megiststate == NULL)
+	if (mgiststate == NULL)
 	{
 		oldCxt = MemoryContextSwitchTo(indexInfo->ii_Context);
-		megiststate = initMEGISTstate(r);
-		megiststate->tempCxt = createTempMEGistContext();
-		indexInfo->ii_AmCache = (void *) megiststate;
+		mgiststate = initMGISTstate(r);
+		mgiststate->tempCxt = createTempMGistContext();
+		indexInfo->ii_AmCache = (void *) mgiststate;
 		MemoryContextSwitchTo(oldCxt);
 	}
 
-	oldCxt = MemoryContextSwitchTo(megiststate->tempCxt);
+	oldCxt = MemoryContextSwitchTo(mgiststate->tempCxt);
 
-	itups = megistExtractItups(megiststate,
+	itups = mgistExtractItups(mgiststate,
 		r, values, isnull, &nitups);
 
 	for (int i = 0; i < nitups; ++i)
 	{
 		itups[i]->t_tid = *ht_ctid;
-		megistdoinsert(r, itups[i], 0, megiststate, heapRel, false);
+		mgistdoinsert(r, itups[i], 0, mgiststate, heapRel, false);
 	}
 
 	/* cleanup */
 	MemoryContextSwitchTo(oldCxt);
-	MemoryContextReset(megiststate->tempCxt);
+	MemoryContextReset(mgiststate->tempCxt);
 
 	return false;
 }
@@ -229,7 +229,7 @@ megistinsert(Relation r, Datum *values, bool *isnull,
  * Returns 'true' if the page was split, 'false' otherwise.
  */
 bool
-megistplacetopage(Relation rel, Size freespace, MEGISTSTATE *megiststate,
+mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
 				  Buffer buffer,
 				  IndexTuple *itup, int ntup, OffsetNumber oldoffnum,
 				  BlockNumber *newblkno,
@@ -315,7 +315,7 @@ megistplacetopage(Relation rel, Size freespace, MEGISTSTATE *megiststate,
 				memmove(itvec + pos, itvec + pos + 1, sizeof(IndexTuple) * (tlen - pos));
 		}
 		itvec = gistjoinvector(itvec, &tlen, itup, ntup);
-		dist = megistSplit(rel, page, itvec, tlen, megiststate);
+		dist = mgistSplit(rel, page, itvec, tlen, mgiststate);
 
 		/*
 		 * Check that split didn't produce too many pages.
@@ -639,8 +639,8 @@ megistplacetopage(Relation rel, Size freespace, MEGISTSTATE *megiststate,
  * so it does not bother releasing palloc'd allocations.
  */
 void
-megistdoinsert(Relation r, IndexTuple itup, Size freespace,
-			   MEGISTSTATE *megiststate, Relation heapRel, bool is_build)
+mgistdoinsert(Relation r, IndexTuple itup, Size freespace,
+			   MGISTSTATE *mgiststate, Relation heapRel, bool is_build)
 {
 	ItemId		iid;
 	IndexTuple	idxtuple;
@@ -720,7 +720,7 @@ megistdoinsert(Relation r, IndexTuple itup, Size freespace,
 				if (!GistFollowRight(stack->page))
 					continue;
 			}
-			megistfixsplit(&state, megiststate);
+			mgistfixsplit(&state, mgiststate);
 
 			UnlockReleaseBuffer(stack->buffer);
 			xlocked = false;
@@ -755,7 +755,7 @@ megistdoinsert(Relation r, IndexTuple itup, Size freespace,
 			GISTInsertStack *item;
 			OffsetNumber downlinkoffnum;
 
-			downlinkoffnum = megistchoose(state.r, stack->page, itup, megiststate);
+			downlinkoffnum = mgistchoose(state.r, stack->page, itup, mgiststate);
 			iid = PageGetItemId(stack->page, downlinkoffnum);
 			idxtuple = (IndexTuple) PageGetItem(stack->page, iid);
 			childblkno = ItemPointerGetBlockNumber(&(idxtuple->t_tid));
@@ -774,7 +774,7 @@ megistdoinsert(Relation r, IndexTuple itup, Size freespace,
 			 * Check that the key representing the target child node is
 			 * consistent with the key we're inserting. Update it if it's not.
 			 */
-			newtup = megistgetadjusted(state.r, idxtuple, itup, megiststate);
+			newtup = mgistgetadjusted(state.r, idxtuple, itup, mgiststate);
 			if (newtup)
 			{
 				/*
@@ -805,7 +805,7 @@ megistdoinsert(Relation r, IndexTuple itup, Size freespace,
 				 * descend back to the half that's a better fit for the new
 				 * tuple.
 				 */
-				if (megistinserttuple(&state, stack, megiststate, newtup,
+				if (mgistinserttuple(&state, stack, mgiststate, newtup,
 									  downlinkoffnum))
 				{
 					/*
@@ -892,7 +892,7 @@ megistdoinsert(Relation r, IndexTuple itup, Size freespace,
 
 			/* now state.stack->(page, buffer and blkno) points to leaf page */
 
-			megistinserttuple(&state, stack, megiststate, itup,
+			mgistinserttuple(&state, stack, mgiststate, itup,
 							  InvalidOffsetNumber);
 			LockBuffer(stack->buffer, GIST_UNLOCK);
 
@@ -1114,7 +1114,7 @@ gistFindCorrectParent(Relation r, GISTInsertStack *child)
  * Form a downlink pointer for the page in 'buf'.
  */
 static IndexTuple
-megistformdownlink(Relation rel, Buffer buf, MEGISTSTATE *megiststate,
+mgistformdownlink(Relation rel, Buffer buf, MGISTSTATE *mgiststate,
 				   GISTInsertStack *stack)
 {
 	Page		page = BufferGetPage(buf);
@@ -1134,8 +1134,8 @@ megistformdownlink(Relation rel, Buffer buf, MEGISTSTATE *megiststate,
 		{
 			IndexTuple	newdownlink;
 
-			newdownlink = megistgetadjusted(rel, downlink, ituple,
-											megiststate);
+			newdownlink = mgistgetadjusted(rel, downlink, ituple,
+											mgiststate);
 			if (newdownlink)
 				downlink = newdownlink;
 		}
@@ -1174,7 +1174,7 @@ megistformdownlink(Relation rel, Buffer buf, MEGISTSTATE *megiststate,
  * Complete the incomplete split of state->stack->page.
  */
 static void
-megistfixsplit(GISTInsertState *state, MEGISTSTATE *megiststate)
+mgistfixsplit(GISTInsertState *state, MGISTSTATE *mgiststate)
 {
 	GISTInsertStack *stack = state->stack;
 	Buffer		buf;
@@ -1202,7 +1202,7 @@ megistfixsplit(GISTInsertState *state, MEGISTSTATE *megiststate)
 		page = BufferGetPage(buf);
 
 		/* Form the new downlink tuples to insert to parent */
-		downlink = megistformdownlink(state->r, buf, megiststate, stack);
+		downlink = mgistformdownlink(state->r, buf, mgiststate, stack);
 
 		si->buf = buf;
 		si->downlink = downlink;
@@ -1220,7 +1220,7 @@ megistfixsplit(GISTInsertState *state, MEGISTSTATE *megiststate)
 	}
 
 	/* Insert the downlinks */
-	megistfinishsplit(state, stack, megiststate, splitinfo, false);
+	mgistfinishsplit(state, stack, mgiststate, splitinfo, false);
 }
 
 /*
@@ -1234,10 +1234,10 @@ megistfixsplit(GISTInsertState *state, MEGISTSTATE *megiststate)
  * otherwise.
  */
 static bool
-megistinserttuple(GISTInsertState *state, GISTInsertStack *stack,
-				  MEGISTSTATE *megiststate, IndexTuple tuple, OffsetNumber oldoffnum)
+mgistinserttuple(GISTInsertState *state, GISTInsertStack *stack,
+				  MGISTSTATE *mgiststate, IndexTuple tuple, OffsetNumber oldoffnum)
 {
-	return megistinserttuples(state, stack, megiststate, &tuple, 1, oldoffnum,
+	return mgistinserttuples(state, stack, mgiststate, &tuple, 1, oldoffnum,
 							  InvalidBuffer, InvalidBuffer, false, false);
 }
 
@@ -1268,8 +1268,8 @@ megistinserttuple(GISTInsertState *state, GISTInsertStack *stack,
  * sibling of stack->buffer instead of stack->buffer itself.
  */
 static bool
-megistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
-				   MEGISTSTATE *megiststate,
+mgistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
+				   MGISTSTATE *mgiststate,
 				   IndexTuple *tuples, int ntup, OffsetNumber oldoffnum,
 				   Buffer leftchild, Buffer rightchild,
 				   bool unlockbuf, bool unlockleftchild)
@@ -1284,7 +1284,7 @@ megistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
 	CheckForSerializableConflictIn(state->r, NULL, BufferGetBlockNumber(stack->buffer));
 
 	/* Insert the tuple(s) to the page, splitting the page if necessary */
-	is_split = megistplacetopage(state->r, state->freespace, megiststate,
+	is_split = mgistplacetopage(state->r, state->freespace, mgiststate,
 								 stack->buffer,
 								 tuples, ntup,
 								 oldoffnum, NULL,
@@ -1311,7 +1311,7 @@ megistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
 	 * didn't have to split, release it ourselves.
 	 */
 	if (splitinfo)
-		megistfinishsplit(state, stack, megiststate, splitinfo, unlockbuf);
+		mgistfinishsplit(state, stack, mgiststate, splitinfo, unlockbuf);
 	else if (unlockbuf)
 		LockBuffer(stack->buffer, GIST_UNLOCK);
 
@@ -1328,8 +1328,8 @@ megistinserttuples(GISTInsertState *state, GISTInsertStack *stack,
  * released on return. The child pages are always unlocked and unpinned.
  */
 static void
-megistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
-				  MEGISTSTATE *megiststate, List *splitinfo, bool unlockbuf)
+mgistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
+				  MGISTSTATE *mgiststate, List *splitinfo, bool unlockbuf)
 {
 	GISTPageSplitInfo *right;
 	GISTPageSplitInfo *left;
@@ -1357,7 +1357,7 @@ megistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
 		left = (GISTPageSplitInfo *) list_nth(splitinfo, pos - 1);
 
 		gistFindCorrectParent(state->r, stack);
-		if (megistinserttuples(state, stack->parent, megiststate,
+		if (mgistinserttuples(state, stack->parent, mgiststate,
 							   &right->downlink, 1,
 							   InvalidOffsetNumber,
 							   left->buf, right->buf, false, false))
@@ -1382,7 +1382,7 @@ megistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
 	tuples[0] = left->downlink;
 	tuples[1] = right->downlink;
 	gistFindCorrectParent(state->r, stack);
-	if (megistinserttuples(state, stack->parent, megiststate,
+	if (mgistinserttuples(state, stack->parent, mgiststate,
 						   tuples, 2,
 						   stack->downlinkoffnum,
 						   left->buf, right->buf,
@@ -1423,11 +1423,11 @@ megistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
  * it will split page until keys will fit in every page.
  */
 SplitedPageLayout *
-megistSplit(Relation r,
+mgistSplit(Relation r,
 			Page page,
 			IndexTuple *itup,		/* contains compressed entry */
 			int len,
-			MEGISTSTATE *megiststate)
+			MGISTSTATE *mgiststate)
 {
 	IndexTuple *lvectup,
 			   *rvectup;
@@ -1453,10 +1453,10 @@ megistSplit(Relation r,
 						RelationGetRelationName(r))));
 
 	memset(v.spl_lisnull, true,
-		   sizeof(bool) * megiststate->nonLeafTupdesc->natts);
+		   sizeof(bool) * mgiststate->nonLeafTupdesc->natts);
 	memset(v.spl_risnull, true,
-		   sizeof(bool) * megiststate->nonLeafTupdesc->natts);
-	megistSplitByKey(r, page, itup, len, megiststate, &v, 0);
+		   sizeof(bool) * mgiststate->nonLeafTupdesc->natts);
+	mgistSplitByKey(r, page, itup, len, mgiststate, &v, 0);
 
 	/* form left and right vector */
 	lvectup = (IndexTuple *) palloc(sizeof(IndexTuple) * (len + 1));
@@ -1471,14 +1471,14 @@ megistSplit(Relation r,
 	/* finalize splitting (may need another split) */
 	if (!gistfitpage(rvectup, v.splitVector.spl_nright))
 	{
-		res = megistSplit(r, page, rvectup, v.splitVector.spl_nright, megiststate);
+		res = mgistSplit(r, page, rvectup, v.splitVector.spl_nright, mgiststate);
 	}
 	else
 	{
 		ROTATEDIST(res);
 		res->block.num = v.splitVector.spl_nright;
 		res->list = gistfillitupvec(rvectup, v.splitVector.spl_nright, &(res->lenlist));
-		res->itup = megistFormTuple(megiststate, r, v.spl_rattr, v.spl_risnull, false);
+		res->itup = mgistFormTuple(mgiststate, r, v.spl_rattr, v.spl_risnull, false);
 	}
 
 	if (!gistfitpage(lvectup, v.splitVector.spl_nleft))
@@ -1486,7 +1486,7 @@ megistSplit(Relation r,
 		SplitedPageLayout *resptr,
 				   *subres;
 
-		resptr = subres = megistSplit(r, page, lvectup, v.splitVector.spl_nleft, megiststate);
+		resptr = subres = mgistSplit(r, page, lvectup, v.splitVector.spl_nleft, mgiststate);
 
 		/* install on list's tail */
 		while (resptr->next)
@@ -1500,40 +1500,40 @@ megistSplit(Relation r,
 		ROTATEDIST(res);
 		res->block.num = v.splitVector.spl_nleft;
 		res->list = gistfillitupvec(lvectup, v.splitVector.spl_nleft, &(res->lenlist));
-		res->itup = megistFormTuple(megiststate, r, v.spl_lattr, v.spl_lisnull, false);
+		res->itup = mgistFormTuple(mgiststate, r, v.spl_lattr, v.spl_lisnull, false);
 	}
 
 	return res;
 }
 
 /*
- * Create a MEGISTSTATE and fill it with information about the index
+ * Create a MGISTSTATE and fill it with information about the index
  */
-MEGISTSTATE *
-initMEGISTstate(Relation index)
+MGISTSTATE *
+initMGISTstate(Relation index)
 {
-	MEGISTSTATE  *megiststate;
+	MGISTSTATE  *mgiststate;
 	MemoryContext scanCxt;
 	MemoryContext oldCxt;
 	int			i;
 
-	/* safety check to protect fixed-size arrays in MEGISTSTATE */
+	/* safety check to protect fixed-size arrays in MGISTSTATE */
 	if (index->rd_att->natts > INDEX_MAX_KEYS)
 		elog(ERROR, "numberOfAttributes %d > %d",
 			 index->rd_att->natts, INDEX_MAX_KEYS);
 
-	/* Create the memory context that will hold the MEGISTSTATE */
+	/* Create the memory context that will hold the MGISTSTATE */
 	scanCxt = AllocSetContextCreate(CurrentMemoryContext,
 									"GiST scan context",
 									ALLOCSET_DEFAULT_SIZES);
 	oldCxt = MemoryContextSwitchTo(scanCxt);
 
-	/* Create and fill in the MEGISTSTATE */
-	megiststate = (MEGISTSTATE *) palloc(sizeof(MEGISTSTATE));
+	/* Create and fill in the MGISTSTATE */
+	mgiststate = (MGISTSTATE *) palloc(sizeof(MGISTSTATE));
 
-	megiststate->scanCxt = scanCxt;
-	megiststate->tempCxt = scanCxt;	/* caller must change this if needed */
-	megiststate->leafTupdesc = index->rd_att;
+	mgiststate->scanCxt = scanCxt;
+	mgiststate->tempCxt = scanCxt;	/* caller must change this if needed */
+	mgiststate->leafTupdesc = index->rd_att;
 
 	/*
 	 * The truncated tupdesc for non-leaf index tuples, which doesn't contain
@@ -1545,63 +1545,63 @@ initMEGISTstate(Relation index)
 	 * tuples during page split.  Also, B-tree is not adjusting tuples on
 	 * internal pages the way GiST does.
 	 */
-	megiststate->nonLeafTupdesc = CreateTupleDescCopyConstr(index->rd_att);
-	megiststate->nonLeafTupdesc->natts =
+	mgiststate->nonLeafTupdesc = CreateTupleDescCopyConstr(index->rd_att);
+	mgiststate->nonLeafTupdesc->natts =
 		IndexRelationGetNumberOfKeyAttributes(index);
 
 	for (i = 0; i < IndexRelationGetNumberOfKeyAttributes(index); i++)
 	{
-		fmgr_info_copy(&(megiststate->consistentFn[i]),
+		fmgr_info_copy(&(mgiststate->consistentFn[i]),
 					   index_getprocinfo(index, i + 1, GIST_CONSISTENT_PROC),
 					   scanCxt);
-		fmgr_info_copy(&(megiststate->unionFn[i]),
+		fmgr_info_copy(&(mgiststate->unionFn[i]),
 					   index_getprocinfo(index, i + 1, GIST_UNION_PROC),
 					   scanCxt);
 
 		/* opclasses are not required to provide a Compress method */
 		if (OidIsValid(index_getprocid(index, i + 1, GIST_COMPRESS_PROC)))
-			fmgr_info_copy(&(megiststate->compressFn[i]),
+			fmgr_info_copy(&(mgiststate->compressFn[i]),
 						   index_getprocinfo(index, i + 1, GIST_COMPRESS_PROC),
 						   scanCxt);
 		else
-			megiststate->compressFn[i].fn_oid = InvalidOid;
+			mgiststate->compressFn[i].fn_oid = InvalidOid;
 
 		/* opclasses are not required to provide a Decompress method */
 		if (OidIsValid(index_getprocid(index, i + 1, GIST_DECOMPRESS_PROC)))
-			fmgr_info_copy(&(megiststate->decompressFn[i]),
+			fmgr_info_copy(&(mgiststate->decompressFn[i]),
 						   index_getprocinfo(index, i + 1, GIST_DECOMPRESS_PROC),
 						   scanCxt);
 		else
-			megiststate->decompressFn[i].fn_oid = InvalidOid;
+			mgiststate->decompressFn[i].fn_oid = InvalidOid;
 
-		fmgr_info_copy(&(megiststate->penaltyFn[i]),
+		fmgr_info_copy(&(mgiststate->penaltyFn[i]),
 					   index_getprocinfo(index, i + 1, GIST_PENALTY_PROC),
 					   scanCxt);
-		fmgr_info_copy(&(megiststate->picksplitFn[i]),
+		fmgr_info_copy(&(mgiststate->picksplitFn[i]),
 					   index_getprocinfo(index, i + 1, GIST_PICKSPLIT_PROC),
 					   scanCxt);
-		fmgr_info_copy(&(megiststate->equalFn[i]),
+		fmgr_info_copy(&(mgiststate->equalFn[i]),
 					   index_getprocinfo(index, i + 1, GIST_EQUAL_PROC),
 					   scanCxt);
 
 		/* opclasses are not required to provide a Distance method */
 		if (OidIsValid(index_getprocid(index, i + 1, GIST_DISTANCE_PROC)))
-			fmgr_info_copy(&(megiststate->distanceFn[i]),
+			fmgr_info_copy(&(mgiststate->distanceFn[i]),
 						   index_getprocinfo(index, i + 1, GIST_DISTANCE_PROC),
 						   scanCxt);
 		else
-			megiststate->distanceFn[i].fn_oid = InvalidOid;
+			mgiststate->distanceFn[i].fn_oid = InvalidOid;
 
 		/* opclasses are not required to provide a Fetch method */
 		if (OidIsValid(index_getprocid(index, i + 1, GIST_FETCH_PROC)))
-			fmgr_info_copy(&(megiststate->fetchFn[i]),
+			fmgr_info_copy(&(mgiststate->fetchFn[i]),
 						   index_getprocinfo(index, i + 1, GIST_FETCH_PROC),
 						   scanCxt);
 		else
-			megiststate->fetchFn[i].fn_oid = InvalidOid;
+			mgiststate->fetchFn[i].fn_oid = InvalidOid;
 
-		fmgr_info_copy(&(megiststate->extractValueFn[i]),
-					   index_getprocinfo(index, i + 1, MEGIST_EXTRACTVALUE_PROC),
+		fmgr_info_copy(&(mgiststate->extractValueFn[i]),
+					   index_getprocinfo(index, i + 1, MGIST_EXTRACTVALUE_PROC),
 					   scanCxt);
 
 		/*
@@ -1616,37 +1616,37 @@ initMEGISTstate(Relation index)
 		 * any cases where a GiST storage type has a nondefault collation.)
 		 */
 		if (OidIsValid(index->rd_indcollation[i]))
-			megiststate->supportCollation[i] = index->rd_indcollation[i];
+			mgiststate->supportCollation[i] = index->rd_indcollation[i];
 		else
-			megiststate->supportCollation[i] = DEFAULT_COLLATION_OID;
+			mgiststate->supportCollation[i] = DEFAULT_COLLATION_OID;
 	}
 
 	/* No opclass information for INCLUDE attributes */
 	for (; i < index->rd_att->natts; i++)
 	{
-		megiststate->consistentFn[i].fn_oid = InvalidOid;
-		megiststate->unionFn[i].fn_oid = InvalidOid;
-		megiststate->compressFn[i].fn_oid = InvalidOid;
-		megiststate->decompressFn[i].fn_oid = InvalidOid;
-		megiststate->penaltyFn[i].fn_oid = InvalidOid;
-		megiststate->picksplitFn[i].fn_oid = InvalidOid;
-		megiststate->equalFn[i].fn_oid = InvalidOid;
-		megiststate->distanceFn[i].fn_oid = InvalidOid;
-		megiststate->fetchFn[i].fn_oid = InvalidOid;
-		megiststate->extractValueFn[i].fn_oid = InvalidOid;
-		megiststate->supportCollation[i] = InvalidOid;
+		mgiststate->consistentFn[i].fn_oid = InvalidOid;
+		mgiststate->unionFn[i].fn_oid = InvalidOid;
+		mgiststate->compressFn[i].fn_oid = InvalidOid;
+		mgiststate->decompressFn[i].fn_oid = InvalidOid;
+		mgiststate->penaltyFn[i].fn_oid = InvalidOid;
+		mgiststate->picksplitFn[i].fn_oid = InvalidOid;
+		mgiststate->equalFn[i].fn_oid = InvalidOid;
+		mgiststate->distanceFn[i].fn_oid = InvalidOid;
+		mgiststate->fetchFn[i].fn_oid = InvalidOid;
+		mgiststate->extractValueFn[i].fn_oid = InvalidOid;
+		mgiststate->supportCollation[i] = InvalidOid;
 	}
 
 	MemoryContextSwitchTo(oldCxt);
 
-	return megiststate;
+	return mgiststate;
 }
 
 void
-freeMEGISTstate(MEGISTSTATE *megiststate)
+freeMGISTstate(MGISTSTATE *mgiststate)
 {
 	/* It's sufficient to delete the scanCxt */
-	MemoryContextDelete(megiststate->scanCxt);
+	MemoryContextDelete(mgiststate->scanCxt);
 }
 
 /*

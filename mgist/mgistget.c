@@ -26,11 +26,11 @@
 #include "utils/memutils.h"
 #include "utils/rel.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 /*
  * Define parameters for TID hash table code generation. The interface is
- * *also* declared in megist.h (to generate the types, which are externally
+ * *also* declared in mgist.h (to generate the types, which are externally
  * visible).
  */
 #define SH_PREFIX tidtable
@@ -48,7 +48,7 @@
 
 /*
  * Define parameters for TID Distance hash table code generation. The interface is
- * *also* declared in megist.h (to generate the types, which are externally
+ * *also* declared in mgist.h (to generate the types, which are externally
  * visible).
  */
 #define SH_PREFIX tidisttable
@@ -74,9 +74,9 @@
  * away and the TID was re-used by a completely different heap tuple.
  */
 static void
-megistkillitems(IndexScanDesc scan)
+mgistkillitems(IndexScanDesc scan)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 	Buffer		buffer;
 	Page		page;
 	OffsetNumber offnum;
@@ -161,15 +161,15 @@ megistkillitems(IndexScanDesc scan)
  * or in the implementation of any Consistent or Distance methods.
  */
 static bool
-megistindex_keytest(IndexScanDesc scan,
+mgistindex_keytest(IndexScanDesc scan,
 					IndexTuple tuple,
 					Page page,
 					OffsetNumber offset,
 					bool *recheck_p,
 					bool *recheck_distances_p)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
-	MEGISTSTATE  *megiststate = so->megiststate;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
+	MGISTSTATE  *mgiststate = so->mgiststate;
 	ScanKey		key = scan->keyData;
 	int			keySize = scan->numberOfKeys;
 	IndexOrderByDistance *distance_p;
@@ -205,7 +205,7 @@ megistindex_keytest(IndexScanDesc scan,
 
 		datum = index_getattr(tuple,
 							  key->sk_attno,
-							  megiststate->leafTupdesc,
+							  mgiststate->leafTupdesc,
 							  &isNull);
 
 		if (key->sk_flags & SK_ISNULL)
@@ -238,7 +238,7 @@ megistindex_keytest(IndexScanDesc scan,
 			bool		recheck;
 			GISTENTRY	de;
 
-			megistdentryinit(megiststate, key->sk_attno - 1, &de,
+			mgistdentryinit(mgiststate, key->sk_attno - 1, &de,
 							 datum, r, page, offset,
 							 false, isNull);
 
@@ -285,7 +285,7 @@ megistindex_keytest(IndexScanDesc scan,
 
 		datum = index_getattr(tuple,
 							  key->sk_attno,
-							  megiststate->leafTupdesc,
+							  mgiststate->leafTupdesc,
 							  &isNull);
 
 		if ((key->sk_flags & SK_ISNULL) || isNull)
@@ -300,7 +300,7 @@ megistindex_keytest(IndexScanDesc scan,
 			bool		recheck;
 			GISTENTRY	de;
 
-			megistdentryinit(megiststate, key->sk_attno - 1, &de,
+			mgistdentryinit(mgiststate, key->sk_attno - 1, &de,
 							 datum, r, page, offset,
 							 false, isNull);
 
@@ -364,11 +364,11 @@ megistindex_keytest(IndexScanDesc scan,
  * sibling will be processed next.
  */
 static void
-megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
+mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 			   IndexOrderByDistance *myDistances, TIDBitmap *tbm, int64 *ntids)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
-	MEGISTSTATE  *megiststate = so->megiststate;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
+	MGISTSTATE  *mgiststate = so->mgiststate;
 	Relation	r = scan->indexRelation;
 	Buffer		buffer;
 	Page		page;
@@ -471,13 +471,13 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 		 * Must call gistindex_keytest in tempCxt, and clean up any leftover
 		 * junk afterward.
 		 */
-		oldcxt = MemoryContextSwitchTo(so->megiststate->tempCxt);
+		oldcxt = MemoryContextSwitchTo(so->mgiststate->tempCxt);
 
-		match = megistindex_keytest(scan, it, page, i,
+		match = mgistindex_keytest(scan, it, page, i,
 								  &recheck, &recheck_distances);
 
 		MemoryContextSwitchTo(oldcxt);
-		MemoryContextReset(so->megiststate->tempCxt);
+		MemoryContextReset(so->mgiststate->tempCxt);
 
 		/* Ignore tuple if it doesn't match */
 		if (!match)
@@ -514,7 +514,7 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 			{
 				oldcxt = MemoryContextSwitchTo(so->pageDataCxt);
 				so->pageData[so->nPageData].recontup =
-					megistFetchTuple(megiststate, r, it);
+					mgistFetchTuple(mgiststate, r, it);
 				MemoryContextSwitchTo(oldcxt);
 			}
 			so->nPageData++;
@@ -591,7 +591,7 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 					 * In an index-only scan, also fetch the data from the tuple.
 					 */
 					if (scan->xs_want_itup)
-						item->data.heap.recontup = megistFetchTuple(megiststate, r, it);
+						item->data.heap.recontup = mgistFetchTuple(mgiststate, r, it);
 
 					/* Insert it into the queue using new distance data */
 					memcpy(item->distances, so->distances,
@@ -635,7 +635,7 @@ megistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
  * Returns a GISTSearchItem or NULL.  Caller must pfree item when done with it.
  */
 static GISTSearchItem *
-getNextMEGISTSearchItem(MEGISTScanOpaque so)
+getNextMGISTSearchItem(MGISTScanOpaque so)
 {
 	GISTSearchItem *item;
 
@@ -659,7 +659,7 @@ getNextMEGISTSearchItem(MEGISTScanOpaque so)
 static bool
 getNextMENearest(IndexScanDesc scan)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 	bool		res = false;
 
 	if (scan->xs_hitup)
@@ -671,7 +671,7 @@ getNextMENearest(IndexScanDesc scan)
 
 	do
 	{
-		GISTSearchItem *item = getNextMEGISTSearchItem(so);
+		GISTSearchItem *item = getNextMGISTSearchItem(so);
 
 		if (!item)
 			break;
@@ -696,7 +696,7 @@ getNextMENearest(IndexScanDesc scan)
 			/* visit an index page, extract its items into queue */
 			CHECK_FOR_INTERRUPTS();
 
-			megistScanPage(scan, item, item->distances, NULL, NULL);
+			mgistScanPage(scan, item, item->distances, NULL, NULL);
 		}
 
 		pfree(item);
@@ -709,9 +709,9 @@ getNextMENearest(IndexScanDesc scan)
  * gistgettuple() -- Get the next tuple in the scan
  */
 bool
-megistgettuple(IndexScanDesc scan, ScanDirection dir)
+mgistgettuple(IndexScanDesc scan, ScanDirection dir)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 
 	if (dir != ForwardScanDirection)
 		elog(ERROR, "GiST only supports forward scan direction");
@@ -738,7 +738,7 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 
 		fakeItem.blkno = GIST_ROOT_BLKNO;
 		memset(&fakeItem.data.parentlsn, 0, sizeof(GistNSN));
-		megistScanPage(scan, &fakeItem, NULL, NULL, NULL);
+		mgistScanPage(scan, &fakeItem, NULL, NULL, NULL);
 	}
 
 	if (scan->numberOfOrderBys > 0)
@@ -759,7 +759,7 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 					if (so->killedItems == NULL)
 					{
 						MemoryContext oldCxt =
-						MemoryContextSwitchTo(so->megiststate->scanCxt);
+						MemoryContextSwitchTo(so->mgiststate->scanCxt);
 
 						so->killedItems =
 							(OffsetNumber *) palloc(MaxIndexTuplesPerPage
@@ -796,7 +796,7 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 				if (so->killedItems == NULL)
 				{
 					MemoryContext oldCxt =
-					MemoryContextSwitchTo(so->megiststate->scanCxt);
+					MemoryContextSwitchTo(so->mgiststate->scanCxt);
 
 					so->killedItems =
 						(OffsetNumber *) palloc(MaxIndexTuplesPerPage
@@ -814,9 +814,9 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 				GISTSearchItem *item;
 
 				if ((so->curBlkno != InvalidBlockNumber) && (so->numKilled > 0))
-					megistkillitems(scan);
+					mgistkillitems(scan);
 
-				item = getNextMEGISTSearchItem(so);
+				item = getNextMGISTSearchItem(so);
 
 				if (!item)
 					return false;
@@ -832,7 +832,7 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
 				 * this page, we fall out of the inner "do" and loop around to
 				 * return them.
 				 */
-				megistScanPage(scan, item, item->distances, NULL, NULL);
+				mgistScanPage(scan, item, item->distances, NULL, NULL);
 
 				pfree(item);
 			} while (so->nPageData == 0);
@@ -844,9 +844,9 @@ megistgettuple(IndexScanDesc scan, ScanDirection dir)
  * gistgetbitmap() -- Get a bitmap of all heap tuple locations
  */
 int64
-megistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
+mgistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
 {
-	MEGISTScanOpaque so = (MEGISTScanOpaque) scan->opaque;
+	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 	int64		ntids = 0;
 	GISTSearchItem fakeItem;
 
@@ -863,7 +863,7 @@ megistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
 
 	fakeItem.blkno = GIST_ROOT_BLKNO;
 	memset(&fakeItem.data.parentlsn, 0, sizeof(GistNSN));
-	megistScanPage(scan, &fakeItem, NULL, tbm, &ntids);
+	mgistScanPage(scan, &fakeItem, NULL, tbm, &ntids);
 
 	/*
 	 * While scanning a leaf page, ItemPointers of matching heap tuples will
@@ -871,14 +871,14 @@ megistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
 	 */
 	for (;;)
 	{
-		GISTSearchItem *item = getNextMEGISTSearchItem(so);
+		GISTSearchItem *item = getNextMGISTSearchItem(so);
 
 		if (!item)
 			break;
 
 		CHECK_FOR_INTERRUPTS();
 
-		megistScanPage(scan, item, item->distances, tbm, &ntids);
+		mgistScanPage(scan, item, item->distances, tbm, &ntids);
 
 		pfree(item);
 	}

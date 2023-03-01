@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * gist.h
+ * mgist.h
  *    The public API for GiST indexes. This API is exposed to
  *    individuals implementing GiST indexes, so backward-incompatible
  *    changes should be made with care.
@@ -13,16 +13,17 @@
  *
  *-------------------------------------------------------------------------
  */
-#ifndef MEGIST_H
-#define MEGIST_H
+#ifndef MGIST_H
+#define MGIST_H
 
 #include "common/hashfn.h"
 
 /*
- * amproc indexes for ME-GiST indexes.
+ * amproc indexes for Multi-Entry GiST indexes.
  */
-#define MEGIST_EXTRACTVALUE_PROC     12
-#define MEGISTNProcs                 12
+#define MGIST_EXTRACTVALUE_PROC     12
+#define MGIST_EXTRACTQUERY_PROC     13
+#define MGISTNProcs                 13
 
 /*
  * GISTSTATE: information needed for any GiST index operation
@@ -37,7 +38,7 @@
  * (that is, it's reset after each tuple).  However, tempCxt can be the same
  * as scanCxt if we're not bothering with per-tuple context resets.
  */
-typedef struct MEGISTSTATE
+typedef struct MGISTSTATE
 {
     MemoryContext scanCxt;      /* context for scan-lifespan data */
     MemoryContext tempCxt;      /* short-term context for calling functions */
@@ -58,17 +59,18 @@ typedef struct MEGISTSTATE
     FmgrInfo    distanceFn[INDEX_MAX_KEYS];
     FmgrInfo    fetchFn[INDEX_MAX_KEYS];
     FmgrInfo    extractValueFn[INDEX_MAX_KEYS];
+    FmgrInfo    extractQueryFn[INDEX_MAX_KEYS];
 
     /* Collations to pass to the support functions */
     Oid         supportCollation[INDEX_MAX_KEYS];
-} MEGISTSTATE;
+} MGISTSTATE;
 
 /*
  * GISTScanOpaqueData: private state for a scan of a GiST index
  */
-typedef struct MEGISTScanOpaqueData
+typedef struct MGISTScanOpaqueData
 {
-    MEGISTSTATE  *megiststate;      /* index information, see above */
+    MGISTSTATE  *mgiststate;      /* index information, see above */
     Oid          *orderByTypes;   /* datatypes of ORDER BY expressions */
 
     struct tidtable_hash *tidtable;   /* hash table of TID's */
@@ -96,9 +98,9 @@ typedef struct MEGISTScanOpaqueData
     OffsetNumber curPageData;   /* next item to return */
     MemoryContext pageDataCxt;  /* context holding the fetched tuples, for
                                  * index-only scans */
-} MEGISTScanOpaqueData;
+} MGISTScanOpaqueData;
 
-typedef MEGISTScanOpaqueData *MEGISTScanOpaque;
+typedef MGISTScanOpaqueData *MGISTScanOpaque;
 
 /*
  * The hashtable entries are represented by this data structure.
@@ -137,23 +139,23 @@ typedef struct TIDISTTableEntry
 #define SH_DECLARE
 #include "lib/simplehash.h"
 
-/* megist.c */
-extern bool megistinsert(Relation r, Datum *values, bool *isnull,
+/* mgist.c */
+extern bool mgistinsert(Relation r, Datum *values, bool *isnull,
                         ItemPointer ht_ctid, Relation heapRel, 
                         IndexUniqueCheck checkUnique,
                         bool indexUnchanged, 
                         struct IndexInfo *indexInfo);
-extern MemoryContext createTempMEGistContext(void);
-extern MEGISTSTATE *initMEGISTstate(Relation index);
-extern void freeMEGISTstate(MEGISTSTATE *megiststate);
-extern void megistdoinsert(Relation r,
+extern MemoryContext createTempMGistContext(void);
+extern MGISTSTATE *initMGISTstate(Relation index);
+extern void freeMGISTstate(MGISTSTATE *mgiststate);
+extern void mgistdoinsert(Relation r,
                            IndexTuple itup,
                            Size freespace,
-                           MEGISTSTATE *megiststate,
+                           MGISTSTATE *mgiststate,
                            Relation heapRel,
                            bool is_build);
 
-extern bool megistplacetopage(Relation rel, Size freespace, MEGISTSTATE *megiststate,
+extern bool mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
                               Buffer buffer,
                               IndexTuple *itup, int ntup,
                               OffsetNumber oldoffnum, BlockNumber *newblkno,
@@ -163,81 +165,81 @@ extern bool megistplacetopage(Relation rel, Size freespace, MEGISTSTATE *megists
                               Relation heapRel,
                               bool is_build);
 
-extern SplitedPageLayout *megistSplit(Relation r, Page page, IndexTuple *itup,
-                                      int len, MEGISTSTATE *megiststate);
+extern SplitedPageLayout *mgistSplit(Relation r, Page page, IndexTuple *itup,
+                                      int len, MGISTSTATE *mgiststate);
 
-/* megistget.c */
-extern bool megistgettuple(IndexScanDesc scan, ScanDirection dir);
-extern int64 megistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm);
+/* mgistget.c */
+extern bool mgistgettuple(IndexScanDesc scan, ScanDirection dir);
+extern int64 mgistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm);
 
-/* megistvalidate.c */
-extern bool megistvalidate(Oid opclassoid);
-extern void megistadjustmembers(Oid opfamilyoid, 
+/* mgistvalidate.c */
+extern bool mgistvalidate(Oid opclassoid);
+extern void mgistadjustmembers(Oid opfamilyoid, 
                                 Oid opclassoid, 
                                 List *operators, 
                                 List *functions);
 
-/* megistutil.c */
+/* mgistutil.c */
 
-extern IndexTuple megistunion(Relation r, IndexTuple *itvec,
-                            int len, MEGISTSTATE *megiststate);
-extern IndexTuple megistgetadjusted(Relation r,
+extern IndexTuple mgistunion(Relation r, IndexTuple *itvec,
+                            int len, MGISTSTATE *mgiststate);
+extern IndexTuple mgistgetadjusted(Relation r,
                                     IndexTuple oldtup,
                                     IndexTuple addtup,
-                                    MEGISTSTATE *megiststate);
-extern IndexTuple megistFormTuple(MEGISTSTATE *megiststate,
+                                    MGISTSTATE *mgiststate);
+extern IndexTuple mgistFormTuple(MGISTSTATE *mgiststate,
                                   Relation r, Datum *attdata, bool *isnull, bool isleaf);
-extern void megistCompressValues(MEGISTSTATE *megiststate, Relation r,
+extern void mgistCompressValues(MGISTSTATE *mgiststate, Relation r,
                                  Datum *attdata, bool *isnull, bool isleaf, Datum *compatt);
-extern OffsetNumber megistchoose(Relation r, Page p,
+extern OffsetNumber mgistchoose(Relation r, Page p,
                                  IndexTuple it,
-                                 MEGISTSTATE *megiststate);
-extern void megistdentryinit(MEGISTSTATE *megiststate, int nkey, GISTENTRY *e,
+                                 MGISTSTATE *mgiststate);
+extern void mgistdentryinit(MGISTSTATE *mgiststate, int nkey, GISTENTRY *e,
                              Datum k, Relation r, Page pg, OffsetNumber o,
                              bool l, bool isNull);
-extern float megistpenalty(MEGISTSTATE *megiststate, int attno,
+extern float mgistpenalty(MGISTSTATE *mgiststate, int attno,
                            GISTENTRY *key1, bool isNull1,
                            GISTENTRY *key2, bool isNull2);
-extern void megistMakeUnionItVec(MEGISTSTATE *megiststate, IndexTuple *itvec, int len,
+extern void mgistMakeUnionItVec(MGISTSTATE *mgiststate, IndexTuple *itvec, int len,
                                  Datum *attr, bool *isnull);
-extern bool megistKeyIsEQ(MEGISTSTATE *megiststate, int attno, Datum a, Datum b);
-extern void megistDeCompressAtt(MEGISTSTATE *megiststate, Relation r, IndexTuple tuple, Page p,
+extern bool mgistKeyIsEQ(MGISTSTATE *mgiststate, int attno, Datum a, Datum b);
+extern void mgistDeCompressAtt(MGISTSTATE *mgiststate, Relation r, IndexTuple tuple, Page p,
                                 OffsetNumber o, GISTENTRY *attdata, bool *isnull);
-extern HeapTuple megistFetchTuple(MEGISTSTATE *megiststate, Relation r,
+extern HeapTuple mgistFetchTuple(MGISTSTATE *mgiststate, Relation r,
                                   IndexTuple tuple);
-extern void megistMakeUnionKey(MEGISTSTATE *megiststate, int attno,
+extern void mgistMakeUnionKey(MGISTSTATE *mgiststate, int attno,
                                GISTENTRY *entry1, bool isnull1,
                                GISTENTRY *entry2, bool isnull2,
                                Datum *dst, bool *dstisnull);
 
-/* megistscan.c */
-extern IndexScanDesc megistbeginscan(Relation r, int nkeys, int norderbys);
-extern void megistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
+/* mgistscan.c */
+extern IndexScanDesc mgistbeginscan(Relation r, int nkeys, int norderbys);
+extern void mgistrescan(IndexScanDesc scan, ScanKey key, int nkeys,
                          ScanKey orderbys, int norderbys);
-extern void megistendscan(IndexScanDesc scan);
+extern void mgistendscan(IndexScanDesc scan);
 
-/* megistsplit.c */
-extern void megistSplitByKey(Relation r, Page page, IndexTuple *itup,
-                             int len, MEGISTSTATE *megiststate,
+/* mgistsplit.c */
+extern void mgistSplitByKey(Relation r, Page page, IndexTuple *itup,
+                             int len, MGISTSTATE *mgiststate,
                              GistSplitVector *v,
                              int attno);
 
-/* megistbuild.c */
-extern IndexTuple *megistExtractItups(MEGISTSTATE *megiststate, 
+/* mgistbuild.c */
+extern IndexTuple *mgistExtractItups(MGISTSTATE *mgiststate, 
                                       Relation index, 
                                       Datum *values, 
                                       bool *isnull, 
                                       int32 *nitups);
-extern IndexBuildResult *megistbuild(Relation heap, Relation index,
+extern IndexBuildResult *mgistbuild(Relation heap, Relation index,
                                      struct IndexInfo *indexInfo);
 
 /* gistbuildbuffers.c */
-extern GISTNodeBuffer *megistGetNodeBuffer(GISTBuildBuffers *gfbb,
-                                           MEGISTSTATE *megiststate,
+extern GISTNodeBuffer *mgistGetNodeBuffer(GISTBuildBuffers *gfbb,
+                                           MGISTSTATE *mgiststate,
                                            BlockNumber blkno, int level);
-extern void megistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb,
-                                              MEGISTSTATE *megiststate, Relation r,
+extern void mgistRelocateBuildBuffersOnSplit(GISTBuildBuffers *gfbb,
+                                              MGISTSTATE *mgiststate, Relation r,
                                               int level, Buffer buffer,
                                               List *splitinfo);
 
-#endif                          /* MEGIST_H */
+#endif                          /* MGIST_H */

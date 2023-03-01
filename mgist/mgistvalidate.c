@@ -26,13 +26,13 @@
 #include "utils/regproc.h"
 #include "utils/syscache.h"
 
-#include "megist.h"
+#include "mgist.h"
 
 /*
  * Validator for a GiST opclass.
  */
 bool
-megistvalidate(Oid opclassoid)
+mgistvalidate(Oid opclassoid)
 {
 	bool		result = true;
 	HeapTuple	classtup;
@@ -148,7 +148,7 @@ megistvalidate(Oid opclassoid)
 				ok = check_amproc_signature(procform->amproc, VOIDOID, true,
 											1, 1, INTERNALOID);
 				break;
-			case MEGIST_EXTRACTVALUE_PROC:
+			case MGIST_EXTRACTVALUE_PROC:
 				ok = check_amproc_signature(procform->amproc, INTERNALOID, false,
 											2, 3, opcintype, INTERNALOID,
 											INTERNALOID);
@@ -266,7 +266,7 @@ megistvalidate(Oid opclassoid)
 	}
 
 	/* Check that the originally-named opclass is complete */
-	for (i = 1; i <= MEGISTNProcs; i++)
+	for (i = 1; i <= MGISTNProcs; i++)
 	{
 		if (opclassgroup &&
 			(opclassgroup->functionset & (((uint64) 1) << i)) != 0)
@@ -294,7 +294,7 @@ megistvalidate(Oid opclassoid)
  * Prechecking function for adding operators/functions to a GiST opfamily.
  */
 void
-megistadjustmembers(Oid opfamilyoid,
+mgistadjustmembers(Oid opfamilyoid,
 					Oid opclassoid,
 					List *operators,
 					List *functions)
@@ -336,7 +336,7 @@ megistadjustmembers(Oid opfamilyoid,
 			case GIST_PENALTY_PROC:
 			case GIST_PICKSPLIT_PROC:
 			case GIST_EQUAL_PROC:
-			case MEGIST_EXTRACTVALUE_PROC:
+			case MGIST_EXTRACTVALUE_PROC:
 				/* Required support function */
 				op->ref_is_hard = true;
 				break;
