@@ -35,6 +35,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_equisplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
@@ -51,6 +54,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_equisplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
@@ -76,6 +82,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_mergesplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
@@ -92,6 +101,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_mergesplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
@@ -117,6 +129,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_linearsplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
@@ -133,6 +148,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_linearsplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
@@ -158,6 +176,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_manualsplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
@@ -174,6 +195,9 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_manualsplit_ops
   OPERATOR  3    && (tgeompoint, tstzspan),
   OPERATOR  3    && (tgeompoint, stbox),
   OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
   -- functions
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),

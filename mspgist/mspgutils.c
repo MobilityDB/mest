@@ -82,11 +82,11 @@ mspghandler(PG_FUNCTION_ARGS)
 	amroutine->ambuildphasename = NULL;
 	amroutine->amvalidate = mspgvalidate;
 	amroutine->amadjustmembers = mspgadjustmembers;
-	amroutine->ambeginscan = spgbeginscan;
-	amroutine->amrescan = spgrescan;
-	amroutine->amgettuple = spggettuple;
-	amroutine->amgetbitmap = spggetbitmap;
-	amroutine->amendscan = spgendscan;
+	amroutine->ambeginscan = mspgbeginscan;
+	amroutine->amrescan = mspgrescan;
+	amroutine->amgettuple = mspggettuple;
+	amroutine->amgetbitmap = mspggetbitmap;
+	amroutine->amendscan = mspgendscan;
 	amroutine->ammarkpos = NULL;
 	amroutine->amrestrpos = NULL;
 	amroutine->amestimateparallelscan = NULL;
