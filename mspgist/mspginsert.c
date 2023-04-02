@@ -118,9 +118,6 @@ mspgistBuildCallback(Relation index, ItemPointer tid, Datum *values,
 IndexBuildResult *
 mspgbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 {
-	printf("Building\n");
-	fflush(stdout);
-
 	IndexBuildResult *result;
 	double		reltuples;
 	SpGistBuildState buildstate;

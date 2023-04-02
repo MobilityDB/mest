@@ -149,17 +149,6 @@ mspgAddSearchItemToQueue(MSpGistScanOpaque so, SpGistSearchItem *item)
 	pairingheap_add(so->scanQueue, &item->phNode);
 }
 
-/*
- * Remove SpGistSearchItem from queue
- *
- * Called in queue context
- */
-static void
-mspgRemoveSearchItemFromQueue(MSpGistScanOpaque so, SpGistSearchItem *item)
-{
-	pairingheap_remove(so->scanQueue, &item->phNode);
-}
-
 static SpGistSearchItem *
 mspgAllocSearchItem(MSpGistScanOpaque so, bool isnull, double *distances)
 {
@@ -573,17 +562,45 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 			bool *reportedSome, storeRes_func storeRes)
 {
 	Datum		leafValue;
-	double	   *distances;
+	double	   *mindistances;
+	double	   *maxdistances;
 	bool		result;
 	bool		recheck;
 	bool		recheckDistances;
+
+	/* Avoid unnecessary distance computations */
+	if (so->numberOfNonNullOrderBys > 0)
+	{
+		TIDISTTableEntry *entry;
+		int i, cmp_result = 0, nOrderBys = so->numberOfNonNullOrderBys;
+
+		/* Check if TID is already in hash table */
+		entry = tidisttable_lookup(so->tidisttable, leafTuple->heapPtr);
+		if (entry != NULL)
+		{
+			/* Compare MaxDist of TID to MinDist of the current search item */
+			for (i = 0; i < nOrderBys; i++)
+			{
+				cmp_result = float8_cmp_internal(item->distances[i],
+																				 entry->maxdistances[i]);
+				if (cmp_result != 0)
+					break;
+			}
+
+			/* MinDist item > MaxDist TID
+			 * -> Skip this TID, since we won't find a smaller MinDist */
+			if (cmp_result == 1)
+				return false;
+		}
+	}
 
 	if (isnull)
 	{
 		/* Should not have arrived on a nulls page unless nulls are wanted */
 		Assert(so->searchNulls);
 		leafValue = (Datum) 0;
-		distances = NULL;
+		mindistances = NULL;
+		maxdistances = NULL;
 		recheck = false;
 		recheckDistances = false;
 		result = true;
@@ -591,7 +608,7 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 	else
 	{
 		spgLeafConsistentIn in;
-		spgLeafConsistentOut out;
+		mspgLeafConsistentOut out;
 
 		/* use temp context for calling leaf_consistent */
 		MemoryContext oldCxt = MemoryContextSwitchTo(so->tempCxt);
@@ -609,7 +626,8 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 
 		out.leafValue = (Datum) 0;
 		out.recheck = false;
-		out.distances = NULL;
+		out.mindistances = NULL;
+		out.maxdistances = NULL;
 		out.recheckDistances = false;
 
 		result = DatumGetBool(FunctionCall2Coll(&so->leafConsistentFn,
@@ -619,7 +637,8 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 		recheck = out.recheck;
 		recheckDistances = out.recheckDistances;
 		leafValue = out.leafValue;
-		distances = out.distances;
+		mindistances = out.mindistances;
+		maxdistances = out.maxdistances;
 
 		MemoryContextSwitchTo(oldCxt);
 	}
@@ -629,53 +648,56 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 		/* item passes the scankeys */
 		if (so->numberOfNonNullOrderBys > 0)
 		{
-			SpGistSearchItem *heapItem;
-			TIDISTTableEntry *entry;
 			bool found;
-			int i, result = 0, nOrderBys = so->numberOfNonNullOrderBys;
+			TIDISTTableEntry *entry;
+			int i, cmp_result = 0, nOrderBys = so->numberOfNonNullOrderBys;
 
 			/* the scan is ordered -> add the heapItem to the queue */
 			MemoryContext oldCxt = MemoryContextSwitchTo(so->traversalCxt);
 
-			/* Check TID for deduplication */
+			SpGistSearchItem *heapItem = mspgNewHeapItem(so, item->level,
+													leafTuple,
+													leafValue,
+													recheck,
+													recheckDistances,
+													isnull,
+													mindistances);
+			mspgAddSearchItemToQueue(so, heapItem);
+
+			MemoryContextSwitchTo(oldCxt);
+
+			/* Check if we have a smaller MaxDist for this TID */
 			entry = tidisttable_insert(so->tidisttable, leafTuple->heapPtr, &found);
 			if (found)
 			{
-				heapItem = entry->item;
+				/* Compare MaxDist of TID to MinDist of the current search item */
 				for (i = 0; i < nOrderBys; i++)
 				{
-					result = -float8_cmp_internal(distances[i],
-																				heapItem->distances[i]);
-					if (result != 0)
+					cmp_result = -float8_cmp_internal(maxdistances[i],
+																					  entry->maxdistances[i]);
+					if (cmp_result != 0)
 						break;
 				}
 
-				/* If new distance data is smaller */
-				if (result == 1)
+				/* new MaxDist > stored MaxDist
+				 * -> Update MaxDist to keep smallest values */
+				if (cmp_result == 1)
 				{
-					/* Re-insert it into the queue using new distance data */
-					mspgRemoveSearchItemFromQueue(so, heapItem);
-					memcpy(heapItem->distances, distances,
-						   sizeof(entry->item->distances[0]) * nOrderBys);
-					mspgAddSearchItemToQueue(so, heapItem);
+					for (int i = 0; i < nOrderBys; ++i)
+						entry->maxdistances[i] = maxdistances[i];
 				}
 			}
 			else
 			{
-				SpGistSearchItem *heapItem = mspgNewHeapItem(so, item->level,
-														leafTuple,
-														leafValue,
-														recheck,
-														recheckDistances,
-														isnull,
-														distances);
-				/* Store pointer to item in hash table entry */
-				entry->item = heapItem;
+				MemoryContextSwitchTo(so->traversalCxt);
 
-				mspgAddSearchItemToQueue(so, heapItem);
+				/* Initialize maxdistances of the hashtable entry */
+				entry->maxdistances = palloc(sizeof(double) * nOrderBys);
+				for (int i = 0; i < nOrderBys; ++i)
+					entry->maxdistances[i] = maxdistances[i];		
+
+				MemoryContextSwitchTo(oldCxt);
 			}
-
-			MemoryContextSwitchTo(oldCxt);
 		}
 		else
 		{

@@ -18,6 +18,15 @@
 #define MSPGIST_EXTRACTVALUE_PROC 8
 #define MSPGISTNProc              8
 
+typedef struct mspgLeafConsistentOut
+{
+  Datum   leafValue;    /* reconstructed original data, if any */
+  bool    recheck;    /* set true if operator must be rechecked */
+  bool    recheckDistances; /* set true if distances must be rechecked */
+  double     *mindistances;    /* associated distances */
+  double     *maxdistances;    /* associated distances */
+} mspgLeafConsistentOut;
+
 /*
  * Private state of an index scan
  */
@@ -107,10 +116,10 @@ typedef struct TIDTableEntry
  */
 typedef struct TIDISTTableEntry
 {
-    ItemPointerData tid;        /* TID (hashtable key) */
-    SpGistSearchItem *item;       /* Searh item storing the distances */
-    uint32          hash;       /* hash value (cached) */
-    char            status;     /* hash status */
+    ItemPointerData   tid;            /* TID (hashtable key) */
+    double           *maxdistances;   /* MaxDist Values */
+    uint32            hash;           /* hash value (cached) */
+    char              status;         /* hash status */
 } TIDISTTableEntry;
 
 /* define parameters necessary to generate the TID hash table interface */

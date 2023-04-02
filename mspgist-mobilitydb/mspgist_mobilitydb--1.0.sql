@@ -5,6 +5,11 @@
  * Multi Entry R-Tree for tgeompoint using ME-GiST
  ******************************************************************************/
 
+CREATE FUNCTION stbox_mspgist_leaf_consistent(internal, internal)
+  RETURNS bool
+  AS 'MODULE_PATHNAME', 'Stbox_mspgist_leaf_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 CREATE FUNCTION tpoint_mspgist_compress(internal)
   RETURNS internal
   AS 'MODULE_PATHNAME', 'Tpoint_mspgist_compress'
@@ -43,7 +48,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_equisplit_ops
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
   FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_equisplit(internal, internal, internal);
@@ -62,7 +67,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_equisplit_ops
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
   FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_equisplit(internal, internal, internal);
@@ -90,7 +95,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_mergesplit_ops
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
   FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_mergesplit(internal, internal, internal);
@@ -109,7 +114,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_mergesplit_ops
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
   FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_mergesplit(internal, internal, internal);
@@ -137,7 +142,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_linearsplit_ops
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
   FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_query_options(internal),
   FUNCTION  8  tpoint_mspgist_linearsplit(internal, internal, internal);
@@ -156,7 +161,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_linearsplit_ops
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
   FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_query_options(internal),
   FUNCTION  8  tpoint_mspgist_linearsplit(internal, internal, internal);
@@ -184,7 +189,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_quadtree_manualsplit_ops
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
   FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_manualsplit(internal, internal, internal);
@@ -203,7 +208,7 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_manualsplit_ops
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
   FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mspgist_box_options(internal),
   FUNCTION  8  tpoint_mspgist_manualsplit(internal, internal, internal);

@@ -7,11 +7,13 @@
  */
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/gist.h"
+#include <access/spgist.h>
 #include "access/reloptions.h"
 #include "utils/timestamp.h"
 #include "utils/datetime.h"
@@ -31,10 +33,12 @@ PG_MODULE_MAGIC;
 #define MOBDB_FLAG_X          0x0010  // 16
 #define MOBDB_FLAG_Z          0x0020  // 32
 #define MOBDB_FLAG_T          0x0040  // 64
+#define MOBDB_FLAG_GEODETIC   0x0080  // 128
 
 #define MOBDB_FLAGS_GET_X(flags)          ((bool) (((flags) & MOBDB_FLAG_X)>>4))
 #define MOBDB_FLAGS_GET_Z(flags)          ((bool) (((flags) & MOBDB_FLAG_Z)>>5))
 #define MOBDB_FLAGS_GET_T(flags)          ((bool) (((flags) & MOBDB_FLAG_T)>>6))
+#define MOBDB_FLAGS_GET_GEODETIC(flags)   ((bool) (((flags) & MOBDB_FLAG_GEODETIC)>>7))
 
 #define FLOAT8_LT(a,b)   (float8_cmp_internal(a, b) < 0)
 #define FLOAT8_LE(a,b)   (float8_cmp_internal(a, b) <= 0)
@@ -42,6 +46,8 @@ PG_MODULE_MAGIC;
 #define FLOAT8_MAX(a,b)  (FLOAT8_GT(a, b) ? (a) : (b))
 #define FLOAT8_MIN(a,b)  (FLOAT8_LT(a, b) ? (a) : (b))
 
+#define DatumGetSpanP(X)           ((Span *) DatumGetPointer(X))
+#define DatumGetSTboxP(X)    ((STBox *) DatumGetPointer(X))
 #define PG_GETARG_TEMPORAL_P(X)    ((Temporal *) PG_GETARG_VARLENA_P(X))
 
 /* number boxes for extract function */
@@ -94,6 +100,233 @@ enum stbox_state {
   STBOX_OK_CHANGED,
   STBOX_DELETED
 };
+
+typedef struct mspgLeafConsistentOut
+{
+  Datum   leafValue;    /* reconstructed original data, if any */
+  bool    recheck;    /* set true if operator must be rechecked */
+  bool    recheckDistances; /* set true if distances must be rechecked */
+  double     *mindistances;    /* associated distances */
+  double     *maxdistances;    /* associated distances */
+} mspgLeafConsistentOut;
+
+extern meosType oid_type(Oid typid);
+extern void temporal_bbox_slice(Datum tempdatum, void *box);
+extern Datum geog_distance(Datum geog1, Datum geog2);
+extern bool tpoint_index_recheck(StrategyNumber strategy);
+extern bool stbox_index_consistent_leaf(const STBox *key, const STBox *query,
+  StrategyNumber strategy);
+
+/*****************************************************************************
+ * MSP-GiST leaf-level consistency function
+ *****************************************************************************/
+
+static double
+mindist_stbox_stbox(const STBox *box1, const STBox *box2)
+{
+  double result;
+  
+  /* If the boxes do not intersect in the time dimension return infinity */
+  bool hast = MOBDB_FLAGS_GET_T(box1->flags) && MOBDB_FLAGS_GET_T(box2->flags);
+  if (hast && ! overlaps_span_span(&box1->period, &box2->period))
+      return DBL_MAX;
+
+  if (MOBDB_FLAGS_GET_GEODETIC(box1->flags))
+  {
+    /* Convert the boxes to geometries */
+    Datum geo1 = PointerGetDatum(stbox_to_geo(box1));
+    Datum geo2 = PointerGetDatum(stbox_to_geo(box2));
+    /* Compute the result */
+    result = DatumGetFloat8(geog_distance(geo1, geo2));
+    pfree(DatumGetPointer(geo1)); pfree(DatumGetPointer(geo2));
+  }
+  else
+  {
+    double dx, dy, dz=0.0;
+
+    if (box1->xmax < box2->xmin)
+      dx = box2->xmin - box1->xmax;
+    else if (box2->xmax > box1->xmin)
+      dx = box1->xmin - box2->xmax;
+    else
+      dx = 0.0;
+
+    if (box1->ymax < box2->ymin)
+      dy = box2->ymin - box1->ymax;
+    else if (box2->ymax > box1->ymin)
+      dy = box1->ymin - box2->ymax;
+    else
+      dy = 0.0;
+
+    if (MOBDB_FLAGS_GET_Z(box1->flags))
+    {
+      if (box1->zmax < box2->zmin)
+        dz = box2->zmin - box1->zmax;
+      else if (box2->zmax > box1->zmin)
+        dz = box1->zmin - box2->zmax;
+      else
+        dz = 0.0;
+    }
+
+    result = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
+  }
+  return result;
+}
+
+static double
+maxdist_stbox_stbox(const STBox *box1, const STBox *box2)
+{
+  double result;
+  
+  /* If the boxes do not intersect in the time dimension return infinity */
+  bool hast = MOBDB_FLAGS_GET_T(box1->flags) && MOBDB_FLAGS_GET_T(box2->flags);
+  if (hast && ! overlaps_span_span(&box1->period, &box2->period))
+    return DBL_MAX;
+
+  if (MOBDB_FLAGS_GET_GEODETIC(box1->flags) || MOBDB_FLAGS_GET_Z(box1->flags))
+  {
+    result = DBL_MAX;
+  }
+  else
+  {
+    double a, b;
+
+    double xrs = box1->xmin, 
+           yrs = box1->ymin, 
+           xrt = box1->xmax, 
+           yrt = box1->ymax;
+    double xqs = box2->xmin, 
+           yqs = box2->ymin, 
+           xqt = box2->xmax, 
+           yqt = box2->ymax;
+    double xrm, yrm, xrM, yrM;
+    double xqm, yqm, xqM, yqM;
+
+    if (xqs + xqt <= xrs + xrt)
+    {
+      xrm = xrs;
+      xqm = xqt;
+      xrM = xrt;
+      xqM = xqs;
+    }
+    else
+    {
+      xrm = xrt;
+      xqm = xqs;
+      xrM = xrs;
+      xqM = xqt;
+    }
+
+    if (yqs + yqt <= yrs + yrt)
+    {
+      yrm = yrs;
+      yqm = yqt;
+      yrM = yrt;
+      yqM = yqs;
+    }
+    else
+    {
+      yrm = yrt;
+      yqm = yqs;
+      yrM = yrs;
+      yqM = yqt;
+    }
+
+    a = pow(xrm - xqm, 2) + pow(yrM - yqM, 2);
+    b = pow(yrm - yqm, 2) + pow(xrM - xqM, 2);
+    result = fmax(a, b);
+    result = sqrt(result);
+  }
+  return result;
+}
+
+/**
+ * @brief Transform a query argument into an STBox.
+ */
+static bool
+tpoint_spgist_get_stbox(const ScanKeyData *scankey, STBox *result)
+{
+  meosType type = oid_type(scankey->sk_subtype);
+  if (type == T_TSTZSPAN)
+  {
+    Span *p = DatumGetSpanP(scankey->sk_argument);
+    period_set_stbox(p, result);
+  }
+  else if (type == T_STBOX)
+  {
+    memcpy(result, DatumGetSTboxP(scankey->sk_argument), sizeof(STBox));
+  }
+  else if (tspatial_type(type))
+  {
+    temporal_bbox_slice(scankey->sk_argument, result);
+  }
+  else
+    elog(ERROR, "Unsupported type for indexing: %d", type);
+  return true;
+}
+
+PG_FUNCTION_INFO_V1(Stbox_mspgist_leaf_consistent);
+/**
+ * @brief MSP-GiST leaf-level consistency function for temporal points
+ */
+PGDLLEXPORT Datum
+Stbox_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
+{
+  spgLeafConsistentIn *in = (spgLeafConsistentIn *) PG_GETARG_POINTER(0);
+  mspgLeafConsistentOut *out = (mspgLeafConsistentOut *) PG_GETARG_POINTER(1);
+  STBox *key = DatumGetSTboxP(in->leafDatum), box;
+  bool result = true;
+  int i;
+
+  /* Initialize the value to do not recheck, will be updated below */
+  out->recheck = false;
+
+  /* leafDatum is what it is... */
+  out->leafValue = in->leafDatum;
+
+  /* Perform the required comparison(s) */
+  for (i = 0; i < in->nkeys; i++)
+  {
+    StrategyNumber strategy = in->scankeys[i].sk_strategy;
+    /* Update the recheck flag according to the strategy */
+    out->recheck |= tpoint_index_recheck(strategy);
+
+    if (tpoint_spgist_get_stbox(&in->scankeys[i], &box))
+      result = stbox_index_consistent_leaf(key, &box, strategy);
+    else
+      result = false;
+    /* If any check is failed, we have found our answer. */
+    if (! result)
+      break;
+  }
+
+  if (result && in->norderbys > 0)
+  {
+    /* Recheck is necessary when computing distance with bounding boxes */
+    double *mindistances = palloc(sizeof(double) * in->norderbys);
+    double *maxdistances = palloc(sizeof(double) * in->norderbys);
+    out->recheckDistances = true;
+    out->mindistances = mindistances;
+    out->maxdistances = maxdistances;
+    for (i = 0; i < in->norderbys; i++)
+    {
+      /* Cast the order by argument to a box and perform the test */
+      if (tpoint_spgist_get_stbox(&in->orderbys[i], &box))
+      {
+        mindistances[i] = mindist_stbox_stbox(&box, key);
+        maxdistances[i] = maxdist_stbox_stbox(&box, key);
+      }
+      else
+      {
+        /* If empty geometry */
+        mindistances[i] = DBL_MAX;
+        maxdistances[i] = DBL_MAX;
+      }
+    }
+  }
+
+  PG_RETURN_BOOL(result);
+}
 
 /*****************************************************************************
  * ME-GiST extract methods
