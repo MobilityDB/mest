@@ -248,10 +248,10 @@ tsequence_equisplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
     segs_this_split = segs_per_split;
     if (seq->count - 1 - i < segs_per_split)
       segs_this_split = seq->count - 1 - i;
-    tinstant_set_bbox(tsequence_inst_n(seq, i), &result[k]);
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &result[k]);
     for (int j = 1; j < segs_this_split + 1; j++)
     {
-      tinstant_set_bbox(tsequence_inst_n(seq, i + j), &box1);
+      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i + j), &box1);
       stbox_expand(&box1, &result[k]);
     }
     k++;
@@ -438,7 +438,7 @@ tsequence_mergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys
 
   boxes = palloc(sizeof(STBox) * seq->count);
   for (i = 0; i < seq->count; ++i)
-    tinstant_set_bbox(tsequence_inst_n(seq, i), &boxes[i]);
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
   for (i = 0; i < count; ++i)
     stbox_expand(&boxes[i+1], &boxes[i]);
 
@@ -646,22 +646,22 @@ tsequence_linearsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
           qt = MGIST_EXTRACT_GET_QT();
   int i, k, c, u = 0, v = 1;
 
-  tinstant_set_bbox(tsequence_inst_n(seq, u), &box1);
-  tinstant_set_bbox(tsequence_inst_n(seq, v), &box2);
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, v), &box2);
   stbox_expand(&box2, &box1);
 
   while (v < seq->count - 1)
   {
-    tinstant_set_bbox(tsequence_inst_n(seq, v + 1), &newbox);
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, v + 1), &newbox);
     stbox_expand(&newbox, &box2);
     if (stbox_penalty_ext(&box1, &box2, qx, qy, qt) > 0)
     {
       k = 0;
       c = round(solve_c(&box1, v - u, qx, qy, qt));
-      tinstant_set_bbox(tsequence_inst_n(seq, u), &box1);
+      tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
       for (i = 1; i < v - u + 1; ++i)
       {
-        tinstant_set_bbox(tsequence_inst_n(seq, u + i), &box2);
+        tinstant_set_bbox(TSEQUENCE_INST_N(seq, u + i), &box2);
         stbox_expand(&box2, &box1);
         if (i % c == 0)
         {
@@ -711,10 +711,10 @@ tsequence_manualsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
   int32 count = ceil((double) (seq->count - 1) / (double) segs_per_split);
 
   result = palloc(sizeof(STBox) * count);
-  tinstant_set_bbox(tsequence_inst_n(seq, 0), &result[k]);
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, 0), &result[k]);
   for (i = 1; i < seq->count; ++i)
   {
-    tinstant_set_bbox(tsequence_inst_n(seq, i), &box1);
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &box1);
     stbox_expand(&box1, &result[k]);
     if ((i % segs_per_split == 0) && (i < seq->count - 1))
       result[++k] = box1;

@@ -30,15 +30,15 @@ PG_MODULE_MAGIC;
 #define TSEQUENCE       2
 #define TSEQUENCESET    3
 
-#define MOBDB_FLAG_X          0x0010  // 16
-#define MOBDB_FLAG_Z          0x0020  // 32
-#define MOBDB_FLAG_T          0x0040  // 64
-#define MOBDB_FLAG_GEODETIC   0x0080  // 128
+#define MEOS_FLAG_X          0x0010  // 16
+#define MEOS_FLAG_Z          0x0020  // 32
+#define MEOS_FLAG_T          0x0040  // 64
+#define MEOS_FLAG_GEODETIC   0x0080  // 128
 
-#define MOBDB_FLAGS_GET_X(flags)          ((bool) (((flags) & MOBDB_FLAG_X)>>4))
-#define MOBDB_FLAGS_GET_Z(flags)          ((bool) (((flags) & MOBDB_FLAG_Z)>>5))
-#define MOBDB_FLAGS_GET_T(flags)          ((bool) (((flags) & MOBDB_FLAG_T)>>6))
-#define MOBDB_FLAGS_GET_GEODETIC(flags)   ((bool) (((flags) & MOBDB_FLAG_GEODETIC)>>7))
+#define MEOS_FLAGS_GET_X(flags)          ((bool) (((flags) & MEOS_FLAG_X)>>4))
+#define MEOS_FLAGS_GET_Z(flags)          ((bool) (((flags) & MEOS_FLAG_Z)>>5))
+#define MEOS_FLAGS_GET_T(flags)          ((bool) (((flags) & MEOS_FLAG_T)>>6))
+#define MEOS_FLAGS_GET_GEODETIC(flags)   ((bool) (((flags) & MEOS_FLAG_GEODETIC)>>7))
 
 #define FLOAT8_LT(a,b)   (float8_cmp_internal(a, b) < 0)
 #define FLOAT8_LE(a,b)   (float8_cmp_internal(a, b) <= 0)
@@ -127,11 +127,11 @@ mindist_stbox_stbox(const STBox *box1, const STBox *box2)
   double result;
   
   /* If the boxes do not intersect in the time dimension return infinity */
-  bool hast = MOBDB_FLAGS_GET_T(box1->flags) && MOBDB_FLAGS_GET_T(box2->flags);
+  bool hast = MEOS_FLAGS_GET_T(box1->flags) && MEOS_FLAGS_GET_T(box2->flags);
   if (hast && ! overlaps_span_span(&box1->period, &box2->period))
       return DBL_MAX;
 
-  if (MOBDB_FLAGS_GET_GEODETIC(box1->flags))
+  if (MEOS_FLAGS_GET_GEODETIC(box1->flags))
   {
     /* Convert the boxes to geometries */
     Datum geo1 = PointerGetDatum(stbox_to_geo(box1));
@@ -158,7 +158,7 @@ mindist_stbox_stbox(const STBox *box1, const STBox *box2)
     else
       dy = 0.0;
 
-    if (MOBDB_FLAGS_GET_Z(box1->flags))
+    if (MEOS_FLAGS_GET_Z(box1->flags))
     {
       if (box1->zmax < box2->zmin)
         dz = box2->zmin - box1->zmax;
@@ -179,11 +179,11 @@ maxdist_stbox_stbox(const STBox *box1, const STBox *box2)
   double result;
   
   /* If the boxes do not intersect in the time dimension return infinity */
-  bool hast = MOBDB_FLAGS_GET_T(box1->flags) && MOBDB_FLAGS_GET_T(box2->flags);
+  bool hast = MEOS_FLAGS_GET_T(box1->flags) && MEOS_FLAGS_GET_T(box2->flags);
   if (hast && ! overlaps_span_span(&box1->period, &box2->period))
     return DBL_MAX;
 
-  if (MOBDB_FLAGS_GET_GEODETIC(box1->flags) || MOBDB_FLAGS_GET_Z(box1->flags))
+  if (MEOS_FLAGS_GET_GEODETIC(box1->flags) || MEOS_FLAGS_GET_Z(box1->flags))
   {
     result = DBL_MAX;
   }
@@ -601,9 +601,9 @@ static double
 stbox_size(const STBox *box)
 {
   double result_size = 1;
-  bool  hasx = MOBDB_FLAGS_GET_X(box->flags),
-        hasz = MOBDB_FLAGS_GET_Z(box->flags),
-        hast = MOBDB_FLAGS_GET_T(box->flags);
+  bool  hasx = MEOS_FLAGS_GET_X(box->flags),
+        hasz = MEOS_FLAGS_GET_Z(box->flags),
+        hast = MEOS_FLAGS_GET_T(box->flags);
   /*
    * Check for zero-width cases.  Note that we define the size of a zero-
    * by-infinity box as zero.  It's important to special-case this somehow,
@@ -770,9 +770,9 @@ static double
 stbox_size_ext(const STBox *box, int qx, int qy, int qt)
 {
   double result_size = 1;
-  bool  hasx = MOBDB_FLAGS_GET_X(box->flags),
-        hasz = MOBDB_FLAGS_GET_Z(box->flags),
-        hast = MOBDB_FLAGS_GET_T(box->flags);
+  bool  hasx = MEOS_FLAGS_GET_X(box->flags),
+        hasz = MEOS_FLAGS_GET_Z(box->flags),
+        hast = MEOS_FLAGS_GET_T(box->flags);
 
   /*
    * Check for zero-width cases.  Note that we define the size of a zero-
