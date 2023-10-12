@@ -14,18 +14,11 @@
 #ifndef MSPGIST_H
 #define MSPGIST_H
 
+#include "access/spgist_private.h"
+
 /* SPGiST opclass support function numbers */
 #define MSPGIST_EXTRACTVALUE_PROC 8
 #define MSPGISTNProc              8
-
-typedef struct mspgLeafConsistentOut
-{
-  Datum   leafValue;    /* reconstructed original data, if any */
-  bool    recheck;    /* set true if operator must be rechecked */
-  bool    recheckDistances; /* set true if distances must be rechecked */
-  double     *mindistances;    /* associated distances */
-  double     *maxdistances;    /* associated distances */
-} mspgLeafConsistentOut;
 
 /*
  * Private state of an index scan
@@ -117,7 +110,7 @@ typedef struct TIDTableEntry
 typedef struct TIDISTTableEntry
 {
     ItemPointerData   tid;            /* TID (hashtable key) */
-    double           *maxdistances;   /* MaxDist Values */
+    SpGistSearchItem *item;           /* Search item storing the distances */
     uint32            hash;           /* hash value (cached) */
     char              status;         /* hash status */
 } TIDISTTableEntry;

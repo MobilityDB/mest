@@ -52,7 +52,7 @@ PG_MODULE_MAGIC;
 
 /* number boxes for extract function */
 #define MSPGIST_EXTRACT_BOXES_DEFAULT    5
-#define MSPGIST_EXTRACT_BOXES_MAX        1000
+#define MSPGIST_EXTRACT_BOXES_MAX        10000
 #define MSPGIST_EXTRACT_GET_BOXES()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MSPGIST_BOXES_Options *) PG_GET_OPCLASS_OPTIONS())->num_boxes : \
           MSPGIST_EXTRACT_BOXES_DEFAULT)
@@ -100,233 +100,6 @@ enum stbox_state {
   STBOX_OK_CHANGED,
   STBOX_DELETED
 };
-
-typedef struct mspgLeafConsistentOut
-{
-  Datum   leafValue;    /* reconstructed original data, if any */
-  bool    recheck;    /* set true if operator must be rechecked */
-  bool    recheckDistances; /* set true if distances must be rechecked */
-  double     *mindistances;    /* associated distances */
-  double     *maxdistances;    /* associated distances */
-} mspgLeafConsistentOut;
-
-extern meosType oid_type(Oid typid);
-extern void temporal_bbox_slice(Datum tempdatum, void *box);
-extern Datum geog_distance(Datum geog1, Datum geog2);
-extern bool tpoint_index_recheck(StrategyNumber strategy);
-extern bool stbox_index_consistent_leaf(const STBox *key, const STBox *query,
-  StrategyNumber strategy);
-
-/*****************************************************************************
- * MSP-GiST leaf-level consistency function
- *****************************************************************************/
-
-static double
-mindist_stbox_stbox(const STBox *box1, const STBox *box2)
-{
-  double result;
-  
-  /* If the boxes do not intersect in the time dimension return infinity */
-  bool hast = MEOS_FLAGS_GET_T(box1->flags) && MEOS_FLAGS_GET_T(box2->flags);
-  if (hast && ! overlaps_span_span(&box1->period, &box2->period))
-      return DBL_MAX;
-
-  if (MEOS_FLAGS_GET_GEODETIC(box1->flags))
-  {
-    /* Convert the boxes to geometries */
-    Datum geo1 = PointerGetDatum(stbox_to_geo(box1));
-    Datum geo2 = PointerGetDatum(stbox_to_geo(box2));
-    /* Compute the result */
-    result = DatumGetFloat8(geog_distance(geo1, geo2));
-    pfree(DatumGetPointer(geo1)); pfree(DatumGetPointer(geo2));
-  }
-  else
-  {
-    double dx, dy, dz=0.0;
-
-    if (box1->xmax < box2->xmin)
-      dx = box2->xmin - box1->xmax;
-    else if (box2->xmax > box1->xmin)
-      dx = box1->xmin - box2->xmax;
-    else
-      dx = 0.0;
-
-    if (box1->ymax < box2->ymin)
-      dy = box2->ymin - box1->ymax;
-    else if (box2->ymax > box1->ymin)
-      dy = box1->ymin - box2->ymax;
-    else
-      dy = 0.0;
-
-    if (MEOS_FLAGS_GET_Z(box1->flags))
-    {
-      if (box1->zmax < box2->zmin)
-        dz = box2->zmin - box1->zmax;
-      else if (box2->zmax > box1->zmin)
-        dz = box1->zmin - box2->zmax;
-      else
-        dz = 0.0;
-    }
-
-    result = sqrt(pow(dx, 2) + pow(dy, 2) + pow(dz, 2));
-  }
-  return result;
-}
-
-static double
-maxdist_stbox_stbox(const STBox *box1, const STBox *box2)
-{
-  double result;
-  
-  /* If the boxes do not intersect in the time dimension return infinity */
-  bool hast = MEOS_FLAGS_GET_T(box1->flags) && MEOS_FLAGS_GET_T(box2->flags);
-  if (hast && ! overlaps_span_span(&box1->period, &box2->period))
-    return DBL_MAX;
-
-  if (MEOS_FLAGS_GET_GEODETIC(box1->flags) || MEOS_FLAGS_GET_Z(box1->flags))
-  {
-    result = DBL_MAX;
-  }
-  else
-  {
-    double a, b;
-
-    double xrs = box1->xmin, 
-           yrs = box1->ymin, 
-           xrt = box1->xmax, 
-           yrt = box1->ymax;
-    double xqs = box2->xmin, 
-           yqs = box2->ymin, 
-           xqt = box2->xmax, 
-           yqt = box2->ymax;
-    double xrm, yrm, xrM, yrM;
-    double xqm, yqm, xqM, yqM;
-
-    if (xqs + xqt <= xrs + xrt)
-    {
-      xrm = xrs;
-      xqm = xqt;
-      xrM = xrt;
-      xqM = xqs;
-    }
-    else
-    {
-      xrm = xrt;
-      xqm = xqs;
-      xrM = xrs;
-      xqM = xqt;
-    }
-
-    if (yqs + yqt <= yrs + yrt)
-    {
-      yrm = yrs;
-      yqm = yqt;
-      yrM = yrt;
-      yqM = yqs;
-    }
-    else
-    {
-      yrm = yrt;
-      yqm = yqs;
-      yrM = yrs;
-      yqM = yqt;
-    }
-
-    a = pow(xrm - xqm, 2) + pow(yrM - yqM, 2);
-    b = pow(yrm - yqm, 2) + pow(xrM - xqM, 2);
-    result = fmax(a, b);
-    result = sqrt(result);
-  }
-  return result;
-}
-
-/**
- * @brief Transform a query argument into an STBox.
- */
-static bool
-tpoint_spgist_get_stbox(const ScanKeyData *scankey, STBox *result)
-{
-  meosType type = oid_type(scankey->sk_subtype);
-  if (type == T_TSTZSPAN)
-  {
-    Span *p = DatumGetSpanP(scankey->sk_argument);
-    period_set_stbox(p, result);
-  }
-  else if (type == T_STBOX)
-  {
-    memcpy(result, DatumGetSTboxP(scankey->sk_argument), sizeof(STBox));
-  }
-  else if (tspatial_type(type))
-  {
-    temporal_bbox_slice(scankey->sk_argument, result);
-  }
-  else
-    elog(ERROR, "Unsupported type for indexing: %d", type);
-  return true;
-}
-
-PG_FUNCTION_INFO_V1(Stbox_mspgist_leaf_consistent);
-/**
- * @brief MSP-GiST leaf-level consistency function for temporal points
- */
-PGDLLEXPORT Datum
-Stbox_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
-{
-  spgLeafConsistentIn *in = (spgLeafConsistentIn *) PG_GETARG_POINTER(0);
-  mspgLeafConsistentOut *out = (mspgLeafConsistentOut *) PG_GETARG_POINTER(1);
-  STBox *key = DatumGetSTboxP(in->leafDatum), box;
-  bool result = true;
-  int i;
-
-  /* Initialize the value to do not recheck, will be updated below */
-  out->recheck = false;
-
-  /* leafDatum is what it is... */
-  out->leafValue = in->leafDatum;
-
-  /* Perform the required comparison(s) */
-  for (i = 0; i < in->nkeys; i++)
-  {
-    StrategyNumber strategy = in->scankeys[i].sk_strategy;
-    /* Update the recheck flag according to the strategy */
-    out->recheck |= tpoint_index_recheck(strategy);
-
-    if (tpoint_spgist_get_stbox(&in->scankeys[i], &box))
-      result = stbox_index_consistent_leaf(key, &box, strategy);
-    else
-      result = false;
-    /* If any check is failed, we have found our answer. */
-    if (! result)
-      break;
-  }
-
-  if (result && in->norderbys > 0)
-  {
-    /* Recheck is necessary when computing distance with bounding boxes */
-    double *mindistances = palloc(sizeof(double) * in->norderbys);
-    double *maxdistances = palloc(sizeof(double) * in->norderbys);
-    out->recheckDistances = true;
-    out->mindistances = mindistances;
-    out->maxdistances = maxdistances;
-    for (i = 0; i < in->norderbys; i++)
-    {
-      /* Cast the order by argument to a box and perform the test */
-      if (tpoint_spgist_get_stbox(&in->orderbys[i], &box))
-      {
-        mindistances[i] = mindist_stbox_stbox(&box, key);
-        maxdistances[i] = maxdist_stbox_stbox(&box, key);
-      }
-      else
-      {
-        /* If empty geometry */
-        mindistances[i] = DBL_MAX;
-        maxdistances[i] = DBL_MAX;
-      }
-    }
-  }
-
-  PG_RETURN_BOOL(result);
-}
 
 /*****************************************************************************
  * ME-GiST extract methods
@@ -807,7 +580,7 @@ stbox_size_ext(const STBox *box, int qx, int qy, int qt)
   }
   if (hast)
     /* Expressed in seconds */
-    result_size *= qt + ((DatumGetTimestampTz(box->period.upper) - 
+    result_size *= qt + ((double)(DatumGetTimestampTz(box->period.upper) - 
       DatumGetTimestampTz(box->period.lower)) / USECS_PER_MINUTE);
   return result_size;
 }
@@ -864,7 +637,6 @@ solve_c(STBox *box, int num_segs,
     s = sqrt(p);
     t = 2 * s * cos(acos(q / (p *s)) / 3) - b;
   }
-  assert(t > 0);
   return t;
 }
 
@@ -890,7 +662,7 @@ tsequence_linearsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
     if (stbox_penalty_ext(&box1, &box2, qx, qy, qt) > 0)
     {
       k = 0;
-      c = round(solve_c(&box1, v - u, qx, qy, qt));
+      c = fmax(1, round(solve_c(&box1, v - u, qx, qy, qt)));
       tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
       for (i = 1; i < v - u + 1; ++i)
       {
@@ -965,6 +737,113 @@ PGDLLEXPORT Datum
 Tpoint_mspgist_manualsplit(PG_FUNCTION_ARGS)
 {
   return tpoint_mspgist_extract(fcinfo, &tsequence_manualsplit);
+}
+
+/*****************************************************************************/
+
+/* Adaptive mergesplit */
+
+static STBox *
+tsequence_adaptivemergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+{
+  min_heap heap;
+  min_heap_elem elem;
+  int *box_states;
+  STBox *boxes, *result;
+  int32 count = seq->count - 1, segs_per_split = MSPGIST_EXTRACT_GET_BOXES();
+  int32 max_count = seq->count / segs_per_split;
+  int i, k = 0;
+
+  if (max_count == 1)
+    return tsequence_extract1(seq, nkeys);
+
+  boxes = palloc(sizeof(STBox) * seq->count);
+  for (i = 0; i < seq->count; ++i)
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
+  for (i = 0; i < count; ++i)
+    stbox_expand(&boxes[i+1], &boxes[i]);
+
+  /* No need to merge boxes */
+  if (count <= max_count)
+  {
+    *nkeys = count;
+    return boxes;
+  }
+
+  box_states = palloc(sizeof(int) * count);
+  for (i = 0; i < count; ++i)
+    box_states[i] = STBOX_OK;
+
+  heap.size = 0;
+  heap.max_size = count - 1;
+  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
+  for (i = 0; i < count - 1; ++i)
+  {
+    elem.boxid1 = i;
+    elem.boxid2 = i + 1;
+    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
+    heap_insert(&heap, elem);
+  }
+
+  while (count > max_count && heap_delete_min(&heap, &elem))
+  {
+    if ((box_states[elem.boxid1] == STBOX_OK
+        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
+      && (box_states[elem.boxid2] == STBOX_OK
+          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
+    {
+      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
+      box_states[elem.boxid1] = STBOX_CHANGED;
+      box_states[elem.boxid2] = STBOX_DELETED;
+      count--;
+    }
+    else
+    {
+      if (box_states[elem.boxid1] == STBOX_DELETED)
+      {
+        for (i = elem.boxid1 - 1; i >= 0; --i)
+        {
+          if (box_states[i] == STBOX_CHANGED
+            || box_states[i] == STBOX_OK_CHANGED)
+          {
+            elem.boxid1 = i;
+            if (box_states[i] == STBOX_CHANGED)
+              box_states[i] = STBOX_CHANGED_OK;
+            else
+              box_states[i] = STBOX_OK;
+            break;
+          }
+        }
+      }
+      if (box_states[elem.boxid2] == STBOX_CHANGED)
+        box_states[elem.boxid2] = STBOX_OK_CHANGED;
+      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
+        box_states[elem.boxid2] = STBOX_OK;
+      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
+      heap_insert(&heap, elem);
+    }
+  }
+
+  result = palloc(sizeof(STBox) * count);
+  for (i = 0; i < seq->count - 1; ++i)
+    if (box_states[i] != STBOX_DELETED)
+      memcpy(&result[k++], &boxes[i], sizeof(STBox));
+
+  pfree(heap.array);
+  pfree(box_states);
+  pfree(boxes);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_mspgist_adaptivemergesplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mspgist_adaptivemergesplit(PG_FUNCTION_ARGS)
+{
+  return tpoint_mspgist_extract(fcinfo, &tsequence_adaptivemergesplit);
 }
 
 /*****************************************************************************/

@@ -566,11 +566,29 @@ mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 					/* If new distance data is smaller */
 					if (result == 1)
 					{
-						/* Re-insert it into the queue using new distance data */
-						pairingheap_remove(so->queue, &entry->item->phNode);
-						memcpy(entry->item->distances, so->distances,
-							   sizeof(entry->item->distances[0]) * nOrderBys);
-						pairingheap_add(so->queue, &entry->item->phNode);
+						/* Create new GISTSearchItem for this item */
+						item = palloc(SizeOfGISTSearchItem(scan->numberOfOrderBys));
+
+						/* Store pointer to item in hash table entry */
+						entry->item = item;
+
+						/* Creating heap-tuple GISTSearchItem */
+						item->blkno = InvalidBlockNumber;
+						item->data.heap.heapPtr = it->t_tid;
+						item->data.heap.recheck = recheck;
+						item->data.heap.recheckDistances = recheck_distances;
+
+						/*
+						 * In an index-only scan, also fetch the data from the tuple.
+						 */
+						if (scan->xs_want_itup)
+							item->data.heap.recontup = mgistFetchTuple(mgiststate, r, it);
+
+						/* Insert it into the queue using new distance data */
+						memcpy(item->distances, so->distances,
+							   sizeof(item->distances[0]) * nOrderBys);
+
+						pairingheap_add(so->queue, &item->phNode);
 					}
 				}
 				else
@@ -661,6 +679,7 @@ getNextMENearest(IndexScanDesc scan)
 {
 	MGISTScanOpaque so = (MGISTScanOpaque) scan->opaque;
 	bool		res = false;
+	bool 		found;
 
 	if (scan->xs_hitup)
 	{
@@ -678,18 +697,23 @@ getNextMENearest(IndexScanDesc scan)
 
 		if (GISTSearchItemIsHeap(*item))
 		{
-			/* found a heap item at currently minimal distance */
-			scan->xs_heaptid = item->data.heap.heapPtr;
-			scan->xs_recheck = item->data.heap.recheck;
+			/* Check TID for deduplication */
+			tidtable_insert(so->tidtable, item->data.heap.heapPtr, &found);
+			if (!found)
+			{
+				/* found a heap item at currently minimal distance */
+				scan->xs_heaptid = item->data.heap.heapPtr;
+				scan->xs_recheck = item->data.heap.recheck;
 
-			index_store_float8_orderby_distances(scan, so->orderByTypes,
-												 item->distances,
-												 item->data.heap.recheckDistances);
+				index_store_float8_orderby_distances(scan, so->orderByTypes,
+													 item->distances,
+													 item->data.heap.recheckDistances);
 
-			/* in an index-only scan, also return the reconstructed tuple. */
-			if (scan->xs_want_itup)
-				scan->xs_hitup = item->data.heap.recontup;
-			res = true;
+				/* in an index-only scan, also return the reconstructed tuple. */
+				if (scan->xs_want_itup)
+					scan->xs_hitup = item->data.heap.recontup;
+				res = true;
+			}
 		}
 		else
 		{

@@ -95,6 +95,10 @@ enum stbox_state {
   STBOX_DELETED
 };
 
+/* liblwgeom.h */
+extern LWMPOLY* lwmpoly_construct_empty(int32_t srid, char hasz, char hasm);
+extern LWMPOLY* lwmpoly_add_lwpoly(LWMPOLY *mobj, const LWPOLY *obj);
+
 /*****************************************************************************
  * ME-GiST extract methods
  *****************************************************************************/
@@ -270,6 +274,63 @@ Tpoint_mgist_equisplit(PG_FUNCTION_ARGS)
   return tpoint_mgist_extract(fcinfo, &tsequence_equisplit);
 }
 
+static STBox *
+tsequence_static_equisplit(const TSequence *seq, int32 count, int32 *nkeys)
+{
+  STBox *result;
+  STBox box1;
+  int segs_per_split, segs_this_split, k;
+
+  segs_per_split = ceil((double) (seq->count - 1) / (double) (count));
+  if (ceil((double) (seq->count - 1) / (double) segs_per_split) < count)
+    count = ceil((double) (seq->count - 1) / (double) segs_per_split);
+
+  k = 0;
+  result = palloc(sizeof(STBox) * count);
+  for (int i = 0; i < seq->count - 1; i += segs_per_split)
+  {
+    segs_this_split = segs_per_split;
+    if (seq->count - 1 - i < segs_per_split)
+      segs_this_split = seq->count - 1 - i;
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &result[k]);
+    for (int j = 1; j < segs_this_split + 1; j++)
+    {
+      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i + j), &box1);
+      stbox_expand(&box1, &result[k]);
+    }
+    k++;
+  }
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_static_equisplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_static_equisplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32     count = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  size_t size;
+  GSERIALIZED *result;
+
+  STBox *boxes = tsequence_static_equisplit((TSequence *) temp, count, &nkeys);
+  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
+  for (int i = 0; i < nkeys; ++i)
+  {
+    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
+    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
+    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
+  }
+  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
+  SET_VARSIZE(result, size);
+  PG_RETURN_POINTER(result);
+}
+
 /*****************************************************************************/
 
 /* Min Heap structures and methods for MergeSplit */
@@ -404,7 +465,7 @@ stbox_size(const STBox *box)
   }
   if (hast)
     /* Expressed in seconds */
-    result_size *= (DatumGetTimestampTz(box->period.upper) - 
+    result_size *= (double) (DatumGetTimestampTz(box->period.upper) - 
       DatumGetTimestampTz(box->period.lower)) / USECS_PER_MINUTE;
   return result_size;
 }
@@ -523,6 +584,125 @@ PGDLLEXPORT Datum
 Tpoint_mgist_mergesplit(PG_FUNCTION_ARGS)
 {
   return tpoint_mgist_extract(fcinfo, &tsequence_mergesplit);
+}
+
+static STBox *
+tsequence_static_mergesplit(const TSequence *seq, int32 max_count, int32 *nkeys)
+{
+  min_heap heap;
+  min_heap_elem elem;
+  int *box_states;
+  STBox *boxes, *result;
+  int32 count = seq->count - 1;
+  int i, k = 0;
+
+  if (max_count == 1)
+    return tsequence_extract1(seq, nkeys);
+
+  boxes = palloc(sizeof(STBox) * seq->count);
+  for (i = 0; i < seq->count; ++i)
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
+  for (i = 0; i < count; ++i)
+    stbox_expand(&boxes[i+1], &boxes[i]);
+
+  /* No need to merge boxes */
+  if (count <= max_count)
+  {
+    *nkeys = count;
+    return boxes;
+  }
+
+  box_states = palloc(sizeof(int) * count);
+  for (i = 0; i < count; ++i)
+    box_states[i] = STBOX_OK;
+
+  heap.size = 0;
+  heap.max_size = count - 1;
+  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
+  for (i = 0; i < count - 1; ++i)
+  {
+    elem.boxid1 = i;
+    elem.boxid2 = i + 1;
+    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
+    heap_insert(&heap, elem);
+  }
+
+  while (count > max_count && heap_delete_min(&heap, &elem))
+  {
+    if ((box_states[elem.boxid1] == STBOX_OK
+        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
+      && (box_states[elem.boxid2] == STBOX_OK
+          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
+    {
+      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
+      box_states[elem.boxid1] = STBOX_CHANGED;
+      box_states[elem.boxid2] = STBOX_DELETED;
+      count--;
+    }
+    else
+    {
+      if (box_states[elem.boxid1] == STBOX_DELETED)
+      {
+        for (i = elem.boxid1 - 1; i >= 0; --i)
+        {
+          if (box_states[i] == STBOX_CHANGED
+            || box_states[i] == STBOX_OK_CHANGED)
+          {
+            elem.boxid1 = i;
+            if (box_states[i] == STBOX_CHANGED)
+              box_states[i] = STBOX_CHANGED_OK;
+            else
+              box_states[i] = STBOX_OK;
+            break;
+          }
+        }
+      }
+      if (box_states[elem.boxid2] == STBOX_CHANGED)
+        box_states[elem.boxid2] = STBOX_OK_CHANGED;
+      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
+        box_states[elem.boxid2] = STBOX_OK;
+      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
+      heap_insert(&heap, elem);
+    }
+  }
+
+  result = palloc(sizeof(STBox) * count);
+  for (i = 0; i < seq->count - 1; ++i)
+    if (box_states[i] != STBOX_DELETED)
+      memcpy(&result[k++], &boxes[i], sizeof(STBox));
+
+  pfree(heap.array);
+  pfree(box_states);
+  pfree(boxes);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_static_mergesplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_static_mergesplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32     count = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  size_t size;
+  GSERIALIZED *result;
+
+  STBox *boxes = tsequence_static_mergesplit((TSequence *) temp, count, &nkeys);
+  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
+  for (int i = 0; i < nkeys; ++i)
+  {
+    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
+    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
+    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
+  }
+  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
+  SET_VARSIZE(result, size);
+  PG_RETURN_POINTER(result);
 }
 
 /*****************************************************************************/
@@ -657,7 +837,7 @@ tsequence_linearsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
     if (stbox_penalty_ext(&box1, &box2, qx, qy, qt) > 0)
     {
       k = 0;
-      c = round(solve_c(&box1, v - u, qx, qy, qt));
+      c = fmax(1, round(solve_c(&box1, v - u, qx, qy, qt)));
       tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
       for (i = 1; i < v - u + 1; ++i)
       {
@@ -698,6 +878,85 @@ Tpoint_mgist_linearsplit(PG_FUNCTION_ARGS)
   return tpoint_mgist_extract(fcinfo, &tsequence_linearsplit);
 }
 
+static STBox *
+tsequence_static_linearsplit(const TSequence *seq, double qx, double qy, double qt, int32 *nkeys)
+{
+  STBox *result, *boxes = palloc(sizeof(STBox)*(seq->count-1));
+  STBox box1, box2, newbox;
+  int32 count = 0;
+  int i, k, c, u = 0, v = 1;
+
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, v), &box2);
+  stbox_expand(&box2, &box1);
+
+  while (v < seq->count - 1)
+  {
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, v + 1), &newbox);
+    stbox_expand(&newbox, &box2);
+    if (stbox_penalty_ext(&box1, &box2, qx, qy, qt) > 0)
+    {
+      k = 0;
+      c = fmax(1, round(solve_c(&box1, v - u, qx, qy, qt)));
+      tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
+      for (i = 1; i < v - u + 1; ++i)
+      {
+        tinstant_set_bbox(TSEQUENCE_INST_N(seq, u + i), &box2);
+        stbox_expand(&box2, &box1);
+        if (i % c == 0)
+        {
+          boxes[count++] = box1;
+          box1 = box2;
+          k++;
+        }
+      }
+      u += k*c;
+    }
+    stbox_expand(&newbox, &box1);
+    box2 = newbox;
+    v++;
+  }
+
+  if (u < seq->count - 1)
+    boxes[count++] = box1;
+
+  result = palloc(sizeof(STBox) * count);
+  for (i = 0; i < count; ++i)
+    result[i] = boxes[i];
+  pfree(boxes);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_static_linearsplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_static_linearsplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  double qx = PG_GETARG_FLOAT8(1);
+  double qy = PG_GETARG_FLOAT8(1);
+  double qt = PG_GETARG_FLOAT8(1);
+
+  int32 nkeys;
+  size_t size;
+  GSERIALIZED *result;
+
+  STBox *boxes = tsequence_static_linearsplit((TSequence *) temp, qx, qy, qt, &nkeys);
+  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
+  for (int i = 0; i < nkeys; ++i)
+  {
+    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
+    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
+    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
+  }
+  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
+  SET_VARSIZE(result, size);
+  PG_RETURN_POINTER(result);
+}
+
 /*****************************************************************************/
 
 /* Manualsplit */
@@ -733,5 +992,283 @@ Tpoint_mgist_manualsplit(PG_FUNCTION_ARGS)
 {
   return tpoint_mgist_extract(fcinfo, &tsequence_manualsplit);
 }
+
+static STBox *
+tsequence_static_manualsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
+{
+  STBox *result;
+  STBox box1;
+  int i, k = 0;
+  int32 count = ceil((double) (seq->count - 1) / (double) segs_per_split);
+
+  result = palloc(sizeof(STBox) * count);
+  tinstant_set_bbox(TSEQUENCE_INST_N(seq, 0), &result[k]);
+  for (i = 1; i < seq->count; ++i)
+  {
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &box1);
+    stbox_expand(&box1, &result[k]);
+    if ((i % segs_per_split == 0) && (i < seq->count - 1))
+      result[++k] = box1;
+  }
+  assert(k + 1 == count);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_static_manualsplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_static_manualsplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32 segs_per_split = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  size_t size;
+  GSERIALIZED *result;
+
+  STBox *boxes = tsequence_static_manualsplit((TSequence *) temp, segs_per_split, &nkeys);
+  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
+  for (int i = 0; i < nkeys; ++i)
+  {
+    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
+    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
+    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
+  }
+  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
+  SET_VARSIZE(result, size);
+  PG_RETURN_POINTER(result);
+}
+
+
+/*****************************************************************************/
+
+/* Adaptive Manualsplit */
+
+static STBox *
+tsequence_adaptivemergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+{
+  min_heap heap;
+  min_heap_elem elem;
+  int *box_states;
+  STBox *boxes, *result;
+  int32 count = seq->count - 1, segs_per_split = MGIST_EXTRACT_GET_BOXES();
+  int32 max_count = seq->count / segs_per_split;
+  int i, k = 0;
+
+  if (max_count <= 1)
+    return tsequence_extract1(seq, nkeys);
+
+  boxes = palloc(sizeof(STBox) * seq->count);
+  for (i = 0; i < seq->count; ++i)
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
+  for (i = 0; i < count; ++i)
+    stbox_expand(&boxes[i+1], &boxes[i]);
+
+  /* No need to merge boxes */
+  if (count <= max_count)
+  {
+    *nkeys = count;
+    return boxes;
+  }
+
+  box_states = palloc(sizeof(int) * count);
+  for (i = 0; i < count; ++i)
+    box_states[i] = STBOX_OK;
+
+  heap.size = 0;
+  heap.max_size = count - 1;
+  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
+  for (i = 0; i < count - 1; ++i)
+  {
+    elem.boxid1 = i;
+    elem.boxid2 = i + 1;
+    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
+    heap_insert(&heap, elem);
+  }
+
+  while (count > max_count && heap_delete_min(&heap, &elem))
+  {
+    if ((box_states[elem.boxid1] == STBOX_OK
+        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
+      && (box_states[elem.boxid2] == STBOX_OK
+          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
+    {
+      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
+      box_states[elem.boxid1] = STBOX_CHANGED;
+      box_states[elem.boxid2] = STBOX_DELETED;
+      count--;
+    }
+    else
+    {
+      if (box_states[elem.boxid1] == STBOX_DELETED)
+      {
+        for (i = elem.boxid1 - 1; i >= 0; --i)
+        {
+          if (box_states[i] == STBOX_CHANGED
+            || box_states[i] == STBOX_OK_CHANGED)
+          {
+            elem.boxid1 = i;
+            if (box_states[i] == STBOX_CHANGED)
+              box_states[i] = STBOX_CHANGED_OK;
+            else
+              box_states[i] = STBOX_OK;
+            break;
+          }
+        }
+      }
+      if (box_states[elem.boxid2] == STBOX_CHANGED)
+        box_states[elem.boxid2] = STBOX_OK_CHANGED;
+      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
+        box_states[elem.boxid2] = STBOX_OK;
+      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
+      heap_insert(&heap, elem);
+    }
+  }
+
+  result = palloc(sizeof(STBox) * count);
+  for (i = 0; i < seq->count - 1; ++i)
+    if (box_states[i] != STBOX_DELETED)
+      memcpy(&result[k++], &boxes[i], sizeof(STBox));
+
+  pfree(heap.array);
+  pfree(box_states);
+  pfree(boxes);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_mgist_adaptivemergesplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mgist_adaptivemergesplit(PG_FUNCTION_ARGS)
+{
+  return tpoint_mgist_extract(fcinfo, &tsequence_adaptivemergesplit);
+}
+
+static STBox *
+tsequence_static_adaptivemergesplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
+{
+  min_heap heap;
+  min_heap_elem elem;
+  int *box_states;
+  STBox *boxes, *result;
+  int32 count = seq->count - 1;
+  int32 max_count = seq->count / segs_per_split;
+  int i, k = 0;
+
+  if (max_count <= 1)
+    return tsequence_extract1(seq, nkeys);
+
+  boxes = palloc(sizeof(STBox) * seq->count);
+  for (i = 0; i < seq->count; ++i)
+    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
+  for (i = 0; i < count; ++i)
+    stbox_expand(&boxes[i+1], &boxes[i]);
+
+  /* No need to merge boxes */
+  if (count <= max_count)
+  {
+    *nkeys = count;
+    return boxes;
+  }
+
+  box_states = palloc(sizeof(int) * count);
+  for (i = 0; i < count; ++i)
+    box_states[i] = STBOX_OK;
+
+  heap.size = 0;
+  heap.max_size = count - 1;
+  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
+  for (i = 0; i < count - 1; ++i)
+  {
+    elem.boxid1 = i;
+    elem.boxid2 = i + 1;
+    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
+    heap_insert(&heap, elem);
+  }
+
+  while (count > max_count && heap_delete_min(&heap, &elem))
+  {
+    if ((box_states[elem.boxid1] == STBOX_OK
+        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
+      && (box_states[elem.boxid2] == STBOX_OK
+          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
+    {
+      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
+      box_states[elem.boxid1] = STBOX_CHANGED;
+      box_states[elem.boxid2] = STBOX_DELETED;
+      count--;
+    }
+    else
+    {
+      if (box_states[elem.boxid1] == STBOX_DELETED)
+      {
+        for (i = elem.boxid1 - 1; i >= 0; --i)
+        {
+          if (box_states[i] == STBOX_CHANGED
+            || box_states[i] == STBOX_OK_CHANGED)
+          {
+            elem.boxid1 = i;
+            if (box_states[i] == STBOX_CHANGED)
+              box_states[i] = STBOX_CHANGED_OK;
+            else
+              box_states[i] = STBOX_OK;
+            break;
+          }
+        }
+      }
+      if (box_states[elem.boxid2] == STBOX_CHANGED)
+        box_states[elem.boxid2] = STBOX_OK_CHANGED;
+      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
+        box_states[elem.boxid2] = STBOX_OK;
+      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
+      heap_insert(&heap, elem);
+    }
+  }
+
+  result = palloc(sizeof(STBox) * count);
+  for (i = 0; i < seq->count - 1; ++i)
+    if (box_states[i] != STBOX_DELETED)
+      memcpy(&result[k++], &boxes[i], sizeof(STBox));
+
+  pfree(heap.array);
+  pfree(box_states);
+  pfree(boxes);
+  *nkeys = count;
+  return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_static_adaptivemergesplit);
+/**
+ * ME-GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_static_adaptivemergesplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32 segs_per_split = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  size_t size;
+  GSERIALIZED *result;
+
+  STBox *boxes = tsequence_static_adaptivemergesplit((TSequence *) temp, segs_per_split, &nkeys);
+  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
+  for (int i = 0; i < nkeys; ++i)
+  {
+    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
+    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
+    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
+  }
+  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
+  SET_VARSIZE(result, size);
+  PG_RETURN_POINTER(result);
+}
+
 
 /*****************************************************************************/
