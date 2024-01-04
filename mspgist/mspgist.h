@@ -132,6 +132,10 @@ extern bool mspginsert(Relation index, Datum *values, bool *isnull,
             bool indexUnchanged,
             struct IndexInfo *indexInfo);
 
+/* mspginsert.c */
+extern bool mspgdoinsert(Relation index, SpGistState *state,
+  ItemPointer heapPtr, Datum *datums, bool *isnulls);
+
 /* mspgscan.c */
 extern IndexScanDesc mspgbeginscan(Relation rel, 
   int keysz, int orderbysz);

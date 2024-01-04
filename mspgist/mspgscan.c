@@ -41,7 +41,7 @@
 #define SH_KEY tid
 #define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
 #define SH_EQUAL(tb, a, b) ItemPointerEquals(&a, &b)
-// #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0
+/*  #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0 */
 #define SH_SCOPE extern
 #define SH_STORE_HASH
 #define SH_GET_HASH(tb, a) a->hash
@@ -59,7 +59,7 @@
 #define SH_KEY tid
 #define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
 #define SH_EQUAL(tb, a, b) ItemPointerEquals(&a, &b)
-// #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0
+/*  #define SH_EQUAL(tb, a, b) memcmp(&a, &b, 6) == 0 */
 #define SH_SCOPE extern
 #define SH_STORE_HASH
 #define SH_GET_HASH(tb, a) a->hash
@@ -78,7 +78,7 @@ typedef void (*storeRes_func) (MSpGistScanOpaque so, ItemPointer heapPtr,
  */
 static int
 pairingheap_MSpGistSearchItem_cmp(const pairingheap_node *a,
-								 const pairingheap_node *b, void *arg)
+								  const pairingheap_node *b, void *arg)
 {
 	const SpGistSearchItem *sa = (const SpGistSearchItem *) a;
 	const SpGistSearchItem *sb = (const SpGistSearchItem *) b;
@@ -154,7 +154,7 @@ mspgAllocSearchItem(MSpGistScanOpaque so, bool isnull, double *distances)
 {
 	/* allocate distance array only for non-NULL items */
 	SpGistSearchItem *item =
-	palloc(SizeOfSpGistSearchItem(isnull ? 0 : so->numberOfNonNullOrderBys));
+		palloc(SizeOfSpGistSearchItem(isnull ? 0 : so->numberOfNonNullOrderBys));
 
 	item->isNull = isnull;
 
@@ -169,7 +169,7 @@ static void
 mspgAddStartItem(MSpGistScanOpaque so, bool isnull)
 {
 	SpGistSearchItem *startEntry =
-	mspgAllocSearchItem(so, isnull, so->zeroDistances);
+		mspgAllocSearchItem(so, isnull, so->zeroDistances);
 
 	ItemPointerSet(&startEntry->heapPtr,
 				   isnull ? SPGIST_NULL_BLKNO : SPGIST_ROOT_BLKNO,
@@ -422,7 +422,7 @@ mspgbeginscan(Relation rel, int keysz, int orderbysz)
 
 void
 mspgrescan(IndexScanDesc scan, ScanKey scankey, int nscankeys,
-		  ScanKey orderbys, int norderbys)
+		   ScanKey orderbys, int norderbys)
 {
 	MSpGistScanOpaque so = (MSpGistScanOpaque) scan->opaque;
 
@@ -505,8 +505,8 @@ mspgendscan(IndexScanDesc scan)
  */
 static SpGistSearchItem *
 mspgNewHeapItem(MSpGistScanOpaque so, int level, SpGistLeafTuple leafTuple,
-			   Datum leafValue, bool recheck, bool recheckDistances,
-			   bool isnull, double *distances)
+				Datum leafValue, bool recheck, bool recheckDistances,
+				bool isnull, double *distances)
 {
 	SpGistSearchItem *item = mspgAllocSearchItem(so, isnull, distances);
 
@@ -558,11 +558,11 @@ mspgNewHeapItem(MSpGistScanOpaque so, int level, SpGistLeafTuple leafTuple,
  */
 static bool
 mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
-			SpGistLeafTuple leafTuple, bool isnull,
-			bool *reportedSome, storeRes_func storeRes)
+			 SpGistLeafTuple leafTuple, bool isnull,
+			 bool *reportedSome, storeRes_func storeRes)
 {
 	Datum		leafValue;
-	double *distances;
+	double	   *distances;
 	bool		result;
 	bool		recheck;
 	bool		recheckDistances;
@@ -620,8 +620,10 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 		{
 			SpGistSearchItem *heapItem;
 			TIDISTTableEntry *entry;
-			bool found;
-			int i, cmp_result = 0, nOrderBys = so->numberOfNonNullOrderBys;
+			bool		found;
+			int			i,
+						cmp_result = 0,
+						nOrderBys = so->numberOfNonNullOrderBys;
 
 			/* the scan is ordered -> add the heapItem to the queue */
 			MemoryContext oldCxt = MemoryContextSwitchTo(so->traversalCxt);
@@ -634,7 +636,7 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 				for (i = 0; i < nOrderBys; i++)
 				{
 					cmp_result = -float8_cmp_internal(distances[i],
-																					  heapItem->distances[i]);
+													  heapItem->distances[i]);
 					if (cmp_result != 0)
 						break;
 				}
@@ -642,38 +644,41 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 				/* If new distance data is smaller */
 				if (cmp_result == 1)
 				{
-					SpGistSearchItem *heapItem = mspgNewHeapItem(so, item->level,
-															leafTuple,
-															leafValue,
-															recheck,
-															recheckDistances,
-															isnull,
-															distances);
-					/* Store pointer to item in hash table entry */
-					entry->item = heapItem;
+					SpGistSearchItem *newHeapItem = mspgNewHeapItem(so, item->level,
+																 leafTuple,
+																 leafValue,
+																 recheck,
+																 recheckDistances,
+																 isnull,
+																 distances);
 
-					mspgAddSearchItemToQueue(so, heapItem);
+					/* Store pointer to item in hash table entry */
+					entry->item = newHeapItem;
+
+					mspgAddSearchItemToQueue(so, newHeapItem);
 				}
 			}
 			else
 			{
-				SpGistSearchItem *heapItem = mspgNewHeapItem(so, item->level,
-														leafTuple,
-														leafValue,
-														recheck,
-														recheckDistances,
-														isnull,
-														distances);
-				/* Store pointer to item in hash table entry */
-				entry->item = heapItem;
+				SpGistSearchItem *newHeapItem = mspgNewHeapItem(so, item->level,
+															 leafTuple,
+															 leafValue,
+															 recheck,
+															 recheckDistances,
+															 isnull,
+															 distances);
 
-				mspgAddSearchItemToQueue(so, heapItem);
+				/* Store pointer to item in hash table entry */
+				entry->item = newHeapItem;
+
+				mspgAddSearchItemToQueue(so, newHeapItem);
 			}
 			MemoryContextSwitchTo(oldCxt);
 		}
 		else
 		{
-			bool found;
+			bool		found;
+
 			/* Check TID for deduplication */
 			tidtable_insert(so->tidtable, leafTuple->heapPtr, &found);
 			if (!found)
@@ -693,9 +698,9 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 /* A bundle initializer for inner_consistent methods */
 static void
 mspgInitInnerConsistentIn(spgInnerConsistentIn *in,
-						 MSpGistScanOpaque so,
-						 SpGistSearchItem *item,
-						 SpGistInnerTuple innerTuple)
+						  MSpGistScanOpaque so,
+						  SpGistSearchItem *item,
+						  SpGistInnerTuple innerTuple)
 {
 	in->scankeys = so->keyData;
 	in->orderbys = so->orderByData;
@@ -754,7 +759,7 @@ spgMakeInnerItem(MSpGistScanOpaque so,
 
 static void
 mspgInnerTest(MSpGistScanOpaque so, SpGistSearchItem *item,
-			 SpGistInnerTuple innerTuple, bool isnull)
+			  SpGistInnerTuple innerTuple, bool isnull)
 {
 	MemoryContext oldCxt = MemoryContextSwitchTo(so->tempCxt);
 	spgInnerConsistentOut out;
@@ -857,7 +862,7 @@ spgTestLeafTuple(MSpGistScanOpaque so,
 				 storeRes_func storeRes)
 {
 	SpGistLeafTuple leafTuple = (SpGistLeafTuple)
-	PageGetItem(page, PageGetItemId(page, offset));
+		PageGetItem(page, PageGetItemId(page, offset));
 
 	if (leafTuple->tupstate != SPGIST_LIVE)
 	{
@@ -904,7 +909,7 @@ spgTestLeafTuple(MSpGistScanOpaque so,
  */
 static void
 mspgWalk(Relation index, MSpGistScanOpaque so, bool scanWholeIndex,
-		storeRes_func storeRes, Snapshot snapshot)
+		 storeRes_func storeRes, Snapshot snapshot)
 {
 	Buffer		buffer = InvalidBuffer;
 	bool		reportedSome = false;
@@ -922,7 +927,8 @@ redirect:
 
 		if (item->isLeaf)
 		{
-			bool found;
+			bool		found;
+
 			/* Check TID for deduplication */
 			tidtable_insert(so->tidtable, item->heapPtr, &found);
 			if (!found)
@@ -991,7 +997,7 @@ redirect:
 			else				/* page is inner */
 			{
 				SpGistInnerTuple innerTuple = (SpGistInnerTuple)
-				PageGetItem(page, PageGetItemId(page, offset));
+					PageGetItem(page, PageGetItemId(page, offset));
 
 				if (innerTuple->tupstate != SPGIST_LIVE)
 				{
@@ -1069,7 +1075,7 @@ storeGettuple(MSpGistScanOpaque so, ItemPointer heapPtr,
 		else
 		{
 			IndexOrderByDistance *distances =
-			palloc(sizeof(distances[0]) * so->numberOfOrderBys);
+				palloc(sizeof(distances[0]) * so->numberOfOrderBys);
 			int			i;
 
 			for (i = 0; i < so->numberOfOrderBys; i++)
@@ -1167,7 +1173,7 @@ mspggettuple(IndexScanDesc scan, ScanDirection dir)
 		so->iPtr = so->nPtrs = 0;
 
 		mspgWalk(scan->indexRelation, so, false, storeGettuple,
-				scan->xs_snapshot);
+				 scan->xs_snapshot);
 
 		if (so->nPtrs == 0)
 			break;				/* must have completed scan */

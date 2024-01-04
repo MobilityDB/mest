@@ -336,9 +336,9 @@ mspgvalidate(Oid opclassoid)
  */
 void
 mspgadjustmembers(Oid opfamilyoid,
-				 Oid opclassoid,
-				 List *operators,
-				 List *functions)
+				  Oid opclassoid,
+				  List *operators,
+				  List *functions)
 {
 	ListCell   *lc;
 

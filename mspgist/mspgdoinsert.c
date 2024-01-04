@@ -24,6 +24,7 @@
 #include "storage/bufmgr.h"
 #include "utils/rel.h"
 
+#include "mspgist.h"
 
 /*
  * SPPageDesc tracks all info about a page we are inserting into.  In some
@@ -395,7 +396,6 @@ moveLeafs(Relation index, SpGistState *state,
 				size;
 	Buffer		nbuf;
 	Page		npage;
-	SpGistLeafTuple it;
 	OffsetNumber r = InvalidOffsetNumber,
 				startOffset = InvalidOffsetNumber;
 	bool		replaceDead = false;
@@ -467,6 +467,8 @@ moveLeafs(Relation index, SpGistState *state,
 	{
 		for (i = 0; i < nDelete; i++)
 		{
+			SpGistLeafTuple it;
+
 			it = (SpGistLeafTuple) PageGetItem(current->page,
 											   PageGetItemId(current->page, toDelete[i]));
 			Assert(it->tupstate == SPGIST_LIVE);
@@ -1911,8 +1913,8 @@ spgSplitNodeAction(Relation index, SpGistState *state,
  * case, caller should re-call spgdoinsert() with the same args.
  */
 bool
-spgdoinsert(Relation index, SpGistState *state,
-			ItemPointer heapPtr, Datum *datums, bool *isnulls)
+mspgdoinsert(Relation index, SpGistState *state,
+			 ItemPointer heapPtr, Datum *datums, bool *isnulls)
 {
 	bool		result = true;
 	TupleDesc	leafDescriptor = state->leafTupDesc;

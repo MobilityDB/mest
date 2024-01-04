@@ -39,11 +39,11 @@ typedef struct
 } SpGistBuildState;
 
 static Datum *
-mspgExtractKey(Relation index, Datum value, bool isnull, 
-	int32 *nentries, bool **null_flags)
+mspgExtractKey(Relation index, Datum value, bool isnull,
+			   int32 *nentries, bool **null_flags)
 {
-	FmgrInfo *extractProcInfo = NULL;
-	Datum 	 *key_values;
+	FmgrInfo   *extractProcInfo = NULL;
+	Datum	   *key_values;
 
 	if (isnull)
 	{
@@ -60,10 +60,10 @@ mspgExtractKey(Relation index, Datum value, bool isnull,
 	extractProcInfo = index_getprocinfo(index, 1, MSPGIST_EXTRACTVALUE_PROC);
 	key_values = (Datum *)
 		DatumGetPointer(FunctionCall3Coll(extractProcInfo,
-									  index->rd_indcollation[spgKeyColumn],
-									  value,
-									  PointerGetDatum(nentries),
-									  PointerGetDatum(*null_flags)));
+										  index->rd_indcollation[spgKeyColumn],
+										  value,
+										  PointerGetDatum(nentries),
+										  PointerGetDatum(*null_flags)));
 
 	if (*null_flags == NULL)
 		*null_flags = palloc0((*nentries) * sizeof(bool));
@@ -74,32 +74,33 @@ mspgExtractKey(Relation index, Datum value, bool isnull,
 /* Callback to process one heap tuple during table_index_build_scan */
 static void
 mspgistBuildCallback(Relation index, ItemPointer tid, Datum *values,
-					bool *isnull, bool tupleIsAlive, void *state)
+					 bool *isnull, bool tupleIsAlive, void *state)
 {
 	SpGistBuildState *buildstate = (SpGistBuildState *) state;
 	MemoryContext oldCtx;
-	Datum *extracted_values;
-	bool  *null_flags = NULL;
-	int32  i, nentries;
+	Datum	   *extracted_values;
+	bool	   *null_flags = NULL;
+	int32		i,
+				nentries;
 
 	/* Work in temp context, and reset it after each tuple */
 	oldCtx = MemoryContextSwitchTo(buildstate->tmpCtx);
 
-	extracted_values = mspgExtractKey(index, 
-		values[spgKeyColumn], isnull[spgKeyColumn], 
-		&nentries, &null_flags);
+	extracted_values = mspgExtractKey(index,
+									  values[spgKeyColumn], isnull[spgKeyColumn],
+									  &nentries, &null_flags);
 
 	for (i = 0; i < nentries; ++i)
 	{
 		/*
-		 * Even though no concurrent insertions can be happening, we still might
-		 * get a buffer-locking failure due to bgwriter or checkpointer taking a
-		 * lock on some buffer.  So we need to be willing to retry.  We can flush
-		 * any temp data when retrying.
+		 * Even though no concurrent insertions can be happening, we still
+		 * might get a buffer-locking failure due to bgwriter or checkpointer
+		 * taking a lock on some buffer.  So we need to be willing to retry.
+		 * We can flush any temp data when retrying.
 		 */
 		values[spgKeyColumn] = extracted_values[i];
 		isnull[spgKeyColumn] = null_flags[i];
-		while (!spgdoinsert(index, &buildstate->spgstate, tid, values, isnull))
+		while (!mspgdoinsert(index, &buildstate->spgstate, tid, values, isnull))
 		{
 			MemoryContextReset(buildstate->tmpCtx);
 		}
@@ -194,73 +195,23 @@ mspgbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 }
 
 /*
- * Build an empty SPGiST index in the initialization fork
- */
-void
-spgbuildempty(Relation index)
-{
-	Page		page;
-
-	/* Construct metapage. */
-	page = (Page) palloc(BLCKSZ);
-	SpGistInitMetapage(page);
-
-	/*
-	 * Write the page and log it unconditionally.  This is important
-	 * particularly for indexes created on tablespaces and databases whose
-	 * creation happened after the last redo pointer as recovery removes any
-	 * of their existing content when the corresponding create records are
-	 * replayed.
-	 */
-	PageSetChecksumInplace(page, SPGIST_METAPAGE_BLKNO);
-	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_METAPAGE_BLKNO,
-			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_METAPAGE_BLKNO, page, true);
-
-	/* Likewise for the root page. */
-	SpGistInitPage(page, SPGIST_LEAF);
-
-	PageSetChecksumInplace(page, SPGIST_ROOT_BLKNO);
-	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_ROOT_BLKNO,
-			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_ROOT_BLKNO, page, true);
-
-	/* Likewise for the null-tuples root page. */
-	SpGistInitPage(page, SPGIST_LEAF | SPGIST_NULLS);
-
-	PageSetChecksumInplace(page, SPGIST_NULL_BLKNO);
-	smgrwrite(RelationGetSmgr(index), INIT_FORKNUM, SPGIST_NULL_BLKNO,
-			  (char *) page, true);
-	log_newpage(&(RelationGetSmgr(index))->smgr_rnode.node, INIT_FORKNUM,
-				SPGIST_NULL_BLKNO, page, true);
-
-	/*
-	 * An immediate sync is required even if we xlog'd the pages, because the
-	 * writes did not go through shared buffers and therefore a concurrent
-	 * checkpoint may have moved the redo pointer past our xlog record.
-	 */
-	smgrimmedsync(RelationGetSmgr(index), INIT_FORKNUM);
-}
-
-/*
  * Insert one new tuple into an SPGiST index.
  */
 bool
 mspginsert(Relation index, Datum *values, bool *isnull,
-		  ItemPointer ht_ctid, Relation heapRel,
-		  IndexUniqueCheck checkUnique,
-		  bool indexUnchanged,
-		  IndexInfo *indexInfo)
+		   ItemPointer ht_ctid, Relation heapRel,
+		   IndexUniqueCheck checkUnique,
+		   bool indexUnchanged,
+		   IndexInfo *indexInfo)
 {
 	SpGistState spgstate;
 	MemoryContext oldCtx;
 	MemoryContext insertCtx;
 
-	Datum *extracted_values;
-	bool  *null_flags = NULL;
-	int32  i, nentries;
+	Datum	   *extracted_values;
+	bool	   *null_flags = NULL;
+	int32		i,
+				nentries;
 
 	insertCtx = AllocSetContextCreate(CurrentMemoryContext,
 									  "SP-GiST insert temporary context",
@@ -269,17 +220,17 @@ mspginsert(Relation index, Datum *values, bool *isnull,
 
 	initSpGistState(&spgstate, index);
 
-	extracted_values = mspgExtractKey(index, 
-		values[spgKeyColumn], isnull[spgKeyColumn], 
-		&nentries, &null_flags);
+	extracted_values = mspgExtractKey(index,
+									  values[spgKeyColumn], isnull[spgKeyColumn],
+									  &nentries, &null_flags);
 
 	for (i = 0; i < nentries; ++i)
 	{
 		/*
-		 * Even though no concurrent insertions can be happening, we still might
-		 * get a buffer-locking failure due to bgwriter or checkpointer taking a
-		 * lock on some buffer.  So we need to be willing to retry.  We can flush
-		 * any temp data when retrying.
+		 * Even though no concurrent insertions can be happening, we still
+		 * might get a buffer-locking failure due to bgwriter or checkpointer
+		 * taking a lock on some buffer.  So we need to be willing to retry.
+		 * We can flush any temp data when retrying.
 		 */
 		values[spgKeyColumn] = extracted_values[i];
 		isnull[spgKeyColumn] = null_flags[i];
