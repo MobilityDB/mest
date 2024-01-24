@@ -6,7 +6,7 @@
  *    changes should be made with care.
  *
  *
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * src/include/access/gist.h
@@ -233,7 +233,7 @@ extern IndexTuple *mgistExtractItups(MGISTSTATE *mgiststate,
 extern IndexBuildResult *mgistbuild(Relation heap, Relation index,
                                      struct IndexInfo *indexInfo);
 
-/* gistbuildbuffers.c */
+/* mgistbuildbuffers.c */
 extern GISTNodeBuffer *mgistGetNodeBuffer(GISTBuildBuffers *gfbb,
                                            MGISTSTATE *mgiststate,
                                            BlockNumber blkno, int level);

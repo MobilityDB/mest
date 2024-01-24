@@ -12,8 +12,7 @@ OBJS = \
 	mgistsplit.o \
 	mgistutil.o \
 	mgistvacuum.o \
-	mgistvalidate.o \
-	mgistxlog.o
+	mgistvalidate.o
 
 EXTENSION = mgist
 DATA = mgist--1.0.sql

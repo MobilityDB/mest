@@ -22,7 +22,7 @@
  * tuples (unless buffering mode is disabled).
  *
  *
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -164,7 +164,7 @@ static BlockNumber mgistbufferinginserttuples(MGISTBuildState *buildstate,
 											   BlockNumber parentblk, OffsetNumber downlinkoffnum);
 static Buffer mgistBufferingFindCorrectParent(MGISTBuildState *buildstate,
 											   BlockNumber childblkno, int level,
-											   BlockNumber *parentblk,
+											   BlockNumber *parentblkno,
 											   OffsetNumber *downlinkoffnum);
 static void mgistProcessEmptyingQueue(MGISTBuildState *buildstate);
 static void mgistEmptyAllBuffers(MGISTBuildState *buildstate);
@@ -173,7 +173,8 @@ static int	gistGetMaxLevel(Relation index);
 static void mgistInitParentMap(MGISTBuildState *buildstate);
 static void mgistMemorizeParent(MGISTBuildState *buildstate, BlockNumber child,
 								 BlockNumber parent);
-static void mgistMemorizeAllDownlinks(MGISTBuildState *buildstate, Buffer parent);
+static void mgistMemorizeAllDownlinks(MGISTBuildState *buildstate,
+								 Buffer parentbuf);
 static BlockNumber mgistGetParent(MGISTBuildState *buildstate, BlockNumber child);
 
 
@@ -299,7 +300,7 @@ mgistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		Page		page;
 
 		/* initialize the root page */
-		buffer = gistNewBuffer(index);
+		buffer = gistNewBuffer(index, heap);
 		Assert(BufferGetBlockNumber(buffer) == GIST_ROOT_BLKNO);
 		page = BufferGetPage(buffer);
 
@@ -416,7 +417,7 @@ mgist_indexsortbuild(MGISTBuildState *mebuildstate)
 	 * Write an empty page as a placeholder for the root page. It will be
 	 * replaced with the real root page at the end.
 	 */
-	page = palloc0(BLCKSZ);
+	page = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, MCXT_ALLOC_ZERO);
 	smgrextend(RelationGetSmgr(mebuildstate->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
 			   page, true);
 	mebuildstate->pages_allocated++;
@@ -464,7 +465,7 @@ mgist_indexsortbuild(MGISTBuildState *mebuildstate)
 	smgrwrite(RelationGetSmgr(mebuildstate->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
 			  levelstate->pages[0], true);
 	if (RelationNeedsWAL(mebuildstate->indexrel))
-		log_newpage(&mebuildstate->indexrel->rd_node, MAIN_FORKNUM, GIST_ROOT_BLKNO,
+		log_newpage(&mebuildstate->indexrel->rd_locator, MAIN_FORKNUM, GIST_ROOT_BLKNO,
 					levelstate->pages[0], true);
 
 	pfree(levelstate->pages[0]);
@@ -510,7 +511,8 @@ mgist_indexsortbuild_levelstate_add(MGISTBuildState *mebuildstate,
 			levelstate->current_page++;
 
 		if (levelstate->pages[levelstate->current_page] == NULL)
-			levelstate->pages[levelstate->current_page] = palloc(BLCKSZ);
+			levelstate->pages[levelstate->current_page] =
+				palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
 
 		newPage = levelstate->pages[levelstate->current_page];
 		gistinitpage(newPage, old_page_flags);
@@ -580,7 +582,7 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 
 		/* Create page and copy data */
 		data = (char *) (dist->list);
-		target = palloc0(BLCKSZ);
+		target = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, MCXT_ALLOC_ZERO);
 		gistinitpage(target, isleaf ? F_LEAF : 0);
 		for (int i = 0; i < dist->block.num; i++)
 		{
@@ -631,7 +633,7 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 		if (parent == NULL)
 		{
 			parent = palloc0(sizeof(GistSortedBuildLevelState));
-			parent->pages[0] = (Page) palloc(BLCKSZ);
+			parent->pages[0] = (Page) palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
 			parent->parent = NULL;
 			gistinitpage(parent->pages[0], 0);
 
@@ -665,7 +667,7 @@ mgist_indexsortbuild_flush_ready_pages(MGISTBuildState *state)
 	}
 
 	if (RelationNeedsWAL(state->indexrel))
-		log_newpages(&state->indexrel->rd_node, MAIN_FORKNUM, state->ready_num_pages,
+		log_newpages(&state->indexrel->rd_locator, MAIN_FORKNUM, state->ready_num_pages,
 					 state->ready_blknos, state->ready_pages, true);
 
 	for (int i = 0; i < state->ready_num_pages; i++)
@@ -993,6 +995,19 @@ mgistBuildCallback(Relation index,
 
 	for (int i = 0; i < nitups; ++i)
 	{
+		/* Update tuple count and total size. */
+		mebuildstate->indtuples += 1;
+		mebuildstate->indtuplesSize += IndexTupleSize(itups[i]);
+		
+		/*
+		 * XXX In buffering builds, the tempCxt is also reset down inside
+		 * gistProcessEmptyingQueue().  This is not great because it risks
+		 * confusion and possible use of dangling pointers (for example, itup
+		 * might be already freed when control returns here).  It's generally
+		 * better that a memory context be "owned" by only one function.  However,
+		 * currently this isn't causing issues so it doesn't seem worth the amount
+		 * of refactoring that would be needed to avoid it.
+		 */
 		if (mebuildstate->buildMode == GIST_BUFFERING_ACTIVE)
 		{
 			/* We have buffers, so use them. */
@@ -1007,10 +1022,6 @@ mgistBuildCallback(Relation index,
 			mgistdoinsert(index, itups[i], mebuildstate->freespace,
 						   mebuildstate->mgiststate, mebuildstate->heaprel, true);
 		}
-
-		/* Update tuple count and total size. */
-		mebuildstate->indtuples += 1;
-		mebuildstate->indtuplesSize += IndexTupleSize(itups[i]);
 	}
 
 	MemoryContextSwitchTo(oldCtx);
@@ -1680,7 +1691,7 @@ mgistMemorizeParent(MGISTBuildState *mebuildstate, BlockNumber child, BlockNumbe
 	bool		found;
 
 	entry = (ParentMapEntry *) hash_search(mebuildstate->parentMap,
-										   (const void *) &child,
+										   &child,
 										   HASH_ENTER,
 										   &found);
 	entry->parentblkno = parent;
@@ -1718,7 +1729,7 @@ mgistGetParent(MGISTBuildState *mebuildstate, BlockNumber child)
 
 	/* Find node buffer in hash table */
 	entry = (ParentMapEntry *) hash_search(mebuildstate->parentMap,
-										   (const void *) &child,
+										   &child,
 										   HASH_FIND,
 										   &found);
 	if (!found)

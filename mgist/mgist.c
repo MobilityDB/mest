@@ -4,7 +4,7 @@
  *	  interface routines for the postgres GiST index access method.
  *
  *
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -83,6 +83,7 @@ mgisthandler(PG_FUNCTION_ARGS)
 	amroutine->amcanparallel = false;
 	amroutine->amcaninclude = true;
 	amroutine->amusemaintenanceworkmem = false;
+	amroutine->amsummarizing = false;
 	amroutine->amparallelvacuumoptions =
 		VACUUM_OPTION_PARALLEL_BULKDEL | VACUUM_OPTION_PARALLEL_COND_CLEANUP;
 	amroutine->amkeytype = InvalidOid;
@@ -138,8 +139,8 @@ gistbuildempty(Relation index)
 	Buffer		buffer;
 
 	/* Initialize the root page */
-	buffer = ReadBufferExtended(index, INIT_FORKNUM, P_NEW, RBM_NORMAL, NULL);
-	LockBuffer(buffer, BUFFER_LOCK_EXCLUSIVE);
+	buffer = ExtendBufferedRel(BMR_REL(index), INIT_FORKNUM, NULL,
+							   EB_SKIP_EXTENSION_LOCK | EB_LOCK_FIRST);
 
 	/* Initialize and xlog buffer */
 	START_CRIT_SECTION();
@@ -243,7 +244,6 @@ mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
 	Page		page = BufferGetPage(buffer);
 	bool		is_leaf = (GistPageIsLeaf(page)) ? true : false;
 	XLogRecPtr	recptr;
-	int			i;
 	bool		is_split;
 
 	/*
@@ -358,7 +358,7 @@ mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
 		for (; ptr; ptr = ptr->next)
 		{
 			/* Allocate new page */
-			ptr->buffer = gistNewBuffer(rel);
+			ptr->buffer = gistNewBuffer(rel, heapRel);
 			GISTInitBuffer(ptr->buffer, (is_leaf) ? F_LEAF : 0);
 			ptr->page = BufferGetPage(ptr->buffer);
 			ptr->block.blkno = BufferGetBlockNumber(ptr->buffer);
@@ -429,7 +429,7 @@ mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
 		{
 			char	   *data = (char *) (ptr->list);
 
-			for (i = 0; i < ptr->block.num; i++)
+			for (int i = 0; i < ptr->block.num; i++)
 			{
 				IndexTuple	thistup = (IndexTuple) data;
 
@@ -1027,87 +1027,106 @@ gistFindPath(Relation r, BlockNumber child, OffsetNumber *downlinkoffnum)
  * remain so at exit, but it might not be the same page anymore.
  */
 static void
-gistFindCorrectParent(Relation r, GISTInsertStack *child)
+gistFindCorrectParent(Relation r, GISTInsertStack *child, bool is_build)
 {
 	GISTInsertStack *parent = child->parent;
+	ItemId		iid;
+	IndexTuple	idxtuple;
+	OffsetNumber maxoff;
+	GISTInsertStack *ptr;
 
 	gistcheckpage(r, parent->buffer);
 	parent->page = (Page) BufferGetPage(parent->buffer);
+	maxoff = PageGetMaxOffsetNumber(parent->page);
 
-	/* here we don't need to distinguish between split and page update */
-	if (child->downlinkoffnum == InvalidOffsetNumber ||
-		parent->lsn != PageGetLSN(parent->page))
+	/* Check if the downlink is still where it was before */
+	if (child->downlinkoffnum != InvalidOffsetNumber && child->downlinkoffnum <= maxoff)
 	{
-		/* parent is changed, look child in right links until found */
-		OffsetNumber i,
-					maxoff;
-		ItemId		iid;
-		IndexTuple	idxtuple;
-		GISTInsertStack *ptr;
-
-		while (true)
-		{
-			maxoff = PageGetMaxOffsetNumber(parent->page);
-			for (i = FirstOffsetNumber; i <= maxoff; i = OffsetNumberNext(i))
-			{
-				iid = PageGetItemId(parent->page, i);
-				idxtuple = (IndexTuple) PageGetItem(parent->page, iid);
-				if (ItemPointerGetBlockNumber(&(idxtuple->t_tid)) == child->blkno)
-				{
-					/* yes!!, found */
-					child->downlinkoffnum = i;
-					return;
-				}
-			}
-
-			parent->blkno = GistPageGetOpaque(parent->page)->rightlink;
-			UnlockReleaseBuffer(parent->buffer);
-			if (parent->blkno == InvalidBlockNumber)
-			{
-				/*
-				 * End of chain and still didn't find parent. It's a very-very
-				 * rare situation when root splitted.
-				 */
-				break;
-			}
-			parent->buffer = ReadBuffer(r, parent->blkno);
-			LockBuffer(parent->buffer, GIST_EXCLUSIVE);
-			gistcheckpage(r, parent->buffer);
-			parent->page = (Page) BufferGetPage(parent->buffer);
-		}
-
-		/*
-		 * awful!!, we need search tree to find parent ... , but before we
-		 * should release all old parent
-		 */
-
-		ptr = child->parent->parent;	/* child->parent already released
-										 * above */
-		while (ptr)
-		{
-			ReleaseBuffer(ptr->buffer);
-			ptr = ptr->parent;
-		}
-
-		/* ok, find new path */
-		ptr = parent = gistFindPath(r, child->blkno, &child->downlinkoffnum);
-
-		/* read all buffers as expected by caller */
-		/* note we don't lock them or gistcheckpage them here! */
-		while (ptr)
-		{
-			ptr->buffer = ReadBuffer(r, ptr->blkno);
-			ptr->page = (Page) BufferGetPage(ptr->buffer);
-			ptr = ptr->parent;
-		}
-
-		/* install new chain of parents to stack */
-		child->parent = parent;
-
-		/* make recursive call to normal processing */
-		LockBuffer(child->parent->buffer, GIST_EXCLUSIVE);
-		gistFindCorrectParent(r, child);
+		iid = PageGetItemId(parent->page, child->downlinkoffnum);
+		idxtuple = (IndexTuple) PageGetItem(parent->page, iid);
+		if (ItemPointerGetBlockNumber(&(idxtuple->t_tid)) == child->blkno)
+			return;				/* still there */
 	}
+
+	/*
+	 * The page has changed since we looked. During normal operation, every
+	 * update of a page changes its LSN, so the LSN we memorized should have
+	 * changed too. During index build, however, we don't WAL-log the changes
+	 * until we have built the index, so the LSN doesn't change. There is no
+	 * concurrent activity during index build, but we might have changed the
+	 * parent ourselves.
+	 */
+	Assert(parent->lsn != PageGetLSN(parent->page) || is_build);
+
+	/*
+	 * Scan the page to re-find the downlink. If the page was split, it might
+	 * have moved to a different page, so follow the right links until we find
+	 * it.
+	 */
+	while (true)
+	{
+		OffsetNumber i;
+
+		maxoff = PageGetMaxOffsetNumber(parent->page);
+		for (i = FirstOffsetNumber; i <= maxoff; i = OffsetNumberNext(i))
+		{
+			iid = PageGetItemId(parent->page, i);
+			idxtuple = (IndexTuple) PageGetItem(parent->page, iid);
+			if (ItemPointerGetBlockNumber(&(idxtuple->t_tid)) == child->blkno)
+			{
+				/* yes!!, found */
+				child->downlinkoffnum = i;
+				return;
+			}
+		}
+
+		parent->blkno = GistPageGetOpaque(parent->page)->rightlink;
+		parent->downlinkoffnum = InvalidOffsetNumber;
+		UnlockReleaseBuffer(parent->buffer);
+		if (parent->blkno == InvalidBlockNumber)
+		{
+			/*
+			 * End of chain and still didn't find parent. It's a very-very
+			 * rare situation when root splitted.
+			 */
+			break;
+		}
+		parent->buffer = ReadBuffer(r, parent->blkno);
+		LockBuffer(parent->buffer, GIST_EXCLUSIVE);
+		gistcheckpage(r, parent->buffer);
+		parent->page = (Page) BufferGetPage(parent->buffer);
+	}
+
+	/*
+	 * awful!!, we need search tree to find parent ... , but before we should
+	 * release all old parent
+	 */
+
+	ptr = child->parent->parent;	/* child->parent already released above */
+	while (ptr)
+	{
+		ReleaseBuffer(ptr->buffer);
+		ptr = ptr->parent;
+	}
+
+	/* ok, find new path */
+	ptr = parent = gistFindPath(r, child->blkno, &child->downlinkoffnum);
+
+	/* read all buffers as expected by caller */
+	/* note we don't lock them or gistcheckpage them here! */
+	while (ptr)
+	{
+		ptr->buffer = ReadBuffer(r, ptr->blkno);
+		ptr->page = (Page) BufferGetPage(ptr->buffer);
+		ptr = ptr->parent;
+	}
+
+	/* install new chain of parents to stack */
+	child->parent = parent;
+
+	/* make recursive call to normal processing */
+	LockBuffer(child->parent->buffer, GIST_EXCLUSIVE);
+	gistFindCorrectParent(r, child, is_build);
 }
 
 /*
@@ -1115,7 +1134,7 @@ gistFindCorrectParent(Relation r, GISTInsertStack *child)
  */
 static IndexTuple
 mgistformdownlink(Relation rel, Buffer buf, MGISTSTATE *mgiststate,
-				   GISTInsertStack *stack)
+				   GISTInsertStack *stack, bool is_build)
 {
 	Page		page = BufferGetPage(buf);
 	OffsetNumber maxoff;
@@ -1156,7 +1175,7 @@ mgistformdownlink(Relation rel, Buffer buf, MGISTSTATE *mgiststate,
 		ItemId		iid;
 
 		LockBuffer(stack->parent->buffer, GIST_EXCLUSIVE);
-		gistFindCorrectParent(rel, stack);
+		gistFindCorrectParent(rel, stack, is_build);
 		iid = PageGetItemId(stack->parent->page, stack->downlinkoffnum);
 		downlink = (IndexTuple) PageGetItem(stack->parent->page, iid);
 		downlink = CopyIndexTuple(downlink);
@@ -1202,7 +1221,7 @@ mgistfixsplit(GISTInsertState *state, MGISTSTATE *mgiststate)
 		page = BufferGetPage(buf);
 
 		/* Form the new downlink tuples to insert to parent */
-		downlink = mgistformdownlink(state->r, buf, mgiststate, stack);
+		downlink = mgistformdownlink(state->r, buf, mgiststate, stack, state->is_build);
 
 		si->buf = buf;
 		si->downlink = downlink;
@@ -1356,7 +1375,7 @@ mgistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
 		right = (GISTPageSplitInfo *) list_nth(splitinfo, pos);
 		left = (GISTPageSplitInfo *) list_nth(splitinfo, pos - 1);
 
-		gistFindCorrectParent(state->r, stack);
+		gistFindCorrectParent(state->r, stack, state->is_build);
 		if (mgistinserttuples(state, stack->parent, mgiststate,
 							   &right->downlink, 1,
 							   InvalidOffsetNumber,
@@ -1381,21 +1400,22 @@ mgistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
 	 */
 	tuples[0] = left->downlink;
 	tuples[1] = right->downlink;
-	gistFindCorrectParent(state->r, stack);
-	if (mgistinserttuples(state, stack->parent, mgiststate,
-						   tuples, 2,
-						   stack->downlinkoffnum,
-						   left->buf, right->buf,
-						   true,	/* Unlock parent */
-						   unlockbuf	/* Unlock stack->buffer if caller wants
-										 * that */
-						 ))
-	{
-		/*
-		 * If the parent page was split, the downlink might have moved.
-		 */
-		stack->downlinkoffnum = InvalidOffsetNumber;
-	}
+	gistFindCorrectParent(state->r, stack, state->is_build);
+	(void) mgistinserttuples(state, stack->parent, mgiststate,
+							tuples, 2,
+							stack->downlinkoffnum,
+							left->buf, right->buf,
+							true,	/* Unlock parent */
+							unlockbuf	/* Unlock stack->buffer if caller
+										 * wants that */
+		);
+
+	/*
+	 * The downlink might have moved when we updated it. Even if the page
+	 * wasn't split, because gistinserttuples() implements updating the old
+	 * tuple by removing and re-inserting it!
+	 */
+	stack->downlinkoffnum = InvalidOffsetNumber;
 
 	Assert(left->buf == stack->buffer);
 
@@ -1680,10 +1700,10 @@ gistprunepage(Relation rel, Page page, Buffer buffer, Relation heapRel)
 
 	if (ndeletable > 0)
 	{
-		TransactionId latestRemovedXid = InvalidTransactionId;
+		TransactionId snapshotConflictHorizon = InvalidTransactionId;
 
 		if (XLogStandbyInfoActive() && RelationNeedsWAL(rel))
-			latestRemovedXid =
+			snapshotConflictHorizon =
 				index_compute_xid_horizon_for_tuples(rel, heapRel, buffer,
 													 deletable, ndeletable);
 
@@ -1709,7 +1729,8 @@ gistprunepage(Relation rel, Page page, Buffer buffer, Relation heapRel)
 
 			recptr = gistXLogDelete(buffer,
 									deletable, ndeletable,
-									latestRemovedXid);
+									snapshotConflictHorizon,
+									heapRel);
 
 			PageSetLSN(page, recptr);
 		}
