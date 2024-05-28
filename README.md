@@ -1,8 +1,8 @@
-Multi-Entry (SP-)GiST Indexing for Complex Data Types
+Multi-Entry Search Trees for PostgreSQL
 =====================================================
 
 This directory contains implementations for the Multi-Entry GiST and SP-GiST access methods.
-These access methods are variation of the GiST and SP-GiST indices, allowing for more efficient
+These access methods are variations of the GiST and SP-GiST indices, allowing for more efficient
 indexing of complex and composite data types.
 
 Contents
