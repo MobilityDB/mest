@@ -888,7 +888,7 @@ mgistExtractItups(MGISTSTATE *mgiststate, Relation index,
 	int 		 nattrs = IndexRelationGetNumberOfKeyAttributes(index);
 	IndexTuple 	*itups;
 	Datum 	   **entries = palloc(sizeof(Datum *) * nattrs);
-	bool 	   **nullFlags= palloc(sizeof(bool) * nattrs);
+	bool 	   **nullFlags= palloc(sizeof(bool *) * nattrs);
 	int32 		*nentries = palloc(sizeof(int32) * nattrs);
 	int 		 i, j;
 
