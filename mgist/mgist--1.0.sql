@@ -12,6 +12,48 @@ LANGUAGE C;
 CREATE ACCESS METHOD mgist TYPE INDEX HANDLER mgisthandler;
 COMMENT ON ACCESS METHOD mgist IS 'mgist index access method';
 
+/* Multirange Type */
+
+-- Functions
+
+CREATE FUNCTION multirange_mgist_consistent(internal, anymultirange, smallint, oid, internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION multirange_mgist_compress(internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+CREATE FUNCTION multirange_mgist_extract(internal, internal, internal)
+RETURNS bool
+AS 'MODULE_PATHNAME'
+LANGUAGE C IMMUTABLE STRICT;
+
+-- Opclasses
+
+CREATE OPERATOR CLASS mgist_multirange_ops
+DEFAULT FOR TYPE anymultirange USING mgist AS
+    -- Storage
+    STORAGE     anyrange,
+    -- Operators
+    OPERATOR    3   && (anymultirange,anyrange),
+    OPERATOR    3   && (anymultirange,anymultirange),
+    OPERATOR    7   @> (anymultirange,anyrange),
+    OPERATOR    7   @> (anymultirange,anymultirange),
+    OPERATOR    16  @> (anymultirange,anyelement),
+    -- Functions
+    FUNCTION    1   multirange_mgist_consistent(internal, anymultirange, smallint, oid, internal),
+    FUNCTION    2   range_gist_union(internal, internal),
+    FUNCTION    3   multirange_mgist_compress(internal),
+    FUNCTION    5   range_gist_penalty(internal, internal, internal),
+    FUNCTION    6   range_gist_picksplit(internal, internal),
+    FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
+    FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
+
+/* Path Type */
+
 -- Operators
 CREATE OPERATOR && (
   PROCEDURE = path_inter,
