@@ -2,6 +2,15 @@
 \echo Use "CREATE EXTENSION mgist_mobilitydb" to load this file. \quit
 
 /******************************************************************************
+ * Utility functions
+ ******************************************************************************/
+
+CREATE FUNCTION stbox_collect(stbox[])
+  RETURNS geometry
+  AS $$ SELECT ST_Collect(b::geometry) FROM unnest($1) AS b  $$
+  LANGUAGE SQL;
+
+/******************************************************************************
  * Multi Entry R-Tree for tgeompoint using ME-GiST
  ******************************************************************************/
 
@@ -26,6 +35,11 @@ CREATE FUNCTION tpoint_mgist_query_options(internal)
 
 CREATE FUNCTION tpoint_equisplit(tgeompoint, integer)
   RETURNS geometry
+  AS $$ SELECT stbox_collect(_tpoint_equisplit($1, $2)) $$
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION _tpoint_equisplit(tgeompoint, integer)
+  RETURNS stbox[]
   AS 'MODULE_PATHNAME', 'Tpoint_static_equisplit'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
@@ -61,6 +75,11 @@ CREATE OPERATOR CLASS mgist_tpoint_equisplit_ops
 
 CREATE FUNCTION tpoint_mergesplit(tgeompoint, integer)
   RETURNS geometry
+  AS $$ SELECT stbox_collect(_tpoint_mergesplit($1, $2)) $$
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION _tpoint_mergesplit(tgeompoint, integer)
+  RETURNS stbox[]
   AS 'MODULE_PATHNAME', 'Tpoint_static_mergesplit'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
@@ -96,6 +115,11 @@ CREATE OPERATOR CLASS mgist_tpoint_mergesplit_ops
 
 CREATE FUNCTION tpoint_linearsplit(tgeompoint, float8, float8, float8)
   RETURNS geometry
+  AS $$ SELECT stbox_collect(_tpoint_linearsplit($1, $2, $3, $4)) $$
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION _tpoint_linearsplit(tgeompoint, float8, float8, float8)
+  RETURNS stbox[]
   AS 'MODULE_PATHNAME', 'Tpoint_static_linearsplit'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
@@ -131,6 +155,11 @@ CREATE OPERATOR CLASS mgist_tpoint_linearsplit_ops
 
 CREATE FUNCTION tpoint_manualsplit(tgeompoint, integer)
   RETURNS geometry
+  AS $$ SELECT stbox_collect(_tpoint_manualsplit($1, $2)) $$
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION _tpoint_manualsplit(tgeompoint, integer)
+  RETURNS stbox[]
   AS 'MODULE_PATHNAME', 'Tpoint_static_manualsplit'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
@@ -167,6 +196,11 @@ CREATE OPERATOR CLASS mgist_tpoint_manualsplit_ops
 
 CREATE FUNCTION tpoint_adaptivemergesplit(tgeompoint, integer)
   RETURNS geometry
+  AS $$ SELECT stbox_collect(_tpoint_adaptivemergesplit($1, $2)) $$
+  LANGUAGE SQL IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION _tpoint_adaptivemergesplit(tgeompoint, integer)
+  RETURNS stbox[]
   AS 'MODULE_PATHNAME', 'Tpoint_static_adaptivemergesplit'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 

@@ -13,13 +13,14 @@
 #include "fmgr.h"
 #include "access/gist.h"
 #include "access/reloptions.h"
-#include "utils/timestamp.h"
-#include "utils/datetime.h"
+#include "utils/array.h"
 #include "utils/date.h"
 #include "utils/float.h"
+#include "utils/timestamp.h"
 
 #include <meos.h>
 #include <meos_internal.h>
+#include <meos_catalog.h>
 
 PG_MODULE_MAGIC;
 
@@ -95,9 +96,7 @@ enum stbox_state {
   STBOX_DELETED
 };
 
-/* liblwgeom.h */
-extern LWMPOLY* lwmpoly_construct_empty(int32_t srid, char hasz, char hasm);
-extern LWMPOLY* lwmpoly_add_lwpoly(LWMPOLY *mobj, const LWPOLY *obj);
+extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 
 /*****************************************************************************
  * ME-GiST extract methods
@@ -315,19 +314,8 @@ Tpoint_static_equisplit(PG_FUNCTION_ARGS)
   int32     count = PG_GETARG_INT32(1);
 
   int32 nkeys;
-  size_t size;
-  GSERIALIZED *result;
-
   STBox *boxes = tsequence_static_equisplit((TSequence *) temp, count, &nkeys);
-  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
-  for (int i = 0; i < nkeys; ++i)
-  {
-    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
-    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
-    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
-  }
-  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
-  SET_VARSIZE(result, size);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
 
@@ -689,19 +677,8 @@ Tpoint_static_mergesplit(PG_FUNCTION_ARGS)
   int32     count = PG_GETARG_INT32(1);
 
   int32 nkeys;
-  size_t size;
-  GSERIALIZED *result;
-
   STBox *boxes = tsequence_static_mergesplit((TSequence *) temp, count, &nkeys);
-  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
-  for (int i = 0; i < nkeys; ++i)
-  {
-    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
-    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
-    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
-  }
-  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
-  SET_VARSIZE(result, size);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
 
@@ -941,19 +918,8 @@ Tpoint_static_linearsplit(PG_FUNCTION_ARGS)
   double qt = PG_GETARG_FLOAT8(1);
 
   int32 nkeys;
-  size_t size;
-  GSERIALIZED *result;
-
   STBox *boxes = tsequence_static_linearsplit((TSequence *) temp, qx, qy, qt, &nkeys);
-  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
-  for (int i = 0; i < nkeys; ++i)
-  {
-    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
-    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
-    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
-  }
-  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
-  SET_VARSIZE(result, size);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
 
@@ -1026,19 +992,8 @@ Tpoint_static_manualsplit(PG_FUNCTION_ARGS)
   int32 segs_per_split = PG_GETARG_INT32(1);
 
   int32 nkeys;
-  size_t size;
-  GSERIALIZED *result;
-
   STBox *boxes = tsequence_static_manualsplit((TSequence *) temp, segs_per_split, &nkeys);
-  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
-  for (int i = 0; i < nkeys; ++i)
-  {
-    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
-    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
-    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
-  }
-  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
-  SET_VARSIZE(result, size);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
 
@@ -1254,19 +1209,8 @@ Tpoint_static_adaptivemergesplit(PG_FUNCTION_ARGS)
   int32 segs_per_split = PG_GETARG_INT32(1);
 
   int32 nkeys;
-  size_t size;
-  GSERIALIZED *result;
-
   STBox *boxes = tsequence_static_adaptivemergesplit((TSequence *) temp, segs_per_split, &nkeys);
-  LWMPOLY *mpoly = lwmpoly_construct_empty(stbox_srid(boxes), false, false);
-  for (int i = 0; i < nkeys; ++i)
-  {
-    GSERIALIZED *poly_gs = stbox_to_geo(&boxes[i]);
-    LWPOLY *poly = (LWPOLY *) lwgeom_from_gserialized(poly_gs);
-    mpoly = lwmpoly_add_lwpoly(mpoly, poly);
-  }
-  result = gserialized_from_lwgeom((LWGEOM *) mpoly, &size);
-  SET_VARSIZE(result, size);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
 
