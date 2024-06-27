@@ -1,0 +1,5 @@
+# mgist_postgis extension
+comment = 'mgist_postgis - Multi Entry R-Tree for geometry types using Multi-Entry GiST'
+default_version = '1.0'
+module_pathname = '$libdir/libmgist_postgis'
+requires = 'postgis, mgist'
