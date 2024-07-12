@@ -66,7 +66,7 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
   *nkeys = range_count;
 
   /* we should not free array, elems[i] points into it */
-  PG_FREE_IF_COPY(mr, 1);
+  PG_FREE_IF_COPY(mr, 0);
   PG_RETURN_POINTER(ranges);
 }
 
