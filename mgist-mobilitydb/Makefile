@@ -1,5 +1,5 @@
 EXTENSION   = mgist_mobilitydb
-MODULES 	  = mgist_mobilitydb
+MODULES     = mgist_mobilitydb
 DATA        = mgist_mobilitydb--1.0.sql mgist_mobilitydb.control
 
 REGRESS = 01_create_extension
