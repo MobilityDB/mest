@@ -1,0 +1,1 @@
+CREATE EXTENSION mgist_mobilitydb CASCADE;
