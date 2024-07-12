@@ -7,8 +7,8 @@ OBJS = \
 	mgistbuild.o \
 	mgistbuildbuffers.o \
 	mgistget.o \
-	mgistpathproc.o \
-	mgistmultirangeproc.o \
+	path_mgist.o \
+	multirangetypes_mgist.o \
 	mgistscan.o \
 	mgistsplit.o \
 	mgistutil.o \
