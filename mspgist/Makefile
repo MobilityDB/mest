@@ -6,7 +6,7 @@ OBJS = \
 	mspgdoinsert.o \
 	mspginsert.o \
 	mspgscan.o \
-	mspgtextproc.o \
+	text_mspgist.o \
 	mspgutils.o \
 	mspgvacuum.o \
 	mspgvalidate.o \
