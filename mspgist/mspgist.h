@@ -20,6 +20,14 @@
 #define MSPGIST_EXTRACTVALUE_PROC 8
 #define MSPGISTNProc              8
 
+#define MSpGistGetFillFactor(relation) \
+  (AssertMacro(relation->rd_rel->relkind == RELKIND_INDEX), \
+   (relation)->rd_options ? \
+   ((SpGistOptions *) (relation)->rd_options)->fillfactor : \
+   SPGIST_DEFAULT_FILLFACTOR)
+#define MSpGistGetTargetPageFreeSpace(relation) \
+  (BLCKSZ * (100 - MSpGistGetFillFactor(relation)) / 100)
+
 /*
  * Private state of an index scan
  */
@@ -146,7 +154,11 @@ extern bool mspggettuple(IndexScanDesc scan, ScanDirection dir);
 extern int64 mspggetbitmap(IndexScanDesc scan, TIDBitmap *tbm);
 extern void mspgendscan(IndexScanDesc scan);
 
-/* megistvalidate.c */
+/* mspgutils.c */
+extern Buffer MSpGistGetBuffer(Relation index, 
+  int flags, int needSpace, bool *isNew);
+
+/* mspgvalidate.c */
 extern bool mspgvalidate(Oid opclassoid);
 extern void mspgadjustmembers(Oid opfamilyoid, 
                                 Oid opclassoid, 

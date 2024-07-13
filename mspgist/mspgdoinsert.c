@@ -451,7 +451,7 @@ moveLeafs(Relation index, SpGistState *state,
 	}
 
 	/* Find a leaf page that will hold them */
-	nbuf = SpGistGetBuffer(index, GBUF_LEAF | (isNulls ? GBUF_NULLS : 0),
+	nbuf = MSpGistGetBuffer(index, GBUF_LEAF | (isNulls ? GBUF_NULLS : 0),
 						   size, &xlrec.newPage);
 	npage = BufferGetPage(nbuf);
 	nblkno = BufferGetBlockNumber(nbuf);
@@ -981,7 +981,7 @@ doPickSplit(Relation index, SpGistState *state,
 	else if (parent->buffer != InvalidBuffer)
 	{
 		/* Send tuple to page with next triple parity (see README) */
-		newInnerBuffer = SpGistGetBuffer(index,
+		newInnerBuffer = MSpGistGetBuffer(index,
 										 GBUF_INNER_PARITY(parent->blkno + 1) |
 										 (isNulls ? GBUF_NULLS : 0),
 										 innerTuple->size + sizeof(ItemIdData),
@@ -1049,7 +1049,7 @@ doPickSplit(Relation index, SpGistState *state,
 		int			curspace;
 		int			newspace;
 
-		newLeafBuffer = SpGistGetBuffer(index,
+		newLeafBuffer = MSpGistGetBuffer(index,
 										GBUF_LEAF | (isNulls ? GBUF_NULLS : 0),
 										Min(totalLeafSizes,
 											SPGIST_PAGE_CAPACITY),
@@ -1599,7 +1599,7 @@ spgAddNodeAction(Relation index, SpGistState *state,
 		 * obtain new buffer with the same parity as current, since it will be
 		 * a child of same parent tuple
 		 */
-		current->buffer = SpGistGetBuffer(index,
+		current->buffer = MSpGistGetBuffer(index,
 										  GBUF_INNER_PARITY(current->blkno),
 										  newInnerTuple->size + sizeof(ItemIdData),
 										  &xlrec.newPage);
@@ -1608,7 +1608,7 @@ spgAddNodeAction(Relation index, SpGistState *state,
 
 		/*
 		 * Let's just make real sure new current isn't same as old.  Right now
-		 * that's impossible, but if SpGistGetBuffer ever got smart enough to
+		 * that's impossible, but if MSpGistGetBuffer ever got smart enough to
 		 * delete placeholder tuples before checking space, maybe it wouldn't
 		 * be impossible.  The case would appear to work except that WAL
 		 * replay would be subtly wrong, so I think a mere assert isn't enough
@@ -1807,7 +1807,7 @@ spgSplitNodeAction(Relation index, SpGistState *state,
 		 * Choose page with next triple parity, because postfix tuple is a
 		 * child of prefix one
 		 */
-		newBuffer = SpGistGetBuffer(index,
+		newBuffer = MSpGistGetBuffer(index,
 									GBUF_INNER_PARITY(current->blkno + 1),
 									postfixTuple->size + sizeof(ItemIdData),
 									&xlrec.newPage);
@@ -2058,7 +2058,7 @@ mspgdoinsert(Relation index, SpGistState *state,
 			 * quietly limit our request to a page size.
 			 */
 			current.buffer =
-				SpGistGetBuffer(index,
+				MSpGistGetBuffer(index,
 								GBUF_LEAF | (isnull ? GBUF_NULLS : 0),
 								Min(leafSize, SPGIST_PAGE_CAPACITY),
 								&isNew);

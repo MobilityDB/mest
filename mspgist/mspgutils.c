@@ -178,7 +178,7 @@ allocNewBuffer(Relation index, int flags)
  * already valid.
  */
 Buffer
-SpGistGetBuffer(Relation index, int flags, int needSpace, bool *isNew)
+MSpGistGetBuffer(Relation index, int flags, int needSpace, bool *isNew)
 {
 	SpGistCache *cache = spgGetCache(index);
 	SpGistLastUsedPage *lup;
@@ -194,7 +194,7 @@ SpGistGetBuffer(Relation index, int flags, int needSpace, bool *isNew)
 	 * related to the ones already on it.  But fillfactor mustn't cause an
 	 * error for requests that would otherwise be legal.
 	 */
-	needSpace += SpGistGetTargetPageFreeSpace(index);
+	needSpace += MSpGistGetTargetPageFreeSpace(index);
 	needSpace = Min(needSpace, SPGIST_PAGE_CAPACITY);
 
 	/* Get the cache entry for this flags setting */
