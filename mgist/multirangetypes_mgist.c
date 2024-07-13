@@ -92,7 +92,8 @@ multirange_mgist_consistent(PG_FUNCTION_ARGS)
   TypeCacheEntry *typcache;
 
   /* Only need to recheck if query type (subtype) is a multirange */
-  *recheck = !OidIsValid(subtype) || subtype == ANYMULTIRANGEOID;
+  // *recheck = !OidIsValid(subtype) || subtype == ANYMULTIRANGEOID;
+  *recheck = true;
 
   typcache = range_get_typcache(fcinfo, RangeTypeGetOid(key));
 
