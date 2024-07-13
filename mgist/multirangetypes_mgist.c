@@ -1,14 +1,14 @@
 /*-------------------------------------------------------------------------
  *
- * rangetypes_gist.c
- *    GiST support for range types.
+ * multirangetypes_mgist.c
+ *    ME-GiST support for multirange types.
  *
  * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  *
  * IDENTIFICATION
- *    src/backend/utils/adt/rangetypes_gist.c
+ *    src/backend/utils/adt/multirangetypes_mgist.c
  *
  *-------------------------------------------------------------------------
  */

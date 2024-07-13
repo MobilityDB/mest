@@ -12,7 +12,9 @@ LANGUAGE C;
 CREATE ACCESS METHOD mgist TYPE INDEX HANDLER mgisthandler;
 COMMENT ON ACCESS METHOD mgist IS 'mgist index access method';
 
-/* Multirange Type */
+/******************************************************************************
+ * Multi-Entry R-Tree for multirange types using ME-GiST
+ ******************************************************************************/
 
 -- Functions
 
@@ -52,7 +54,9 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
     FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
 
-/* Path Type */
+/******************************************************************************
+ * Multi-Entry R-Tree for path type using ME-GiST
+ ******************************************************************************/
 
 -- Operators
 CREATE OPERATOR && (
@@ -112,3 +116,6 @@ DEFAULT FOR TYPE path USING mgist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal),
     FUNCTION    12  mgist_path_extract(internal, internal, internal);
+
+/*****************************************************************************/
+

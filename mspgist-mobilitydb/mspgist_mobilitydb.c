@@ -102,7 +102,7 @@ enum stbox_state {
 };
 
 /*****************************************************************************
- * ME-GiST extract methods
+ * ME-SP-GiST extract methods
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mspgist_compress);
