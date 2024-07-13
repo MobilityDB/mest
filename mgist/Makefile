@@ -21,7 +21,7 @@ PGFILEDESC = "Multi-Entry GiST access method"
 
 HEADERS = mgist.h
 
-REGRESS = mgist
+REGRESS = 01_create_extension 02_multirange_mgist.test
 
 TAP_TESTS = 1
 
