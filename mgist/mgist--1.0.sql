@@ -33,6 +33,12 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION multirange_mgist_extract_options(internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+
 -- Opclasses
 
 CREATE OPERATOR CLASS mgist_multirange_ops
@@ -65,7 +71,10 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    5   range_gist_penalty(internal, internal, internal),
     FUNCTION    6   range_gist_picksplit(internal, internal),
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
+    FUNCTION    10  multirange_mgist_extract_options(internal),
     FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
+    -- FUNCTION    12  multirange_mgist_extract_value(internal, internal, internal);
+    -- FUNCTION    13  multirange_mgist_extract_query(internal, internal, internal);
 
 /******************************************************************************
  * Multi-Entry R-Tree for path type using ME-GiST
