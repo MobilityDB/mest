@@ -1,5 +1,4 @@
 CREATE EXTENSION mspgist CASCADE;
-ERROR:  syntax error at or near "FUNCTION"
 CREATE TABLE tbl_bigint(k integer PRIMARY KEY, b bigint);
 \copy tbl_bigint FROM 'data/tbl_bigint.data'
 CREATE TABLE tbl_int8range(k integer PRIMARY KEY, b int8range);
