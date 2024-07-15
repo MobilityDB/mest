@@ -6,6 +6,7 @@ OBJS = \
 	mspgdoinsert.o \
 	mspginsert.o \
 	mspgscan.o \
+	multirangetypes_mspgist.o \
 	text_mspgist.o \
 	mspgutils.o \
 	mspgvacuum.o \
@@ -18,7 +19,7 @@ PGFILEDESC = "ME-SP-GiST access method"
 
 HEADERS = mspgist.h
 
-REGRESS = mspgist
+REGRESS = 01_create_extension 02_multirange_mspgist.test
 
 TAP_TESTS = 1
 

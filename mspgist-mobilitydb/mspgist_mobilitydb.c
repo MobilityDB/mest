@@ -57,7 +57,7 @@ PG_MODULE_MAGIC;
           ((MSPGIST_BOXES_Options *) PG_GET_OPCLASS_OPTIONS())->num_boxes : \
           MSPGIST_EXTRACT_BOXES_DEFAULT)
 
-/* gist_int_ops opclass options */
+/* mspgist_tpoint_ops opclass options */
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
@@ -102,7 +102,7 @@ enum stbox_state {
 };
 
 /*****************************************************************************
- * ME-GiST extract methods
+ * ME-SP-GiST extract methods
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mspgist_compress);

@@ -2,7 +2,7 @@
 \echo Use "CREATE EXTENSION mspgist_mobilitydb" to load this file. \quit
 
 /******************************************************************************
- * Multi Entry R-Tree for tgeompoint using ME-GiST
+ * Multi-Entry R-Tree for tgeompoint using ME-GiST
  ******************************************************************************/
 
 CREATE FUNCTION tpoint_mspgist_compress(internal)

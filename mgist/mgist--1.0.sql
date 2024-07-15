@@ -12,7 +12,9 @@ LANGUAGE C;
 CREATE ACCESS METHOD mgist TYPE INDEX HANDLER mgisthandler;
 COMMENT ON ACCESS METHOD mgist IS 'mgist index access method';
 
-/* Multirange Type */
+/******************************************************************************
+ * Multi-Entry R-Tree for multirange types using ME-GiST
+ ******************************************************************************/
 
 -- Functions
 
@@ -31,6 +33,12 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
+CREATE FUNCTION multirange_mgist_extract_options(internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+
 -- Opclasses
 
 CREATE OPERATOR CLASS mgist_multirange_ops
@@ -38,11 +46,24 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     -- Storage
     STORAGE     anyrange,
     -- Operators
-    OPERATOR    3   && (anymultirange,anyrange),
-    OPERATOR    3   && (anymultirange,anymultirange),
-    OPERATOR    7   @> (anymultirange,anyrange),
-    OPERATOR    7   @> (anymultirange,anymultirange),
-    OPERATOR    16  @> (anymultirange,anyelement),
+    OPERATOR    1    << (anymultirange,anymultirange),
+    OPERATOR    1    << (anymultirange,anyrange),
+    OPERATOR    2    &< (anymultirange,anymultirange),
+    OPERATOR    2    &< (anymultirange,anyrange),
+    OPERATOR    3    && (anymultirange,anymultirange),
+    OPERATOR    3    && (anymultirange,anyrange),
+    OPERATOR    4    &> (anymultirange,anymultirange),
+    OPERATOR    4    &> (anymultirange,anyrange),
+    OPERATOR    5    >> (anymultirange,anymultirange),
+    OPERATOR    5    >> (anymultirange,anyrange),
+    OPERATOR    6    -|- (anymultirange,anymultirange),
+    OPERATOR    6    -|- (anymultirange,anyrange),
+    OPERATOR    7    @> (anymultirange,anymultirange),
+    OPERATOR    7    @> (anymultirange,anyrange),
+    OPERATOR    8    <@ (anymultirange,anymultirange),
+    OPERATOR    8    <@ (anymultirange,anyrange),
+    OPERATOR    16   @> (anymultirange,anyelement),
+    OPERATOR    18   =  (anymultirange,anymultirange),
     -- Functions
     FUNCTION    1   multirange_mgist_consistent(internal, anymultirange, smallint, oid, internal),
     FUNCTION    2   range_gist_union(internal, internal),
@@ -50,9 +71,14 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    5   range_gist_penalty(internal, internal, internal),
     FUNCTION    6   range_gist_picksplit(internal, internal),
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
+    FUNCTION    10  multirange_mgist_extract_options(internal),
     FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
+    -- FUNCTION    12  multirange_mgist_extract_value(internal, internal, internal);
+    -- FUNCTION    13  multirange_mgist_extract_query(internal, internal, internal);
 
-/* Path Type */
+/******************************************************************************
+ * Multi-Entry R-Tree for path type using ME-GiST
+ ******************************************************************************/
 
 -- Operators
 CREATE OPERATOR && (
@@ -112,3 +138,6 @@ DEFAULT FOR TYPE path USING mgist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal),
     FUNCTION    12  mgist_path_extract(internal, internal, internal);
+
+/*****************************************************************************/
+
