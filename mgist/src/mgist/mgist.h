@@ -73,10 +73,10 @@ typedef struct MGISTScanOpaqueData
     MGISTSTATE  *mgiststate;      /* index information, see above */
     Oid          *orderByTypes;   /* datatypes of ORDER BY expressions */
 
-    struct tidtable_hash *tidtable;   /* hash table of TID's */
+    struct gtidtable_hash *tidtable;   /* hash table of TID's */
     MemoryContext tidtableCxt;     /* context holding the TID hashtable */
 
-    struct tidisttable_hash *tidisttable; /* hash table of TID's storing 
+    struct gtidisttable_hash *tidisttable; /* hash table of TID's storing 
                                             GISTSearchItem pointer */
     pairingheap *queue;         /* queue of unvisited items */
     MemoryContext queueCxt;     /* context holding the queue */
@@ -105,16 +105,16 @@ typedef MGISTScanOpaqueData *MGISTScanOpaque;
 /*
  * The hashtable entries are represented by this data structure.
  */
-typedef struct TIDTableEntry
+typedef struct GTIDTableEntry
 {
     ItemPointerData tid;        /* TID (hashtable key) */
     uint32          hash;       /* hash value (cached) */
     char            status;     /* hash status */
-} TIDTableEntry;
+} GTIDTableEntry;
 
 /* define parameters necessary to generate the TID hash table interface */
-#define SH_PREFIX tidtable
-#define SH_ELEMENT_TYPE TIDTableEntry
+#define SH_PREFIX gtidtable
+#define SH_ELEMENT_TYPE GTIDTableEntry
 #define SH_KEY_TYPE ItemPointerData
 #define SH_SCOPE extern
 #define SH_DECLARE
@@ -123,17 +123,17 @@ typedef struct TIDTableEntry
 /*
  * The hashtable entries are represented by this data structure.
  */
-typedef struct TIDISTTableEntry
+typedef struct GTIDISTTableEntry
 {
     ItemPointerData tid;        /* TID (hashtable key) */
     GISTSearchItem *item;       /* Searh item storing the distances */
     uint32          hash;       /* hash value (cached) */
     char            status;     /* hash status */
-} TIDISTTableEntry;
+} GTIDISTTableEntry;
 
 /* define parameters necessary to generate the TID hash table interface */
-#define SH_PREFIX tidisttable
-#define SH_ELEMENT_TYPE TIDISTTableEntry
+#define SH_PREFIX gtidisttable
+#define SH_ELEMENT_TYPE GTIDISTTableEntry
 #define SH_KEY_TYPE ItemPointerData
 #define SH_SCOPE extern
 #define SH_DECLARE

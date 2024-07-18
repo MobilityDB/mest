@@ -33,8 +33,8 @@
  * *also* declared in mgist.h (to generate the types, which are externally
  * visible).
  */
-#define SH_PREFIX tidtable
-#define SH_ELEMENT_TYPE TIDTableEntry
+#define SH_PREFIX gtidtable
+#define SH_ELEMENT_TYPE GTIDTableEntry
 #define SH_KEY_TYPE ItemPointerData
 #define SH_KEY tid
 #define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
@@ -51,8 +51,8 @@
  * *also* declared in mgist.h (to generate the types, which are externally
  * visible).
  */
-#define SH_PREFIX tidisttable
-#define SH_ELEMENT_TYPE TIDISTTableEntry
+#define SH_PREFIX gtidisttable
+#define SH_ELEMENT_TYPE GTIDISTTableEntry
 #define SH_KEY_TYPE ItemPointerData
 #define SH_KEY tid
 #define SH_HASH_KEY(tb, key) hash_bytes((unsigned char *) &key, sizeof (key))
@@ -495,7 +495,7 @@ mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 		else if (scan->numberOfOrderBys == 0 && GistPageIsLeaf(page))
 		{
 			/* Check TID for deduplication */
-			tidtable_insert(so->tidtable, it->t_tid, &found);
+			gtidtable_insert(so->tidtable, it->t_tid, &found);
 			if (found)
 				continue;
 
@@ -527,7 +527,7 @@ mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 			 * search.
 			 */
 			GISTSearchItem *item;
-			TIDISTTableEntry *entry;
+			GTIDISTTableEntry *entry;
 			int i, result = 0, nOrderBys = scan->numberOfOrderBys;
 
 			oldcxt = MemoryContextSwitchTo(so->queueCxt);
@@ -535,7 +535,7 @@ mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 			if (GistPageIsLeaf(page))
 			{
 				/* Check TID for deduplication */
-				entry = tidisttable_insert(so->tidisttable, it->t_tid, &found);
+				entry = gtidisttable_insert(so->tidisttable, it->t_tid, &found);
 				item = entry->item;
 				if (found)
 				{
@@ -698,7 +698,7 @@ getNextMENearest(IndexScanDesc scan)
 		if (GISTSearchItemIsHeap(*item))
 		{
 			/* Check TID for deduplication */
-			tidtable_insert(so->tidtable, item->data.heap.heapPtr, &found);
+			gtidtable_insert(so->tidtable, item->data.heap.heapPtr, &found);
 			if (!found)
 			{
 				/* found a heap item at currently minimal distance */
@@ -749,8 +749,8 @@ mgistgettuple(IndexScanDesc scan, ScanDirection dir)
 		GISTSearchItem fakeItem;
 
 		/* Create the hash table of TID's for deduplication */
-		so->tidtable = tidtable_create(so->tidtableCxt, 128, so);
-		so->tidisttable = tidisttable_create(so->queueCxt, 128, so);
+		so->tidtable = gtidtable_create(so->tidtableCxt, 128, so);
+		so->tidisttable = gtidisttable_create(so->queueCxt, 128, so);
 
 		pgstat_count_index_scan(scan->indexRelation);
 
