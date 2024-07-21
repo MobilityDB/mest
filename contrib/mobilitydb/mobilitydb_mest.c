@@ -1,7 +1,7 @@
 /*
  * mobilitydb_mest.c
  *
- * Multi Entry Search Trees for tgeompoint using Multi-Entry GiST
+ * Multi-Entry Search Trees for MobilityDB
  *
  * Author: Maxime Schoemans <maxime.schoemans@ulb.be>
  */

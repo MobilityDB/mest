@@ -1,16 +1,16 @@
 -- complain if script is sourced in psql, rather than via CREATE EXTENSION
-\echo Use "CREATE EXTENSION mgist_postgis" to load this file. \quit
+\echo Use "CREATE EXTENSION postgis_mest" to load this file. \quit
 
 /******************************************************************************
- * Multi Entry R-Tree for geometry types using ME-GiST
+ * Multi-Entry R-Tree for geometry types using MGiST
  ******************************************************************************/
 
-CREATE FUNCTION mgist_geometry_extract(internal, internal, internal)
+CREATE FUNCTION geometry_mest_extract(internal, internal, internal)
   RETURNS internal
-  AS 'MODULE_PATHNAME', 'mgist_geometry_extract'
+  AS 'MODULE_PATHNAME', 'geometry_mest_extract'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
-CREATE OPERATOR CLASS mgist_geometry_ops_2d
+CREATE OPERATOR CLASS geometry_mgist_ops_2d
   DEFAULT FOR TYPE geometry USING mgist AS
   STORAGE box2df,
   -- overlaps
@@ -26,6 +26,6 @@ CREATE OPERATOR CLASS mgist_geometry_ops_2d
   FUNCTION  5  geometry_gist_penalty_2d (internal, internal, internal),
   FUNCTION  6  geometry_gist_picksplit_2d (internal, internal),
   FUNCTION  7  geometry_gist_same_2d (geom1 geometry, geom2 geometry, internal),
-  FUNCTION  12 mgist_geometry_extract(internal, internal, internal);
+  FUNCTION  12 geometry_mest_extract(internal, internal, internal);
 
 /******************************************************************************/

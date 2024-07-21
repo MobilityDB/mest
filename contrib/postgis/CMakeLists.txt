@@ -30,11 +30,11 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/ryu" "ryu")
 
 set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "$<TARGET_OBJECTS:ryu>")
 set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "$<TARGET_OBJECTS:liblwgeom>")
-set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "mgist_postgis.c")
+set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "postgis_mest.c")
 
-add_library(mgist_postgis MODULE ${PROJECT_OBJECTS})
+add_library(postgis_mest MODULE ${PROJECT_OBJECTS})
 
 install(
-  FILES "${CMAKE_SOURCE_DIR}/mgist_postgis.control" "${CMAKE_SOURCE_DIR}/mgist_postgis--1.0.sql"
+  FILES "${CMAKE_SOURCE_DIR}/postgis_mest.control" "${CMAKE_SOURCE_DIR}/postgis_mest--1.0.sql"
   DESTINATION "${POSTGRESQL_SHARE_DIR}/extension")
-install(TARGETS mgist_postgis DESTINATION "${POSTGRESQL_DYNLIB_DIR}")
+install(TARGETS postgis_mest DESTINATION "${POSTGRESQL_DYNLIB_DIR}")

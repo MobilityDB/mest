@@ -1,7 +1,7 @@
 /*
- * mgist_postgis.C 
+ * postgis_mest.c
  *
- * Multi Entry R-Tree for geometry types using Multi-Entry GiST
+ * Multi-Entry Search Trees for PostGIS
  *
  * Author: Maxime Schoemans <maxime.schoemans@ulb.be>
  */
@@ -25,12 +25,12 @@ PG_MODULE_MAGIC;
 #define PG_GETARG_GSERIALIZED_P(varno) ((GSERIALIZED *)PG_DETOAST_DATUM(PG_GETARG_DATUM(varno)))
 
 /*****************************************************************************
- * ME-GiST extract methods
+ * M(SP-)GiST extract methods
  *****************************************************************************/
 
-PG_FUNCTION_INFO_V1(mgist_geometry_extract);
+PG_FUNCTION_INFO_V1(geometry_mest_extract);
 Datum
-mgist_geometry_extract(PG_FUNCTION_ARGS)
+geometry_mest_extract(PG_FUNCTION_ARGS)
 {
   GSERIALIZED *gs  = PG_GETARG_GSERIALIZED_P(0);
   int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
