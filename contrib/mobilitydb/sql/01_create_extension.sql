@@ -1,0 +1,1 @@
+CREATE EXTENSION mobilitydb_mest CASCADE;

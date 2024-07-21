@@ -1,0 +1,5 @@
+# mobilitydb_mest extension
+comment = 'mobilitydb_mest - Multi-Entry Search Trees for MobilityDB'
+default_version = '1.0'
+module_pathname = '$libdir/mobilitydb_mest'
+requires = 'mobilitydb, mest'

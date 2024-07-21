@@ -1,0 +1,4 @@
+CREATE EXTENSION mobilitydb_mest CASCADE;
+NOTICE:  installing required extension "mobilitydb"
+NOTICE:  installing required extension "postgis"
+NOTICE:  installing required extension "mest"

@@ -1,5 +1,0 @@
-# mspgist_mobilitydb extension
-comment = 'mspgist_mobilitydb - Multi Entry Quadtree and Kd-Tree for tgeompoint using ME-GiST'
-default_version = '1.0'
-module_pathname = '$libdir/mspgist_mobilitydb'
-requires = 'mobilitydb, mspgist'
