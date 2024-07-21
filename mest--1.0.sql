@@ -196,4 +196,3 @@ DEFAULT FOR TYPE path USING mgist AS
     FUNCTION    12  mgist_path_extract(internal, internal, internal);
 
 /*****************************************************************************/
-
