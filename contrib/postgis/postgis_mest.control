@@ -1,0 +1,5 @@
+# postgis_mest extension
+comment = 'postgis_mest - Multi-Entry Search Trees for PostGIS'
+default_version = '1.0'
+module_pathname = '$libdir/postgis_mest'
+requires = 'postgis, mgist'

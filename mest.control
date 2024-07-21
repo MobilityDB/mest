@@ -1,0 +1,5 @@
+# mest extension
+comment = 'Multi-Entry Search Trees for PostgreSQL'
+default_version = '1.0'
+module_pathname = '$libdir/mest'
+relocatable = true
