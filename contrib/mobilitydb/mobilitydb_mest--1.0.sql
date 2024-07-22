@@ -34,6 +34,12 @@ CREATE FUNCTION tpoint_mest_query_options(internal)
   AS 'MODULE_PATHNAME', 'Tpoint_mest_query_options'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE FUNCTION tpoint_mest_tile_options(internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Tpoint_mest_tile_options'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+
 /******************************************************************************/
 
 /* Equisplit */
@@ -424,5 +430,120 @@ CREATE OPERATOR CLASS mspgist_tpoint_kdtree_adaptivemergesplit_ops
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_adaptivemergesplit(internal, internal, internal);
+
+/******************************************************************************/
+
+/* Tilesplit */
+
+/*****************************************************************************/
+
+CREATE FUNCTION spaceTiles(tgeompoint, xsize float, ysize float, zsize float,
+    sorigin geometry DEFAULT 'Point(0 0 0)', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'MODULE_PATHNAME', 'Tpoint_space_tiles'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+CREATE FUNCTION spaceTiles(tgeompoint, size float,
+    sorigin geometry DEFAULT 'Point(0 0 0)', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'SELECT @extschema@.spaceTiles($1, $2, $2, $2, $3, $4)'
+  LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+CREATE FUNCTION spaceTiles(tgeompoint, sizeX float, sizeY float,
+    sorigin geometry DEFAULT 'Point(0 0 0)', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'SELECT @extschema@.spaceTiles($1, $2, $3, $2, $4, $5)'
+  LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+CREATE FUNCTION spaceTimeTiles(tgeompoint, xsize float, ysize float,
+    zsize float, interval, sorigin geometry DEFAULT 'Point(0 0 0)',
+    torigin timestamptz DEFAULT '2000-01-03', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'MODULE_PATHNAME', 'Tpoint_space_time_tiles'
+  LANGUAGE C IMMUTABLE PARALLEL SAFE STRICT;
+CREATE FUNCTION spaceTimeTiles(tgeompoint, size float, interval,
+    sorigin geometry DEFAULT 'Point(0 0 0)',
+    torigin timestamptz DEFAULT '2000-01-03', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'SELECT @extschema@.spaceTimeTiles($1, $2, $2, $2, $3, $4, $5, $6)'
+  LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+CREATE FUNCTION spaceTimeTiles(tgeompoint, xsize float, ysize float, interval,
+    sorigin geometry DEFAULT 'Point(0 0 0)',
+    torigin timestamptz DEFAULT '2000-01-03', bitmatrix boolean DEFAULT TRUE,
+    borderInc boolean DEFAULT TRUE)
+  RETURNS stbox[]
+  AS 'SELECT @extschema@.spaceTimeTiles($1, $2, $3, $2, $4, $5, $6, $7)'
+  LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+
+/******************************************************************************/
+
+/* Tilesplit */
+
+CREATE FUNCTION tpoint_mest_tilesplit(internal, internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME', 'Tpoint_mest_tilesplit'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE OPERATOR CLASS mgist_tpoint_tilesplit_ops
+  FOR TYPE tgeompoint USING mgist AS
+  STORAGE stbox,
+  -- overlaps
+  OPERATOR  3    && (tgeompoint, tstzspan),
+  OPERATOR  3    && (tgeompoint, stbox),
+  OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
+  -- functions
+  FUNCTION  1  gist_tgeompoint_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  2  stbox_gist_union(internal, internal),
+  FUNCTION  3  tpoint_mgist_compress(internal),
+  FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
+  FUNCTION  6  stbox_gist_picksplit(internal, internal),
+  FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
+  FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
+  FUNCTION  10 tpoint_mest_tile_options(internal),
+  FUNCTION  12 tpoint_mest_tilesplit(internal, internal, internal);
+
+CREATE OPERATOR CLASS mspgist_tpoint_quadtree_tilesplit_ops
+  FOR TYPE tgeompoint USING mspgist AS
+  -- overlaps
+  OPERATOR  3    && (tgeompoint, tstzspan),
+  OPERATOR  3    && (tgeompoint, stbox),
+  OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
+  -- functions
+  FUNCTION  1  stbox_spgist_config(internal, internal),
+  FUNCTION  2  stbox_quadtree_choose(internal, internal),
+  FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
+  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  6  tpoint_mspgist_compress(internal),
+  FUNCTION  7  tpoint_mest_tile_options(internal),
+  FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
+
+CREATE OPERATOR CLASS mspgist_tpoint_kdtree_tilesplit_ops
+  FOR TYPE tgeompoint USING mspgist AS
+  -- overlaps
+  OPERATOR  3    && (tgeompoint, tstzspan),
+  OPERATOR  3    && (tgeompoint, stbox),
+  OPERATOR  3    && (tgeompoint, tgeompoint),
+  -- nearest approach distance
+  OPERATOR  25    |=| (tgeompoint, stbox) FOR ORDER BY pg_catalog.float_ops,
+  OPERATOR  25    |=| (tgeompoint, tgeompoint) FOR ORDER BY pg_catalog.float_ops,
+  -- functions
+  FUNCTION  1  stbox_spgist_config(internal, internal),
+  FUNCTION  2  stbox_kdtree_choose(internal, internal),
+  FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
+  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  6  tpoint_mspgist_compress(internal),
+  FUNCTION  7  tpoint_mest_tile_options(internal),
+  FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
 
 /******************************************************************************/
