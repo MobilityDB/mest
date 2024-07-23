@@ -21,6 +21,7 @@
 #include <meos.h>
 #include <meos_internal.h>
 #include <meos_catalog.h>
+#include "mobilitydb_mest.h"
 
 PG_MODULE_MAGIC;
 
@@ -83,10 +84,43 @@ enum stbox_state {
   STBOX_DELETED
 };
 
+
+/* Tile size in the X, Y, and Z dimensions for the extract function */
+#define MEST_EXTRACT_XSIZE_DEFAULT    1.0
+#define MEST_EXTRACT_XSIZE_MAX        1000000.0
+#define MEST_EXTRACT_GET_XSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->xsize : \
+          MEST_EXTRACT_XSIZE_DEFAULT)
+
+#define MEST_EXTRACT_YSIZE_DEFAULT    1.0
+#define MEST_EXTRACT_YSIZE_MAX        1000000.0
+#define MEST_EXTRACT_GET_YSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->ysize : \
+          MEST_EXTRACT_YSIZE_DEFAULT)
+
+#define MEST_EXTRACT_ZSIZE_DEFAULT    1.0
+#define MEST_EXTRACT_ZSIZE_MAX        1000000.0
+#define MEST_EXTRACT_GET_ZSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->zsize : \
+          MEST_EXTRACT_ZSIZE_DEFAULT)
+
+/* mgist_multirange_ops opclass extract options */
+typedef struct
+{
+  int32   vl_len_;    /* varlena header (do not touch directly!) */
+  double  xsize;      /* tile size in the X dimension */
+  double  ysize;      /* tile size in the Y dimension */
+  double  zsize;      /* tile size in the Z dimension */
+} MEST_TILE_Options;
+
+
 extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 
+extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
+  bool timetile);
+
 /*****************************************************************************
- * Utility functions methods
+ * M(SP-)GiST compress functions
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mgist_compress);
@@ -113,6 +147,10 @@ Tpoint_mspgist_compress(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(result);
 }
 
+/*****************************************************************************
+ * M(SP-)GiST option functions
+ *****************************************************************************/
+
 PG_FUNCTION_INFO_V1(Tpoint_mest_box_options);
 /**
  * M(SP-)GiST options for temporal points
@@ -127,6 +165,32 @@ Tpoint_mest_box_options(PG_FUNCTION_ARGS)
               "number of boxes for extract method",
               MEST_EXTRACT_BOXES_DEFAULT, 1, MEST_EXTRACT_BOXES_MAX,
               offsetof(MEST_BOXES_Options, num_boxes));
+
+  PG_RETURN_VOID();
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_mest_tile_options);
+/**
+ * M(SP-)GiST options for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mest_tile_options(PG_FUNCTION_ARGS)
+{
+  local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
+
+  init_local_reloptions(relopts, sizeof(MEST_TILE_Options));
+  add_local_real_reloption(relopts, "xsize",
+              "Tile size in the X dimension (in units of the SRID)",
+              MEST_EXTRACT_XSIZE_DEFAULT, 1, MEST_EXTRACT_XSIZE_MAX,
+              offsetof(MEST_TILE_Options, xsize));
+  add_local_real_reloption(relopts, "ysize",
+              "Tile size in the Y dimension (in units of the SRID)",
+              MEST_EXTRACT_YSIZE_DEFAULT, 1, MEST_EXTRACT_YSIZE_MAX,
+              offsetof(MEST_TILE_Options, ysize));
+  add_local_real_reloption(relopts, "zsize",
+              "Tile size in the Z dimension (in units of the SRID)",
+              MEST_EXTRACT_ZSIZE_DEFAULT, 1, MEST_EXTRACT_ZSIZE_MAX,
+              offsetof(MEST_TILE_Options, zsize));
 
   PG_RETURN_VOID();
 }
@@ -1214,5 +1278,230 @@ Tpoint_static_adaptivemergesplit(PG_FUNCTION_ARGS)
   PG_RETURN_POINTER(result);
 }
 
+/*****************************************************************************
+ * TileSplit Methods
+ *****************************************************************************/
+
+/**
+ * @brief Return the tiles covered by a temporal point in a space and possibly
+ * a time grid
+ * @param[in] temp Temporal point
+ * @param[in] xsize,ysize,zsize Size of the corresponding dimension
+ * @param[in] duration Duration
+ * @param[in] sorigin Origin for the space dimension
+ * @param[in] torigin Origin for the time dimension
+ * @param[in] bitmatrix True when using a bitmatrix to speed up the computation
+ * @param[in] border_inc True when the box contains the upper border, otherwise
+ * the upper border is assumed as outside of the box.
+ * @param[out] count Number of elements in the output arrays
+ */
+STBox *
+tpoint_space_time_tiles(const Temporal *temp, float xsize, float ysize,
+  float zsize, const Interval *duration, const GSERIALIZED *sorigin, 
+  TimestampTz torigin, bool bitmatrix, bool border_inc, int *count)
+{
+  int ntiles;
+  STboxGridState *state;
+  STBox *result;
+  int i = 0;
+  Temporal *atstbox;
+
+  /* Initialize state */
+  state = tpoint_space_time_split_init(temp, xsize, ysize, zsize, duration,
+    sorigin, torigin, bitmatrix, border_inc, &ntiles);
+  if (! state)
+    return NULL;
+
+  result = palloc(sizeof(STBox) * ntiles);
+  /* We need to loop since atStbox may be NULL */
+  while (true)
+  {
+    STBox box;
+    bool found;
+
+    /* Stop when we have used up all the grid tiles */
+    if (state->done)
+    {
+      if (state->bm)
+        pfree(state->bm);
+      pfree(state);
+      break;
+    }
+
+    /* Get current tile (if any) and advance state
+     * It is necessary to test if we found a tile since the previous tile
+     * may be the last one set in the associated bit matrix */
+    found = stbox_tile_state_get(state, &box);
+    if (! found)
+    {
+      if (state->bm)
+        pfree(state->bm);
+      pfree(state);
+      break;
+    }
+    stbox_tile_state_next(state);
+
+    /* Restrict the temporal point to the box and compute its bounding box */
+    atstbox = tpoint_restrict_stbox(state->temp, &box, BORDER_EXC, REST_AT);
+    if (atstbox == NULL)
+      continue;
+    tspatial_set_stbox(atstbox, &box);
+    /* If only space tiles */
+    if (! duration)
+      MEOS_FLAGS_SET_T(box.flags, false);
+    pfree(atstbox);
+
+    /* Copy the box to the result */
+    memcpy(&result[i++], &box, sizeof(STBox));
+  }
+  *count = i;
+  return result;
+}
+
+/**
+ * @brief Return the tiles covered by a temporal point in a space grid
+ * @param[in] temp Temporal point
+ * @param[in] xsize,ysize,zsize Size of the corresponding dimension
+ * @param[in] sorigin Origin for the space dimension
+ * @param[in] bitmatrix True when using a bitmatrix to speed up the computation
+ * @param[in] border_inc True when the box contains the upper border, otherwise
+ * the upper border is assumed as outside of the box.
+ * @param[out] count Number of elements in the output arrays
+ */
+STBox *
+tpoint_space_tiles(const Temporal *temp, float xsize, float ysize, float zsize,
+  const GSERIALIZED *sorigin, bool bitmatrix, bool border_inc, int *count)
+{
+  return tpoint_space_time_tiles(temp, xsize, ysize, zsize, NULL, sorigin, 0,
+    bitmatrix, border_inc, count);
+}
+
+/*****************************************************************************/
+
+/**
+ * @brief Compute the tiles covered by a temporal point in a spatial and 
+ * possibly a temporal grid
+ */
+Datum
+Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo, bool timetile)
+{
+  Temporal *temp;
+  double xsize;
+  double ysize;
+  double zsize;
+  GSERIALIZED *sorigin;
+  Interval *duration = NULL;
+  TimestampTz torigin = 0;
+  int i = 4;
+  bool bitmatrix;
+  bool border_inc;
+  int count;
+  STBox *boxes;
+  ArrayType *result;
+
+  /* Get input parameters */
+  temp = PG_GETARG_TEMPORAL_P(0);
+  xsize = PG_GETARG_FLOAT8(1);
+  ysize = PG_GETARG_FLOAT8(2);
+  zsize = PG_GETARG_FLOAT8(3);
+  if (timetile)
+    duration = PG_GETARG_INTERVAL_P(i++);
+  sorigin = PG_GETARG_GSERIALIZED_P(i++);
+  if (timetile)
+    torigin = PG_GETARG_TIMESTAMPTZ(i++);
+  bitmatrix = PG_GETARG_BOOL(i++);
+  if (temporal_num_instants(temp) == 1)
+    bitmatrix = false;
+  border_inc = PG_GETARG_BOOL(i++);
+
+  /* Get the tiles */
+  boxes = tpoint_space_time_tiles(temp, xsize, ysize, zsize,
+      timetile ? duration : NULL, sorigin, torigin, bitmatrix, border_inc,
+      &count);
+  result = stboxarr_to_array(boxes, count);
+  pfree(boxes);
+  PG_FREE_IF_COPY(temp, 0);
+  PG_RETURN_ARRAYTYPE_P(result);
+}
+
+PGDLLEXPORT Datum Tpoint_space_tiles(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Tpoint_space_tiles);
+/**
+ * @ingroup mobilitydb_temporal_analytics_tile
+ * @brief Return a temporal point split with respect to a spatial grid
+ * @sqlfn spaceSplit()
+ */
+Datum
+Tpoint_space_tiles(PG_FUNCTION_ARGS)
+{
+  return Tpoint_space_time_tiles_ext(fcinfo, false);
+}
+
+PGDLLEXPORT Datum Tpoint_space_time_tiles(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Tpoint_space_time_tiles);
+/**
+ * @ingroup mobilitydb_temporal_analytics_tile
+ * @brief Return a temporal point split with respect to a spatiotemporal grid
+ * @sqlfn spaceTimeSplit()
+ */
+Datum
+Tpoint_space_time_tiles(PG_FUNCTION_ARGS)
+{
+  return Tpoint_space_time_tiles_ext(fcinfo, true);
+}
+
+/*****************************************************************************/
+
+PG_FUNCTION_INFO_V1(Tpoint_mest_tilesplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+
+  /* Index parameters */
+  double xsize = MEST_EXTRACT_GET_XSIZE();
+  double ysize = MEST_EXTRACT_GET_YSIZE();
+  double zsize = MEST_EXTRACT_GET_ZSIZE();
+  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
+  
+  /* Get the tiles */
+  int32 count;
+  STBox *boxes = tpoint_space_time_tiles(temp, xsize, ysize, zsize,
+      NULL, sorigin, 0, true, true, &count);
+  Datum *keys = palloc(sizeof(Datum) * count);
+  assert(temp);
+  for (int i = 0; i < count; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  *nkeys = count;
+  PG_RETURN_POINTER(keys);
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_tilesplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_tilesplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  double xsize = PG_GETARG_FLOAT8(1);
+  double ysize = PG_GETARG_FLOAT8(2);
+  double zsize = PG_GETARG_FLOAT8(3);
+  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
+
+  /* Get the tiles */
+  int32 nkeys;
+  STBox *boxes = tpoint_space_time_tiles(temp, xsize, ysize, zsize,
+      NULL, sorigin, 0, true, true, &nkeys);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
+  pfree(boxes);
+  PG_FREE_IF_COPY(temp, 0);
+  PG_RETURN_ARRAYTYPE_P(result);
+}
 
 /*****************************************************************************/
