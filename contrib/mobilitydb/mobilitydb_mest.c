@@ -92,25 +92,29 @@ enum stbox_state {
           ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->xsize : \
           MEST_EXTRACT_XSIZE_DEFAULT)
 
-#define MEST_EXTRACT_YSIZE_DEFAULT    1.0
+#define MEST_EXTRACT_YSIZE_DEFAULT    -1.0
 #define MEST_EXTRACT_YSIZE_MAX        1000000.0
 #define MEST_EXTRACT_GET_YSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->ysize : \
           MEST_EXTRACT_YSIZE_DEFAULT)
 
-#define MEST_EXTRACT_ZSIZE_DEFAULT    1.0
+#define MEST_EXTRACT_ZSIZE_DEFAULT    -1.0
 #define MEST_EXTRACT_ZSIZE_MAX        1000000.0
 #define MEST_EXTRACT_GET_ZSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->zsize : \
           MEST_EXTRACT_ZSIZE_DEFAULT)
 
+#define MEST_EXTRACT_DURATION_DEFAULT    ""
+
 /* mgist_multirange_ops opclass extract options */
 typedef struct
 {
-  int32   vl_len_;    /* varlena header (do not touch directly!) */
-  double  xsize;      /* tile size in the X dimension */
-  double  ysize;      /* tile size in the Y dimension */
-  double  zsize;      /* tile size in the Z dimension */
+  int32 vl_len_;      /* varlena header (do not touch directly!) */
+  double xsize;       /* tile size in the X dimension */
+  double ysize;       /* tile size in the Y dimension */
+  double zsize;       /* tile size in the Z dimension */
+  int duration;       /* tile size in the T dimension, which is an interval 
+                         represented as a string */
 } MEST_TILE_Options;
 
 
@@ -118,6 +122,9 @@ extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 
 extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
   bool timetile);
+
+extern Datum call_function1(PGFunction func, Datum arg1);
+extern Datum interval_in(PG_FUNCTION_ARGS);
 
 /*****************************************************************************
  * M(SP-)GiST compress functions
@@ -169,6 +176,18 @@ Tpoint_mest_box_options(PG_FUNCTION_ARGS)
   PG_RETURN_VOID();
 }
 
+/*
+ * Duration filler
+ */
+static Size
+fill_duration_relopt(const char *value, void *ptr)
+{
+  int len = strlen(value);
+  if (ptr)
+    strcpy((char *) ptr, value);
+  return len + 1;
+}
+
 PG_FUNCTION_INFO_V1(Tpoint_mest_tile_options);
 /**
  * M(SP-)GiST options for temporal points
@@ -191,6 +210,12 @@ Tpoint_mest_tile_options(PG_FUNCTION_ARGS)
               "Tile size in the Z dimension (in units of the SRID)",
               MEST_EXTRACT_ZSIZE_DEFAULT, 1, MEST_EXTRACT_ZSIZE_MAX,
               offsetof(MEST_TILE_Options, zsize));
+  add_local_string_reloption(relopts, "duration",
+              "Tile size in the T dimension (a time interval)",
+              MEST_EXTRACT_DURATION_DEFAULT,
+              NULL,
+              &fill_duration_relopt,
+              offsetof(MEST_TILE_Options, duration));
 
   PG_RETURN_VOID();
 }
@@ -989,10 +1014,10 @@ Tpoint_static_linearsplit(PG_FUNCTION_ARGS)
 
 /*****************************************************************************/
 
-/* Manualsplit */
+/* Segsplit */
 
 static STBox *
-tsequence_manualsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+tsequence_segsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
 {
   STBox *result;
   STBox box1;
@@ -1013,18 +1038,18 @@ tsequence_manualsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
   return result;
 }
 
-PG_FUNCTION_INFO_V1(Tpoint_mest_manualsplit);
+PG_FUNCTION_INFO_V1(Tpoint_mest_segsplit);
 /**
  * M(SP-)GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
-Tpoint_mest_manualsplit(PG_FUNCTION_ARGS)
+Tpoint_mest_segsplit(PG_FUNCTION_ARGS)
 {
-  return tpoint_mest_extract(fcinfo, &tsequence_manualsplit);
+  return tpoint_mest_extract(fcinfo, &tsequence_segsplit);
 }
 
 static STBox *
-tsequence_static_manualsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
+tsequence_static_segsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
 {
   STBox *result;
   STBox box1;
@@ -1045,18 +1070,18 @@ tsequence_static_manualsplit(const TSequence *seq, int32 segs_per_split, int32 *
   return result;
 }
 
-PG_FUNCTION_INFO_V1(Tpoint_static_manualsplit);
+PG_FUNCTION_INFO_V1(Tpoint_static_segsplit);
 /**
  * M(SP-)GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
-Tpoint_static_manualsplit(PG_FUNCTION_ARGS)
+Tpoint_static_segsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 segs_per_split = PG_GETARG_INT32(1);
 
   int32 nkeys;
-  STBox *boxes = tsequence_static_manualsplit((TSequence *) temp, segs_per_split, &nkeys);
+  STBox *boxes = tsequence_static_segsplit((TSequence *) temp, segs_per_split, &nkeys);
   ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
 }
@@ -1064,7 +1089,7 @@ Tpoint_static_manualsplit(PG_FUNCTION_ARGS)
 
 /*****************************************************************************/
 
-/* Adaptive Manualsplit */
+/* Adaptive mergesplit */
 
 static STBox *
 tsequence_adaptivemergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
@@ -1462,18 +1487,44 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
   // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  double xsize, ysize, zsize;
+  char *duration;
+  Interval *interv = NULL;
+  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
+  TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
+  int32 count;
+  STBox *boxes;
+  Datum *keys;
 
   /* Index parameters */
-  double xsize = MEST_EXTRACT_GET_XSIZE();
-  double ysize = MEST_EXTRACT_GET_YSIZE();
-  double zsize = MEST_EXTRACT_GET_ZSIZE();
-  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
-  
+  xsize = MEST_EXTRACT_GET_XSIZE();
+  ysize = MEST_EXTRACT_GET_YSIZE();
+  if (ysize == -1)
+    ysize = xsize;
+  zsize = MEST_EXTRACT_GET_ZSIZE();
+  if (zsize == -1)
+    zsize = xsize;
+  if (PG_HAS_OPCLASS_OPTIONS())
+  {
+    MEST_TILE_Options *options = (MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS();
+    duration = GET_STRING_RELOPTION(options, duration);
+    if (strlen(duration) > 0)
+    {
+      interv = (Interval *) DatumGetPointer(call_function1(interval_in, 
+        PointerGetDatum(duration)));
+      if (! interv)
+      {
+        ereport(ERROR,
+          (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+           errmsg("duration string cannot be converted to a time interval")));
+      }
+    }
+  }
+
   /* Get the tiles */
-  int32 count;
-  STBox *boxes = tpoint_space_time_tiles(temp, xsize, ysize, zsize,
-      NULL, sorigin, 0, true, true, &count);
-  Datum *keys = palloc(sizeof(Datum) * count);
+  boxes = tpoint_space_time_tiles(temp, xsize, ysize, zsize, interv, sorigin, 
+    torigin, true, true, &count);
+  keys = palloc(sizeof(Datum) * count);
   assert(temp);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&boxes[i]);

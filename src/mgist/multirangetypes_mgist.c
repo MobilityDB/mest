@@ -31,17 +31,17 @@
 /* Maximum number of ranges for the extract function 
  * The default value -1 is used to extract all ranges from a multirange
  * The maximum value is used to restrict the range of large multiranges */
-#define MGIST_MULTIRANGE_EXTRACT_NUM_RANGES_DEFAULT    -1
-#define MGIST_MULTIRANGE_EXTRACT_NUM_RANGES_MAX        10000
-#define MGIST_MULTIRANGE_EXTRACT_NUM_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MGIST_MULTIRANGE_Options *) PG_GET_OPCLASS_OPTIONS())->num_ranges : \
-          MGIST_MULTIRANGE_EXTRACT_NUM_RANGES_DEFAULT)
+#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT    -1
+#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX        10000
+#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MGIST_MULTIRANGE_Options *) PG_GET_OPCLASS_OPTIONS())->max_ranges : \
+          MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT)
 
 /* mgist_multirange_ops opclass extract options */
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
-  int     num_ranges;   /* number of ranges */
+  int     max_ranges;   /* number of ranges */
 } MGIST_MULTIRANGE_EXTRACT_Options;
 
 static RangeType *range_super_union(TypeCacheEntry *typcache, RangeType *r1,
@@ -156,11 +156,11 @@ multirange_mgist_extract_options(PG_FUNCTION_ARGS)
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
   init_local_reloptions(relopts, sizeof(MGIST_MULTIRANGE_EXTRACT_Options));
-  add_local_int_reloption(relopts, "num_ranges",
+  add_local_int_reloption(relopts, "max_ranges",
               "number of ranges for extract method",
-              MGIST_MULTIRANGE_EXTRACT_NUM_RANGES_DEFAULT, 1, 
-              MGIST_MULTIRANGE_EXTRACT_NUM_RANGES_MAX,
-              offsetof(MGIST_MULTIRANGE_EXTRACT_Options, num_ranges));
+              MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT, 1, 
+              MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX,
+              offsetof(MGIST_MULTIRANGE_EXTRACT_Options, max_ranges));
 
   PG_RETURN_VOID();
 }
@@ -178,7 +178,7 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
   int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
   TypeCacheEntry *typcache;
   int32   range_count;
-  int32   num_ranges = -1;
+  int32   max_ranges = -1;
   RangeType **ranges;
 
   typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
@@ -194,10 +194,10 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
   {
     MGIST_MULTIRANGE_EXTRACT_Options *options = 
       (MGIST_MULTIRANGE_EXTRACT_Options *) PG_GET_OPCLASS_OPTIONS();
-    num_ranges = options->num_ranges;
+    max_ranges = options->max_ranges;
   }
 
-  if (num_ranges == -1 || range_count <= num_ranges)
+  if (max_ranges == -1 || range_count <= max_ranges)
   {
     *nkeys = range_count;
     /* we should not free array, ranges[i] points into it */
@@ -207,16 +207,16 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
   else
   {
     /* Merge two consecutive ranges to reach the maximum number of ranges */
-    RangeType **new_ranges = palloc(sizeof(RangeType *) * num_ranges);
+    RangeType **new_ranges = palloc(sizeof(RangeType *) * max_ranges);
     TypeCacheEntry *typcache1 = 
       range_get_typcache(fcinfo, RangeTypeGetOid(ranges[0]));
     /* Minimum number of input ranges merged together in a output range */
-    int size = range_count / num_ranges;
+    int size = range_count / max_ranges;
     /* Number of output ranges that result from merging (size + 1) ranges */
-    int remainder = range_count % num_ranges;
+    int remainder = range_count % max_ranges;
     int i = 0; /* Loop variable for input ranges */
     int k = 0; /* Loop variable for output ranges */
-    while (k < num_ranges)
+    while (k < max_ranges)
     {
       int j = i + size - 1;
       if (k < remainder)
@@ -231,7 +231,7 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
       else
         new_ranges[k++] = ranges[i++];
     }
-    *nkeys = num_ranges;
+    *nkeys = max_ranges;
     PG_FREE_IF_COPY(mr, 0);
     PG_RETURN_POINTER(new_ranges);
   }
