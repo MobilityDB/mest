@@ -24,6 +24,22 @@ DROP TABLE IF EXISTS public.tbl_datespanset;
 CREATE TABLE public.tbl_datespanset(k integer PRIMARY KEY, d public.datespanset);
 \copy tbl_datespanset FROM 'data/tbl_datespanset.data'
 
+DROP TABLE IF EXISTS public.tbl_float;
+CREATE TABLE public.tbl_float(k integer PRIMARY KEY,f double precision);
+\copy tbl_float FROM 'data/tbl_float.data'
+
+DROP TABLE IF EXISTS public.tbl_floatset;
+CREATE TABLE public.tbl_floatset(k integer PRIMARY KEY,f public.floatset);
+\copy tbl_floatset FROM 'data/tbl_floatset.data'
+
+DROP TABLE IF EXISTS public.tbl_floatspan;
+CREATE TABLE public.tbl_floatspan(k integer PRIMARY KEY,f public.floatspan);
+\copy tbl_floatspan FROM 'data/tbl_floatspan.data'
+
+DROP TABLE IF EXISTS public.tbl_floatspanset;
+CREATE TABLE public.tbl_floatspanset(k integer PRIMARY KEY,f public.floatspanset);
+\copy tbl_floatspanset FROM 'data/tbl_floatspanset.data'
+
 DROP TABLE IF EXISTS public.tbl_geography;
 CREATE TABLE public.tbl_geography(k integer PRIMARY KEY, g geography);
 \copy tbl_geography FROM 'data/tbl_geography.data'

@@ -48,7 +48,7 @@ CREATE FUNCTION multirange_mgist_extract_options(internal)
 
 -- Opclasses
 
-CREATE OPERATOR CLASS mgist_multirange_ops
+CREATE OPERATOR CLASS multirange_mgist_ops
 DEFAULT FOR TYPE anymultirange USING mgist AS
     -- Storage
     STORAGE     anyrange,
@@ -100,7 +100,7 @@ CREATE FUNCTION multirange_mspgist_extract(internal, internal, internal)
 
 -- Opclasses
 
-CREATE OPERATOR CLASS mspgist_multirange_ops
+CREATE OPERATOR CLASS multirange_mquadtree_ops
 DEFAULT FOR TYPE anymultirange USING mspgist AS
     -- Storage
     STORAGE     anyrange,
@@ -166,7 +166,7 @@ LANGUAGE C;
 
 -- Opclasses
 
-CREATE OPERATOR CLASS gist_path_ops
+CREATE OPERATOR CLASS path_gist_ops
 DEFAULT FOR TYPE path USING gist AS
     -- Storage
     STORAGE     box,
@@ -180,7 +180,7 @@ DEFAULT FOR TYPE path USING gist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal);
 
-CREATE OPERATOR CLASS mgist_path_ops
+CREATE OPERATOR CLASS path_mgist_ops
 DEFAULT FOR TYPE path USING mgist AS
     -- Storage
     STORAGE     box,
