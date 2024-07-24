@@ -31,24 +31,24 @@ CREATE TABLE public.tbl_bigint (
 
 
 --
--- Name: tbl_int8range; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_bigintspan; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_int8range;
-CREATE TABLE public.tbl_int8range (
+DROP TABLE IF EXISTS public.tbl_bigintspan;
+CREATE TABLE public.tbl_bigintspan (
     k integer PRIMARY KEY,
-    b int8range
+    b public.bigintspan
 );
 
 
 --
--- Name: tbl_int8multirange; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_bigintspanset; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_int8multirange;
-CREATE TABLE public.tbl_int8multirange (
+DROP TABLE IF EXISTS public.tbl_bigintspanset;
+CREATE TABLE public.tbl_bigintspanset (
     k integer PRIMARY KEY,
-    b int8multirange
+    b public.bigintspanset
 );
 
 
@@ -64,24 +64,24 @@ CREATE TABLE public.tbl_date (
 
 
 --
--- Name: tbl_daterange; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_datespan; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_daterange;
-CREATE TABLE public.tbl_daterange (
+DROP TABLE IF EXISTS public.tbl_datespan;
+CREATE TABLE public.tbl_datespan (
     k integer PRIMARY KEY,
-    d daterange
+    d public.datespan
 );
 
 
 --
--- Name: tbl_datemultirange; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_datespanset; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_datemultirange;
-CREATE TABLE public.tbl_datemultirange (
+DROP TABLE IF EXISTS public.tbl_datespanset;
+CREATE TABLE public.tbl_datespanset (
     k integer PRIMARY KEY,
-    d datemultirange
+    d public.datespanset
 );
 
 
@@ -97,46 +97,46 @@ CREATE TABLE public.tbl_int (
 
 
 --
--- Name: tbl_int4range; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_intspan; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_int4range;
-CREATE TABLE public.tbl_int4range (
+DROP TABLE IF EXISTS public.tbl_intspan;
+CREATE TABLE public.tbl_intspan (
     k integer PRIMARY KEY,
-    i int4range
+    i public.intspan
 );
 
 
 --
--- Name: tbl_int4range; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_intspan; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_int4multirange;
-CREATE TABLE public.tbl_int4multirange (
+DROP TABLE IF EXISTS public.tbl_intspanset;
+CREATE TABLE public.tbl_intspanset (
     k integer PRIMARY KEY,
-    i int4multirange
+    i public.intspanset
 );
 
 
 --
--- Name: tbl_tstzrange; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_tstzspan; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_tstzrange;
-CREATE TABLE public.tbl_tstzrange (
+DROP TABLE IF EXISTS public.tbl_tstzspan;
+CREATE TABLE public.tbl_tstzspan (
     k integer PRIMARY KEY,
-    t tstzrange
+    t public.tstzspan
 );
 
 
 --
--- Name: tbl_tstzmultirange; Type: TABLE; Schema: public; Owner: -
+-- Name: tbl_tstzspanset; Type: TABLE; Schema: public; Owner: -
 --
 
-DROP TABLE IF EXISTS public.tbl_tstzmultirange;
-CREATE TABLE public.tbl_tstzmultirange (
+DROP TABLE IF EXISTS public.tbl_tstzspanset;
+CREATE TABLE public.tbl_tstzspanset (
     k integer PRIMARY KEY,
-    t tstzmultirange
+    t public.tstzspanset
 );
 
 
@@ -260,18 +260,118 @@ COPY public.tbl_bigint (k, b) FROM stdin;
 
 
 --
--- Data for Name: tbl_int8range; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_bigintspan; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_int8range (k, b) FROM stdin;
+COPY public.tbl_bigintspan (k, b) FROM stdin;
+1	\N
+2	[88, 89)
+3	[89, 96)
+4	[75, 83)
+5	[68, 73)
+6	[60, 69)
+7	[80, 84)
+8	[66, 73)
+9	[2, 3)
+10	[7, 17)
+11	[20, 23)
+12	[17, 19)
+13	[11, 14)
+14	[59, 69)
+15	[71, 80)
+16	[58, 61)
+17	[7, 10)
+18	[40, 41)
+19	[67, 77)
+20	[60, 64)
+21	[32, 40)
+22	[27, 28)
+23	[15, 22)
+24	[19, 25)
+25	[29, 32)
+26	[8, 18)
+27	[84, 89)
+28	[26, 27)
+29	[17, 24)
+30	[8, 18)
+31	[85, 88)
+32	[84, 87)
+33	[51, 56)
+34	[89, 92)
+35	[19, 26)
+36	[83, 92)
+37	[37, 46)
+38	[54, 61)
+39	[19, 22)
+40	[41, 47)
+41	[31, 37)
+42	[68, 77)
+43	[68, 70)
+44	[35, 37)
+45	[26, 35)
+46	[39, 43)
+47	[79, 81)
+48	[5, 13)
+49	[76, 81)
+50	[84, 86)
+51	[33, 35)
+52	[15, 20)
+53	[13, 16)
+54	[68, 69)
+55	[6, 9)
+56	[38, 47)
+57	[66, 72)
+58	[13, 18)
+59	[52, 56)
+60	[41, 42)
+61	[44, 51)
+62	[9, 18)
+63	[75, 81)
+64	[28, 32)
+65	[83, 88)
+66	[40, 42)
+67	[75, 78)
+68	[72, 81)
+69	[90, 93)
+70	[56, 60)
+71	[75, 76)
+72	[73, 76)
+73	[2, 7)
+74	[30, 39)
+75	[48, 49)
+76	[66, 73)
+77	[24, 29)
+78	[68, 78)
+79	[20, 21)
+80	[24, 32)
+81	[18, 22)
+82	[56, 59)
+83	[18, 27)
+84	[15, 17)
+85	[87, 90)
+86	[4, 14)
+87	[61, 66)
+88	[25, 34)
+89	[57, 65)
+90	[74, 75)
+91	[82, 83)
+92	[26, 36)
+93	[83, 91)
+94	[64, 69)
+95	[46, 47)
+96	[13, 16)
+97	[69, 77)
+98	[77, 87)
+99	[7, 11)
+100	[26, 28)
 \.
 
 
 --
--- Data for Name: tbl_int8multirange; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_bigintspanset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_int8multirange (k, b) FROM stdin;
+COPY public.tbl_bigintspanset (k, b) FROM stdin;
 1	\N
 2	{[34, 36), [41, 45), [49, 50), [55, 56), [71, 76), [83, 87), [88, 92)}
 3	{[1, 5), [11, 14), [22, 27), [33, 37), [41, 43), [54, 59), [63, 64), [71, 73), [81, 83), [93, 96)}
@@ -484,10 +584,10 @@ COPY public.tbl_date (k, d) FROM stdin;
 
 
 --
--- Data for Name: tbl_daterange; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_datespan; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_daterange (k, d) FROM stdin;
+COPY public.tbl_datespan (k, d) FROM stdin;
 1	\N
 2	[2001-07-30, 2001-08-09)
 3	[2001-05-29, 2001-06-01)
@@ -592,10 +692,10 @@ COPY public.tbl_daterange (k, d) FROM stdin;
 
 
 --
--- Data for Name: tbl_datemultirange; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_datespanset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_datemultirange (k, d) FROM stdin;
+COPY public.tbl_datespanset (k, d) FROM stdin;
 1	\N
 2	{[2001-08-19, 2001-08-23), [2001-08-31, 2001-09-08), [2001-09-09, 2001-09-10), [2001-09-16, 2001-09-20), [2001-09-26, 2001-09-30), [2001-10-03, 2001-10-06), [2001-10-14, 2001-10-21)}
 3	{[2001-01-04, 2001-01-12), [2001-01-16, 2001-01-21), [2001-01-23, 2001-01-28), [2001-02-05, 2001-02-06), [2001-02-14, 2001-02-20), [2001-02-25, 2001-03-01), [2001-03-10, 2001-03-11), [2001-03-21, 2001-03-23), [2001-03-25, 2001-03-26), [2001-04-02, 2001-04-05)}
@@ -807,7 +907,7 @@ COPY public.tbl_int (k, i) FROM stdin;
 \.
 
 
-COPY public.tbl_int4range (k, i) FROM stdin;
+COPY public.tbl_intspan (k, i) FROM stdin;
 1	\N
 2	[19,21)
 3	[74,83)
@@ -912,10 +1012,10 @@ COPY public.tbl_int4range (k, i) FROM stdin;
 
 
 --
--- Data for Name: tbl_int4range; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_intspan; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_int4multirange (k, i) FROM stdin;
+COPY public.tbl_intspanset (k, i) FROM stdin;
 1	\N
 2	{[32, 36), [39, 44), [57, 62), [63, 65), [86, 88)}
 3	{[2, 6), [11, 13), [35, 37), [42, 43), [49, 53), [57, 59), [71, 73), [81, 86), [89, 94)}
@@ -1024,15 +1124,114 @@ COPY public.tbl_int4multirange (k, i) FROM stdin;
 --
 
 COPY public.tbl_timestamptz (k, t) FROM stdin;
-
+1	\N
+2	2001-06-14 23:11:00+02
+3	2001-04-01 02:47:00+02
+4	2001-07-11 03:31:00+02
+5	2001-04-01 19:37:00+02
+6	2001-12-08 21:23:00+01
+7	2001-03-01 10:14:00+01
+8	2001-05-11 22:09:00+02
+9	2001-03-31 06:25:00+02
+10	2001-10-11 04:54:00+02
+11	2001-07-18 03:57:00+02
+12	2001-04-19 18:38:00+02
+13	2001-09-16 20:15:00+02
+14	2001-07-23 01:46:00+02
+15	2001-01-01 03:36:00+01
+16	2001-11-18 18:34:00+01
+17	2001-10-07 01:08:00+02
+18	2001-05-01 20:28:00+02
+19	2001-03-05 18:58:00+01
+20	2001-11-08 11:14:00+01
+21	2001-01-09 16:47:00+01
+22	2001-02-18 10:31:00+01
+23	2001-11-09 07:18:00+01
+24	2001-09-12 17:59:00+02
+25	2001-04-18 21:25:00+02
+26	2001-09-20 04:42:00+02
+27	2001-06-21 14:58:00+02
+28	2001-09-17 12:51:00+02
+29	2001-05-19 14:35:00+02
+30	2001-08-15 09:04:00+02
+31	2001-07-05 05:49:00+02
+32	2001-01-29 05:33:00+01
+33	2001-01-28 08:16:00+01
+34	2001-10-03 08:36:00+02
+35	2001-08-08 09:05:00+02
+36	2001-04-29 03:53:00+02
+37	2001-09-11 05:59:00+02
+38	2001-10-06 19:19:00+02
+39	2001-09-07 02:03:00+02
+40	2001-12-09 12:25:00+01
+41	2001-07-18 00:14:00+02
+42	2001-03-25 07:01:00+02
+43	2001-03-29 07:03:00+02
+44	2001-04-03 20:30:00+02
+45	2001-10-14 07:47:00+02
+46	2001-03-29 10:39:00+02
+47	2001-02-20 15:04:00+01
+48	2001-07-21 08:55:00+02
+49	2001-07-28 07:08:00+02
+50	2001-04-25 10:03:00+02
+51	2001-05-29 20:10:00+02
+52	2001-08-05 23:55:00+02
+53	2001-06-12 20:35:00+02
+54	2001-04-08 03:29:00+02
+55	2001-04-18 17:55:00+02
+56	2001-09-28 18:00:00+02
+57	2001-12-26 08:12:00+01
+58	2001-10-07 08:53:00+02
+59	2001-06-16 06:51:00+02
+60	2001-05-14 22:47:00+02
+61	2001-05-22 17:57:00+02
+62	2001-12-18 12:40:00+01
+63	2001-06-12 04:20:00+02
+64	2001-06-19 02:14:00+02
+65	2001-09-20 21:17:00+02
+66	2001-01-18 13:26:00+01
+67	2001-10-15 06:07:00+02
+68	2001-06-02 03:17:00+02
+69	2001-10-24 08:45:00+02
+70	2001-06-22 08:11:00+02
+71	2001-05-11 15:42:00+02
+72	2001-05-11 09:00:00+02
+73	2001-09-13 14:12:00+02
+74	2001-08-06 22:45:00+02
+75	2001-08-12 05:30:00+02
+76	2001-06-27 21:59:00+02
+77	2001-11-02 09:25:00+01
+78	2001-10-01 20:34:00+02
+79	2001-01-16 06:55:00+01
+80	2001-05-30 16:33:00+02
+81	2001-01-25 06:37:00+01
+82	2001-06-14 03:06:00+02
+83	2001-01-03 16:29:00+01
+84	2001-07-07 03:12:00+02
+85	2001-09-19 06:35:00+02
+86	2001-04-21 10:24:00+02
+87	2001-04-04 21:12:00+02
+88	2001-09-14 14:47:00+02
+89	2001-01-26 19:18:00+01
+90	2001-09-18 04:03:00+02
+91	2001-01-27 13:34:00+01
+92	2001-06-17 13:16:00+02
+93	2001-09-05 16:44:00+02
+94	2001-07-08 17:55:00+02
+95	2001-12-03 15:30:00+01
+96	2001-05-27 14:02:00+02
+97	2001-07-26 07:21:00+02
+99	2001-10-26 17:19:00+02
+98	2001-09-17 21:38:00+02
+100	2001-05-19 16:07:00+02
 \.
 
 
 --
--- Data for Name: tbl_tstzrange; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_tstzspan; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_tstzrange (k, t) FROM stdin;
+COPY public.tbl_tstzspan (k, t) FROM stdin;
 1	\N
 2	[2001-12-29 21:53:00+01, 2001-12-29 22:00:00+01]
 3	(2001-04-04 05:38:00+02, 2001-04-04 05:47:00+02)
@@ -1133,15 +1332,14 @@ COPY public.tbl_tstzrange (k, t) FROM stdin;
 98	(2001-11-13 19:05:00+01, 2001-11-13 19:06:00+01]
 99	(2001-04-23 23:56:00+02, 2001-04-24 00:01:00+02]
 100	[2001-04-30 12:04:00+02, 2001-04-30 12:04:00+02]
-
 \.
 
 
 --
--- Data for Name: tbl_tstzmultirange; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: tbl_tstzspanset; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.tbl_tstzmultirange (k, t) FROM stdin;
+COPY public.tbl_tstzspanset (k, t) FROM stdin;
 1	\N
 2	{(2001-10-18 19:46:00+02, 2001-10-18 19:50:00+02)}
 3	{(2001-05-29 11:20:00+02, 2001-05-29 11:21:00+02], (2001-05-29 11:24:00+02, 2001-05-29 11:27:00+02), [2001-05-29 11:30:00+02, 2001-05-29 11:36:00+02], [2001-05-29 11:37:00+02, 2001-05-29 11:40:00+02], [2001-05-29 11:42:00+02, 2001-05-29 11:49:00+02), [2001-05-29 11:58:00+02, 2001-05-29 12:07:00+02), [2001-05-29 12:15:00+02, 2001-05-29 12:17:00+02), [2001-05-29 12:24:00+02, 2001-05-29 12:29:00+02), [2001-05-29 12:37:00+02, 2001-05-29 12:41:00+02]}
