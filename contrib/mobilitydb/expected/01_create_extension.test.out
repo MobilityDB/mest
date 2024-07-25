@@ -26,6 +26,22 @@ DROP TABLE IF EXISTS public.tbl_datespanset;
 NOTICE:  table "tbl_datespanset" does not exist, skipping
 CREATE TABLE public.tbl_datespanset(k integer PRIMARY KEY, d public.datespanset);
 \copy tbl_datespanset FROM 'data/tbl_datespanset.data'
+DROP TABLE IF EXISTS public.tbl_float;
+NOTICE:  table "tbl_float" does not exist, skipping
+CREATE TABLE public.tbl_float(k integer PRIMARY KEY,f double precision);
+\copy tbl_float FROM 'data/tbl_float.data'
+DROP TABLE IF EXISTS public.tbl_floatset;
+NOTICE:  table "tbl_floatset" does not exist, skipping
+CREATE TABLE public.tbl_floatset(k integer PRIMARY KEY,f public.floatset);
+\copy tbl_floatset FROM 'data/tbl_floatset.data'
+DROP TABLE IF EXISTS public.tbl_floatspan;
+NOTICE:  table "tbl_floatspan" does not exist, skipping
+CREATE TABLE public.tbl_floatspan(k integer PRIMARY KEY,f public.floatspan);
+\copy tbl_floatspan FROM 'data/tbl_floatspan.data'
+DROP TABLE IF EXISTS public.tbl_floatspanset;
+NOTICE:  table "tbl_floatspanset" does not exist, skipping
+CREATE TABLE public.tbl_floatspanset(k integer PRIMARY KEY,f public.floatspanset);
+\copy tbl_floatspanset FROM 'data/tbl_floatspanset.data'
 DROP TABLE IF EXISTS public.tbl_geography;
 NOTICE:  table "tbl_geography" does not exist, skipping
 CREATE TABLE public.tbl_geography(k integer PRIMARY KEY, g geography);

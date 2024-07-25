@@ -118,6 +118,10 @@ typedef struct
 } MEST_TILE_Options;
 
 
+/*****************************************************************************
+ * External functions
+ *****************************************************************************/
+
 extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 
 extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
@@ -125,9 +129,289 @@ extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
 
 extern Datum call_function1(PGFunction func, Datum arg1);
 extern Datum interval_in(PG_FUNCTION_ARGS);
+extern Temporal *temporal_slice(Datum tempdatum);
+extern void spanset_span_slice(Datum d, Span *s);
+extern meosType oid_type(Oid typid);
 
 /*****************************************************************************
- * M(SP-)GiST compress functions
+ * Additional operator strategy numbers used in the GiST and SP-GiST temporal
+ * opclasses with respect to those defined in the file stratnum.h
+ *****************************************************************************/
+
+#define RTOverBeforeStrategyNumber    28    /* for &<# */
+#define RTBeforeStrategyNumber        29    /* for <<# */
+#define RTAfterStrategyNumber         30    /* for #>> */
+#define RTOverAfterStrategyNumber     31    /* for #&> */
+#define RTOverFrontStrategyNumber     32    /* for &</ */
+#define RTFrontStrategyNumber         33    /* for <</ */
+#define RTBackStrategyNumber          34    /* for />> */
+#define RTOverBackStrategyNumber      35    /* for /&> */
+
+/*****************************************************************************
+ * fmgr macros for span types
+ *****************************************************************************/
+
+#define DatumGetSpanP(X)           ((Span *) DatumGetPointer(X))
+#define SpanPGetDatum(X)           PointerGetDatum(X)
+#define PG_GETARG_SPAN_P(X)        DatumGetSpanP(PG_GETARG_DATUM(X))
+#define PG_RETURN_SPAN_P(X)        PG_RETURN_POINTER(X)
+
+#if MEOS
+  #define DatumGetSpanSetP(X)      ((SpanSet *) DatumGetPointer(X))
+#else
+  #define DatumGetSpanSetP(X)      ((SpanSet *) PG_DETOAST_DATUM(X))
+#endif /* MEOS */
+#define SpanSetPGetDatum(X)        PointerGetDatum(X)
+#define PG_GETARG_SPANSET_P(X)     ((SpanSet *) PG_GETARG_VARLENA_P(X))
+#define PG_RETURN_SPANSET_P(X)     PG_RETURN_POINTER(X)
+
+/*****************************************************************************
+ * Prototypes
+ *****************************************************************************/
+
+static bool span_mgist_recheck(StrategyNumber strategy);
+static bool span_index_consistent_leaf(const Span *key, const Span *query,
+  StrategyNumber strategy);
+static bool span_gist_consistent(const Span *key, const Span *query,
+  StrategyNumber strategy);
+  
+/*****************************************************************************
+ * ME-GiST consistent methods for spanset types
+ *****************************************************************************/
+
+/**
+ * @brief Return true if a recheck is necessary depending on the strategy
+ */
+bool
+span_mgist_recheck(StrategyNumber strategy)
+{
+  /* These operators are based on bounding boxes */
+  if (strategy == RTLeftStrategyNumber ||
+      strategy == RTBeforeStrategyNumber ||
+      strategy == RTOverLeftStrategyNumber ||
+      strategy == RTOverBeforeStrategyNumber ||
+      strategy == RTRightStrategyNumber ||
+      strategy == RTAfterStrategyNumber ||
+      strategy == RTOverRightStrategyNumber ||
+      strategy == RTOverAfterStrategyNumber ||
+      strategy == RTKNNSearchStrategyNumber)
+    return false;
+  return true;
+}
+
+/**
+ * @brief Transform the query argument into a span
+ */
+static bool
+span_mgist_get_span(FunctionCallInfo fcinfo, Span *result, Oid typid)
+{
+  meosType type = oid_type(typid);
+  if (span_basetype(type))
+  {
+    /* Since function span_gist_consistent is strict, value is not NULL */
+    Datum value = PG_GETARG_DATUM(1);
+    meosType spantype = basetype_spantype(type);
+    span_set(value, value, true, true, type, spantype, result);
+  }
+  // else if (set_type(type))
+  // {
+    // Set *s = PG_GETARG_SET_P(1);
+    // set_set_span(s, result);
+  // }
+  else if (span_type(type))
+  {
+    Span *s = PG_GETARG_SPAN_P(1);
+    if (s == NULL)
+      PG_RETURN_BOOL(false);
+    memcpy(result, s, sizeof(Span));
+  }
+  else if (spanset_type(type))
+  {
+    Datum psdatum = PG_GETARG_DATUM(1);
+    spanset_span_slice(psdatum, result);
+  }
+  /* For temporal types whose bounding box is a timestamptz span */
+  else if (talpha_type(type))
+  {
+    Datum tempdatum = PG_GETARG_DATUM(1);
+    Temporal *temp = temporal_slice(tempdatum);
+    temporal_set_tstzspan(temp, result);
+  }
+  else
+    elog(ERROR, "Unsupported type for indexing: %d", type);
+  return true;
+}
+
+/**
+ * @brief Leaf-level consistency for span types
+ *
+ * @param[in] key Element in the index
+ * @param[in] query Value being looked up in the index
+ * @param[in] strategy Operator of the operator class being applied
+ * @note This function is used for both GiST and SP-GiST indexes
+ */
+static bool
+span_index_consistent_leaf(const Span *key, const Span *query,
+  StrategyNumber strategy)
+{
+  switch (strategy)
+  {
+    case RTOverlapStrategyNumber:
+      return over_span_span(key, query);
+    case RTContainsStrategyNumber:
+      return cont_span_span(key, query);
+    case RTContainedByStrategyNumber:
+      return cont_span_span(query, key);
+    case RTEqualStrategyNumber:
+    case RTSameStrategyNumber:
+      return span_eq(key, query);
+    case RTAdjacentStrategyNumber:
+      return adj_span_span(key, query);
+    case RTLeftStrategyNumber:
+    case RTBeforeStrategyNumber:
+      return lf_span_span(key, query);
+    case RTOverLeftStrategyNumber:
+    case RTOverBeforeStrategyNumber:
+      return ovlf_span_span(key, query);
+    case RTRightStrategyNumber:
+    case RTAfterStrategyNumber:
+      return ri_span_span(key, query);
+    case RTOverRightStrategyNumber:
+    case RTOverAfterStrategyNumber:
+      return ovri_span_span(key, query);
+    default:
+      elog(ERROR, "unrecognized span strategy: %d", strategy);
+      return false;    /* keep compiler quiet */
+  }
+}
+
+/**
+ * @brief GiST internal-page consistency for span types
+ *
+ * @param[in] key Element in the index
+ * @param[in] query Value being looked up in the index
+ * @param[in] strategy Operator of the operator class being applied
+ */
+static bool
+span_gist_consistent(const Span *key, const Span *query,
+  StrategyNumber strategy)
+{
+  switch (strategy)
+  {
+    case RTOverlapStrategyNumber:
+    case RTContainedByStrategyNumber:
+      return over_span_span(key, query);
+    case RTContainsStrategyNumber:
+    case RTEqualStrategyNumber:
+    case RTSameStrategyNumber:
+      return cont_span_span(key, query);
+    case RTAdjacentStrategyNumber:
+      return adj_span_span(key, query) || overlaps_span_span(key, query);
+    case RTLeftStrategyNumber:
+    case RTBeforeStrategyNumber:
+      return ! ovri_span_span(key, query);
+    case RTOverLeftStrategyNumber:
+    case RTOverBeforeStrategyNumber:
+      return ! ri_span_span(key, query);
+    case RTRightStrategyNumber:
+    case RTAfterStrategyNumber:
+      return ! ovlf_span_span(key, query);
+    case RTOverRightStrategyNumber:
+    case RTOverAfterStrategyNumber:
+      return ! lf_span_span(key, query);
+    default:
+      elog(ERROR, "unrecognized span strategy: %d", strategy);
+      return false;    /* keep compiler quiet */
+  }
+}
+
+PGDLLEXPORT Datum Spanset_mgist_consistent(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Spanset_mgist_consistent);
+/**
+ * @brief MGiST consistent method for spanset types
+ */
+Datum
+Spanset_mgist_consistent(PG_FUNCTION_ARGS)
+{
+  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+  StrategyNumber strategy = (StrategyNumber) PG_GETARG_UINT16(2);
+  Oid typid = PG_GETARG_OID(3);
+  bool *recheck = (bool *) PG_GETARG_POINTER(4);
+  bool result;
+  const Span *key = DatumGetSpanP(entry->key);
+  Span query;
+
+  /* Determine whether the operator is exact */
+  // *recheck = span_index_recheck(strategy);
+  *recheck = span_mgist_recheck(strategy);
+
+  if (key == NULL)
+    PG_RETURN_BOOL(false);
+
+  /* Transform the query into a box */
+  if (! span_mgist_get_span(fcinfo, &query, typid))
+    PG_RETURN_BOOL(false);
+
+  if (GIST_LEAF(entry))
+    result = span_index_consistent_leaf(key, &query, strategy);
+  else
+    result = span_gist_consistent(key, &query, strategy);
+
+  PG_RETURN_BOOL(result);
+}
+
+/*****************************************************************************
+ * MEST compress method for spanset types
+ *****************************************************************************/
+
+PGDLLEXPORT Datum Spanset_mgist_compress(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Spanset_mgist_compress);
+/**
+ * @brief MGiST compress method for span sets
+ */
+Datum
+Spanset_mgist_compress(PG_FUNCTION_ARGS)
+{
+  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+  PG_RETURN_POINTER(entry);
+}
+
+PGDLLEXPORT Datum Spanset_mspgist_compress(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Spanset_mspgist_compress);
+/**
+ * @brief SP-GiST compress function for span sets
+ */
+Datum
+Spanset_mspgist_compress(PG_FUNCTION_ARGS)
+{
+  SpanSet *ss = PG_GETARG_SPANSET_P(0);
+  PG_RETURN_SPANSET_P(ss);
+}
+
+/*****************************************************************************
+ * ME-GiST extract method for spanset types
+ *****************************************************************************/
+
+PGDLLEXPORT Datum Spanset_mest_extract(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Spanset_mest_extract);
+/**
+ * @brief MGiST extract method for spanset types
+ */
+Datum
+Spanset_mest_extract(PG_FUNCTION_ARGS)
+{
+  SpanSet *ss = PG_GETARG_SPANSET_P(0);
+  int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  Span *spanarr = spanset_spans(ss, ss->count, nkeys);
+  Span **spans = palloc(sizeof(Span *) * (*nkeys));
+  for (int i = 0; i < *nkeys; i++)
+    spans[i] = &spanarr[i];
+  PG_FREE_IF_COPY(ss, 0);
+  PG_RETURN_POINTER(spans);
+}
+
+/*****************************************************************************
+ * M(SP-)GiST compress functions for temporal points
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mgist_compress);
@@ -1372,8 +1656,8 @@ tpoint_space_time_tiles(const Temporal *temp, float xsize, float ysize,
       continue;
     tspatial_set_stbox(atstbox, &box);
     /* If only space tiles */
-    if (! duration)
-      MEOS_FLAGS_SET_T(box.flags, false);
+    // if (! duration)
+      // MEOS_FLAGS_SET_T(box.flags, false);
     pfree(atstbox);
 
     /* Copy the box to the result */

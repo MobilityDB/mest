@@ -9,6 +9,7 @@ OBJS          = $(patsubst %.c,%.o,$(wildcard *.c)) # object files
 
 TESTS         = $(wildcard sql/*.sql) # use sql/*.sql as testfiles
 REGRESS       = $(sort $(patsubst sql/%.sql,%,$(TESTS))) # test names
+
 TAP_TESTS     = 1
 
 LDFLAGS_SL   += $(filter -lm, $(LIBS))
