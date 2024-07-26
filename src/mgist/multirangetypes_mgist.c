@@ -17,6 +17,7 @@
 #include "access/gist.h"
 #include "access/reloptions.h"
 #include "access/stratnum.h"
+#include <utils/array.h>
 #include "utils/datum.h"
 #include "utils/fmgrprotos.h"
 #include "utils/multirangetypes.h"
@@ -44,6 +45,9 @@ typedef struct
   int     max_ranges;   /* number of ranges */
 } MGIST_MULTIRANGE_EXTRACT_Options;
 
+static RangeType **multirange_ranges_internal(FunctionCallInfo fcinfo,
+  MultirangeType *mr, int32 max_ranges, int32 *count);
+
 static RangeType *range_super_union(TypeCacheEntry *typcache, RangeType *r1,
                   RangeType *r2);
 static bool range_gist_consistent_int_range(TypeCacheEntry *typcache,
@@ -70,6 +74,97 @@ static bool range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
                          StrategyNumber strategy,
                          const RangeType *key,
                          Datum query);
+
+/*****************************************************************************/
+
+/**
+ * Extract the ranges of a multirange merging them (if needed) to reach the
+ * number of ranges specified in the last argument (internal function)
+ */
+static RangeType **
+multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
+  int32 max_ranges, int32 *count)
+{
+  TypeCacheEntry *typcache;
+  int32 range_count;
+  RangeType **ranges;
+
+  typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
+
+  if (MultirangeIsEmpty(mr))
+    return NULL;
+
+  multirange_deserialize(typcache->rngtype, mr, &range_count, &ranges);
+
+  if (max_ranges < 1 || range_count <= max_ranges)
+  {
+    *count = range_count;
+    return ranges;
+  }
+  else
+  {
+    /* Merge two consecutive ranges to reach the maximum number of ranges */
+    RangeType **new_ranges = palloc(sizeof(RangeType *) * max_ranges);
+    TypeCacheEntry *typcache1 = 
+      range_get_typcache(fcinfo, RangeTypeGetOid(ranges[0]));
+    /* Minimum number of input ranges merged together in a output range */
+    int size = range_count / max_ranges;
+    /* Number of output ranges that result from merging (size + 1) ranges */
+    int remainder = range_count % max_ranges;
+    int i = 0; /* Loop variable for input ranges */
+    int k = 0; /* Loop variable for output ranges */
+    while (k < max_ranges)
+    {
+      int j = i + size - 1;
+      if (k < remainder)
+        j++;
+      if (i < j)
+      {
+        new_ranges[k++] = range_super_union(typcache1, ranges[i], ranges[j]);
+        for (int l = i; l <= j; l++)
+          pfree(ranges[l]);
+        i = j + 1;
+      }
+      else
+        new_ranges[k++] = ranges[i++];
+    }
+    *count = range_count;
+    return ranges;
+  }
+}
+
+PG_FUNCTION_INFO_V1(multirange_ranges);
+/**
+ * Extract the ranges of a multirange merging them (if needed) to reach the
+ * number of ranges specified in the last argument
+ */
+PGDLLEXPORT Datum
+multirange_ranges(PG_FUNCTION_ARGS)
+{
+  MultirangeType *mr = PG_GETARG_MULTIRANGE_P(0);
+  int32 max_ranges = PG_GETARG_INT32(1);
+  TypeCacheEntry *typcache;
+  int32 range_count;
+  RangeType **ranges;
+  ArrayType *result;
+
+  ranges = multirange_ranges_internal(fcinfo, mr, max_ranges, &range_count);
+
+  if (ranges == NULL)
+  {
+    PG_FREE_IF_COPY(mr, 0);
+    PG_RETURN_NULL();
+  }
+
+  /* Output the array of ranges of the multirange */
+  typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
+  result = construct_array((Datum *) ranges, range_count,
+    typcache->rngtype->type_id, -1, false, 
+    typcache->rngtype->rngelemtype->typalign);
+  pfree(ranges);
+  PG_FREE_IF_COPY(mr, 0);
+  PG_RETURN_POINTER(result);
+}
 
 /*****************************************************************************/
 
@@ -146,18 +241,18 @@ multirange_mgist_consistent(PG_FUNCTION_ARGS)
 
 /*****************************************************************************/
 
-PG_FUNCTION_INFO_V1(multirange_mgist_extract_options);
+PG_FUNCTION_INFO_V1(multirange_mgist_options);
 /**
  * ME-GiST extract options for multirange types
  */
 PGDLLEXPORT Datum
-multirange_mgist_extract_options(PG_FUNCTION_ARGS)
+multirange_mgist_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
   init_local_reloptions(relopts, sizeof(MGIST_MULTIRANGE_EXTRACT_Options));
   add_local_int_reloption(relopts, "max_ranges",
-              "number of ranges for extract method",
+              "maximum number of ranges for extract method",
               MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT, 1, 
               MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX,
               offsetof(MGIST_MULTIRANGE_EXTRACT_Options, max_ranges));
@@ -176,18 +271,9 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
 {
   MultirangeType  *mr = PG_GETARG_MULTIRANGE_P(0);
   int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  TypeCacheEntry *typcache;
   int32   range_count;
   int32   max_ranges = -1;
   RangeType **ranges;
-
-  typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
-
-  /* TODO: handle empty ranges. Do we return a single emtpy range? */
-  if (MultirangeIsEmpty(mr))
-    elog(ERROR, "multirange_mgist_extract: multirange cannot be empty");
-
-  multirange_deserialize(typcache->rngtype, mr, &range_count, &ranges);
 
   /* Apply mgist index options if any */
   if (PG_HAS_OPCLASS_OPTIONS())
@@ -197,44 +283,10 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
     max_ranges = options->max_ranges;
   }
 
-  if (max_ranges == -1 || range_count <= max_ranges)
-  {
-    *nkeys = range_count;
-    /* we should not free array, ranges[i] points into it */
-    PG_FREE_IF_COPY(mr, 0);
-    PG_RETURN_POINTER(ranges);
-  }
-  else
-  {
-    /* Merge two consecutive ranges to reach the maximum number of ranges */
-    RangeType **new_ranges = palloc(sizeof(RangeType *) * max_ranges);
-    TypeCacheEntry *typcache1 = 
-      range_get_typcache(fcinfo, RangeTypeGetOid(ranges[0]));
-    /* Minimum number of input ranges merged together in a output range */
-    int size = range_count / max_ranges;
-    /* Number of output ranges that result from merging (size + 1) ranges */
-    int remainder = range_count % max_ranges;
-    int i = 0; /* Loop variable for input ranges */
-    int k = 0; /* Loop variable for output ranges */
-    while (k < max_ranges)
-    {
-      int j = i + size - 1;
-      if (k < remainder)
-        j++;
-      if (i < j)
-      {
-        new_ranges[k++] = range_super_union(typcache1, ranges[i], ranges[j]);
-        for (int l = i; l <= j; l++)
-          pfree(ranges[l]);
-        i = j + 1;
-      }
-      else
-        new_ranges[k++] = ranges[i++];
-    }
-    *nkeys = max_ranges;
-    PG_FREE_IF_COPY(mr, 0);
-    PG_RETURN_POINTER(new_ranges);
-  }
+  ranges = multirange_ranges_internal(fcinfo, mr, max_ranges, &range_count);
+  *nkeys = range_count;
+  PG_FREE_IF_COPY(mr, 0);
+  PG_RETURN_POINTER(ranges);
 }
 
 /*
@@ -547,9 +599,8 @@ range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
     case RANGESTRAT_ADJACENT:
       return range_adjacent_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
-      return range_contains_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
-      return multirange_contains_range_internal(typcache, query, key);
+      return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_EQ:
       return multirange_union_range_equal(typcache, key, query);
     default:

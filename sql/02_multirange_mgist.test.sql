@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Tests of operators for span types.
+-- Tests of operators for multirange types.
 -------------------------------------------------------------------------------
 
 DROP INDEX IF EXISTS tbl_int4multirange_mgist_idx;
@@ -397,7 +397,7 @@ FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t = t2.t;
 
 CREATE INDEX tbl_int4multirange_mgist_idx ON tbl_int4multirange USING MGIST(i);
 CREATE INDEX tbl_int8multirange_mgist_idx ON tbl_int8multirange USING MGIST(b);
-CREATE INDEX tbl_datespanset_mgist_idx ON tbl_datemultirange USING MGIST(d);
+CREATE INDEX tbl_datemultirange_mgist_idx ON tbl_datemultirange USING MGIST(d);
 CREATE INDEX tbl_tstzmultirange_mgist_idx ON tbl_tstzmultirange USING MGIST(t);
 
 -------------------------------------------------------------------------------
@@ -773,19 +773,19 @@ WHERE op = '=' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 DROP INDEX tbl_int4multirange_mgist_idx;
 DROP INDEX tbl_int8multirange_mgist_idx;
-DROP INDEX tbl_datespanset_mgist_idx;
+DROP INDEX tbl_datemultirange_mgist_idx;
 DROP INDEX tbl_tstzmultirange_mgist_idx;
 
 ------------------------------------------------------------------
 
 CREATE INDEX tbl_int4multirange_mgist_opts_idx ON tbl_int4multirange 
-  USING MGIST(i mgist_multirange_ops (num_ranges = 3));
+  USING MGIST(i mgist_multirange_ops (max_ranges = 3));
 CREATE INDEX tbl_int8multirange_mgist_opts_idx ON tbl_int8multirange
-  USING MGIST(b mgist_multirange_ops (num_ranges = 3));
-CREATE INDEX tbl_datespanset_mgist_opts_idx ON tbl_datemultirange
-  USING MGIST(d mgist_multirange_ops (num_ranges = 3));
+  USING MGIST(b mgist_multirange_ops (max_ranges = 3));
+CREATE INDEX tbl_datemultirange_mgist_opts_idx ON tbl_datemultirange
+  USING MGIST(d mgist_multirange_ops (max_ranges = 3));
 CREATE INDEX tbl_tstzmultirange_mgist_opts_idx ON tbl_tstzmultirange
-  USING MGIST(t mgist_multirange_ops (num_ranges = 3));
+  USING MGIST(t mgist_multirange_ops (max_ranges = 3));
 
 -------------------------------------------------------------------------------
 
@@ -1054,7 +1054,7 @@ WHERE op = '=' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 DROP INDEX tbl_int4multirange_mgist_opts_idx;
 DROP INDEX tbl_int8multirange_mgist_opts_idx;
-DROP INDEX tbl_datespanset_mgist_opts_idx;
+DROP INDEX tbl_datemultirange_mgist_opts_idx;
 DROP INDEX tbl_tstzmultirange_mgist_opts_idx;
 
 -------------------------------------------------------------------------------
