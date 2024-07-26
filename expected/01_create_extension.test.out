@@ -35,6 +35,10 @@ DROP TABLE IF EXISTS tbl_int4multirange;
 NOTICE:  table "tbl_int4multirange" does not exist, skipping
 CREATE TABLE tbl_int4multirange(k integer PRIMARY KEY, i int4multirange);
 \copy tbl_int4multirange FROM 'data/tbl_int4multirange.data'
+DROP TABLE IF EXISTS tbl_path;
+NOTICE:  table "tbl_path" does not exist, skipping
+CREATE TABLE tbl_path(k integer PRIMARY KEY, p path);
+\copy tbl_path FROM 'data/tbl_path.data'
 DROP TABLE IF EXISTS tbl_timestamptz;
 NOTICE:  table "tbl_timestamptz" does not exist, skipping
 CREATE TABLE tbl_timestamptz(k integer PRIMARY KEY, t timestamp with time zone);

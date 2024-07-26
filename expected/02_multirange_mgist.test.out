@@ -694,13 +694,17 @@ DROP INDEX tbl_datemultirange_mrtree_idx;
 DROP INDEX tbl_tstzmultirange_mrtree_idx;
 ------------------------------------------------------------------
 CREATE INDEX tbl_int4multirange_mrtree_opts_idx ON tbl_int4multirange 
-  USING MGIST(i multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(i multirange_mrtree_ops (max_ranges = 3));
+ERROR:  operator class "multirange_mrtree_ops" does not exist for access method "mgist"
 CREATE INDEX tbl_int8multirange_mrtree_opts_idx ON tbl_int8multirange
-  USING MGIST(b multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(b multirange_mrtree_ops (max_ranges = 3));
+ERROR:  operator class "multirange_mrtree_ops" does not exist for access method "mgist"
 CREATE INDEX tbl_datemultirange_mrtree_opts_idx ON tbl_datemultirange
-  USING MGIST(d multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(d multirange_mrtree_ops (max_ranges = 3));
+ERROR:  operator class "multirange_mrtree_ops" does not exist for access method "mgist"
 CREATE INDEX tbl_tstzmultirange_mrtree_opts_idx ON tbl_tstzmultirange
-  USING MGIST(t multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(t multirange_mrtree_ops (max_ranges = 3));
+ERROR:  operator class "multirange_mrtree_ops" does not exist for access method "mgist"
 -------------------------------------------------------------------------------
 UPDATE test_multirange_mgist SET mrtree_opts_idx = ( SELECT COUNT(*)
 FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i @> t2.i )
@@ -1030,9 +1034,13 @@ FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t = t2.t )
 WHERE op = '=' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 -------------------------------------------------------------------------------
 DROP INDEX tbl_int4multirange_mrtree_opts_idx;
+ERROR:  index "tbl_int4multirange_mrtree_opts_idx" does not exist
 DROP INDEX tbl_int8multirange_mrtree_opts_idx;
+ERROR:  index "tbl_int8multirange_mrtree_opts_idx" does not exist
 DROP INDEX tbl_datemultirange_mrtree_opts_idx;
+ERROR:  index "tbl_datemultirange_mrtree_opts_idx" does not exist
 DROP INDEX tbl_tstzmultirange_mrtree_opts_idx;
+ERROR:  index "tbl_tstzmultirange_mrtree_opts_idx" does not exist
 -------------------------------------------------------------------------------
 SELECT * FROM test_multirange_mgist
 WHERE no_idx <> mrtree_idx OR no_idx <> mrtree_opts_idx OR 
