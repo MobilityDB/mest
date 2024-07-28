@@ -61,8 +61,8 @@ mspg_multirange_extract(PG_FUNCTION_ARGS)
   /* Apply mgist index options if any */
   if (PG_HAS_OPCLASS_OPTIONS())
   {
-    MEST_MULTIRANGE_Options *options = 
-      (MEST_MULTIRANGE_Options *) PG_GET_OPCLASS_OPTIONS();
+    MestMultirangeOptions *options = 
+      (MestMultirangeOptions *) PG_GET_OPCLASS_OPTIONS();
     max_ranges = options->max_ranges;
   }
 

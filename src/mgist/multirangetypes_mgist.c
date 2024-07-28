@@ -70,21 +70,24 @@ multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
     int k = 0; /* Loop variable for output ranges */
     while (k < max_ranges)
     {
-      int j = i + size - 1;
+      int j = i + size;
       if (k < remainder)
         j++;
-      if (i < j)
+      if (i < j - 1)
       {
-        new_ranges[k++] = range_super_union(typcache1, ranges[i], ranges[j]);
-        for (int l = i; l <= j; l++)
+        new_ranges[k++] = range_super_union(typcache1, ranges[i], ranges[j - 1]);
+        for (int l = i; l < j; ++l)
           pfree(ranges[l]);
-        i = j + 1;
       }
       else
-        new_ranges[k++] = ranges[i++];
+        new_ranges[k++] = ranges[i];
+      i = j;
     }
-    *count = range_count;
-    return ranges;
+    Assert(i == range_count);
+    Assert(k == max_ranges);
+    pfree(ranges);
+    *count = max_ranges;
+    return new_ranges;
   }
 }
 
