@@ -8,16 +8,15 @@ indexing of complex and composite data types.
 Contents
 --------
 
-The repository contains 4 PostgreSQL extensions split into 4 separate folders:
+The repository contains 3 PostgreSQL extensions split into 3 separate folders:
 
-- [mgist](mgist): 
-    - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL *path* type.
-- [mgist-mobilitydb](mgist-mobilitydb): 
-    - contains the implementation of a multi-entry R-tree for the MobilityDB *tgeompoint* type.
-- [mspgist](mspgist): 
-    - contains the Multi-Entry SP-GiST access method.
-- [mspgist-mobilitydb](mspgist-mobiltydb): 
-    - contains the implementations of a multi-entry Quadtree and Kd-tree for the MobilityDB *tgeompoint* type.
+- [mest](mest): 
+    - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL *multirange* and *path* types.
+    - contains the Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree and Kd-tree for the PostgreSQL *multirange* and *path* types.
+- [postgis-mest](postgis-mest): 
+    - contains the implementation of a multi-entry R-tree, Quadtree, and Kd-tree for the PostGIS *geometry* and *geography* types.
+- [mobilitydb-mest](mobilitydb-mest): 
+    - contains the implementation of a multi-entry R-tree, Quadtree, and Kd-tree for the MobilityDB *spanset* and *tgeompoint* types.
     
 For more information about each extension, please refer to their associated README file.
 

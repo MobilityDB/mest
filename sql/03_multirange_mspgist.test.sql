@@ -789,265 +789,371 @@ CREATE INDEX tbl_tstzmultirange_mspgist_opts_idx ON tbl_tstzmultirange
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i @> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i @> t2.i )
 WHERE op = '@>' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int t2 WHERE t1.i @> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int t2 WHERE t1.i @> t2.i )
 WHERE op = '@>' AND leftarg = 'int4multirange' AND rightarg = 'int';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i @> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i @> t2.i )
 WHERE op = '@>' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i @> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i @> t2.i )
 WHERE op = '@>' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b @> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b @> t2.b )
 WHERE op = '@>' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_bigint t2 WHERE t1.b @> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_bigint t2 WHERE t1.b @> t2.b )
 WHERE op = '@>' AND leftarg = 'int8multirange' AND rightarg = 'bigint';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b @> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b @> t2.b )
 WHERE op = '@>' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b @> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b @> t2.b )
 WHERE op = '@>' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d @> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d @> t2.d )
 WHERE op = '@>' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_date t2 WHERE t1.d @> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_date t2 WHERE t1.d @> t2.d )
 WHERE op = '@>' AND leftarg = 'datemultirange' AND rightarg = 'date';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d @> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d @> t2.d )
 WHERE op = '@>' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d @> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d @> t2.d )
 WHERE op = '@>' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t @> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t @> t2.t )
 WHERE op = '@>' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_timestamptz t2 WHERE t1.t @> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_timestamptz t2 WHERE t1.t @> t2.t )
 WHERE op = '@>' AND leftarg = 'tstzmultirange' AND rightarg = 'timestamptz';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t @> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t @> t2.t )
 WHERE op = '@>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t @> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t @> t2.t )
 WHERE op = '@>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
 WHERE op = '<@' AND leftarg = 'int' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
 WHERE op = '<@' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i <@ t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i <@ t2.i )
 WHERE op = '<@' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i <@ t2.i )
 WHERE op = '<@' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_bigint t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_bigint t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
 WHERE op = '<@' AND leftarg = 'bigint' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
 WHERE op = '<@' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b <@ t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b <@ t2.b )
 WHERE op = '<@' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b <@ t2.b )
 WHERE op = '<@' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_date t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_date t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
 WHERE op = '<@' AND leftarg = 'date' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
 WHERE op = '<@' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d <@ t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d <@ t2.d )
 WHERE op = '<@' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d <@ t2.d )
 WHERE op = '<@' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_timestamptz t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_timestamptz t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
 WHERE op = '<@' AND leftarg = 'timestamptz' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
 WHERE op = '<@' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t <@ t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t <@ t2.t )
 WHERE op = '<@' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t <@ t2.t )
 WHERE op = '<@' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i && t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i && t2.i )
 WHERE op = '&&' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i && t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i && t2.i )
 WHERE op = '&&' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i && t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i && t2.i )
 WHERE op = '&&' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b && t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b && t2.b )
 WHERE op = '&&' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b && t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b && t2.b )
 WHERE op = '&&' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b && t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b && t2.b )
 WHERE op = '&&' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d && t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d && t2.d )
 WHERE op = '&&' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d && t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d && t2.d )
 WHERE op = '&&' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d && t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d && t2.d )
 WHERE op = '&&' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t && t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t && t2.t )
 WHERE op = '&&' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t && t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t && t2.t )
 WHERE op = '&&' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t && t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t && t2.t )
 WHERE op = '&&' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i -|- t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i -|- t2.i )
 WHERE op = '-|-' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i -|- t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i -|- t2.i )
 WHERE op = '-|-' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i -|- t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i -|- t2.i )
 WHERE op = '-|-' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b -|- t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b -|- t2.b )
 WHERE op = '-|-' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b -|- t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b -|- t2.b )
 WHERE op = '-|-' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b -|- t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b -|- t2.b )
 WHERE op = '-|-' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d -|- t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d -|- t2.d )
 WHERE op = '-|-' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d -|- t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d -|- t2.d )
 WHERE op = '-|-' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d -|- t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d -|- t2.d )
 WHERE op = '-|-' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t -|- t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t -|- t2.t )
 WHERE op = '-|-' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t -|- t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t -|- t2.t )
 WHERE op = '-|-' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t -|- t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t -|- t2.t )
 WHERE op = '-|-' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i << t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i << t2.i )
 WHERE op = '<<' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i << t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i << t2.i )
 WHERE op = '<<' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i << t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i << t2.i )
 WHERE op = '<<' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b << t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b << t2.b )
 WHERE op = '<<' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b << t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b << t2.b )
 WHERE op = '<<' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b << t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b << t2.b )
 WHERE op = '<<' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d << t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d << t2.d )
 WHERE op = '<<' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d << t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d << t2.d )
 WHERE op = '<<' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d << t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d << t2.d )
 WHERE op = '<<' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t << t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t << t2.t )
 WHERE op = '<<' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t << t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t << t2.t )
 WHERE op = '<<' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t << t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t << t2.t )
 WHERE op = '<<' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i &< t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i &< t2.i )
 WHERE op = '&<' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i &< t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i &< t2.i )
 WHERE op = '&<' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i &< t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i &< t2.i )
 WHERE op = '&<' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b &< t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b &< t2.b )
 WHERE op = '&<' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b &< t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b &< t2.b )
 WHERE op = '&<' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b &< t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b &< t2.b )
 WHERE op = '&<' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d &< t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d &< t2.d )
 WHERE op = '&<' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d &< t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d &< t2.d )
 WHERE op = '&<' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d &< t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d &< t2.d )
 WHERE op = '&<' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t &< t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t &< t2.t )
 WHERE op = '&<' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t &< t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t &< t2.t )
 WHERE op = '&<' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t &< t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t &< t2.t )
 WHERE op = '&<' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i >> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i >> t2.i )
 WHERE op = '>>' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i >> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i >> t2.i )
 WHERE op = '>>' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i >> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i >> t2.i )
 WHERE op = '>>' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b >> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b >> t2.b )
 WHERE op = '>>' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b >> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b >> t2.b )
 WHERE op = '>>' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b >> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b >> t2.b )
 WHERE op = '>>' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d >> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d >> t2.d )
 WHERE op = '>>' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d >> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d >> t2.d )
 WHERE op = '>>' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d >> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d >> t2.d )
 WHERE op = '>>' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t >> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t >> t2.t )
 WHERE op = '>>' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t >> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t >> t2.t )
 WHERE op = '>>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t >> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t >> t2.t )
 WHERE op = '>>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i &> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4range t1, tbl_int4multirange t2 WHERE t1.i &> t2.i )
 WHERE op = '&>' AND leftarg = 'int4range' AND rightarg = 'int4multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i &> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4range t2 WHERE t1.i &> t2.i )
 WHERE op = '&>' AND leftarg = 'int4multirange' AND rightarg = 'int4range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i &> t2.i )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int4multirange t1, tbl_int4multirange t2 WHERE t1.i &> t2.i )
 WHERE op = '&>' AND leftarg = 'int4multirange' AND rightarg = 'int4multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b &> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8range t1, tbl_int8multirange t2 WHERE t1.b &> t2.b )
 WHERE op = '&>' AND leftarg = 'int8range' AND rightarg = 'int8multirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b &> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8range t2 WHERE t1.b &> t2.b )
 WHERE op = '&>' AND leftarg = 'int8multirange' AND rightarg = 'int8range';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b &> t2.b )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_int8multirange t1, tbl_int8multirange t2 WHERE t1.b &> t2.b )
 WHERE op = '&>' AND leftarg = 'int8multirange' AND rightarg = 'int8multirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d &> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_daterange t1, tbl_datemultirange t2 WHERE t1.d &> t2.d )
 WHERE op = '&>' AND leftarg = 'daterange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d &> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_daterange t2 WHERE t1.d &> t2.d )
 WHERE op = '&>' AND leftarg = 'datemultirange' AND rightarg = 'daterange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d &> t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d &> t2.d )
 WHERE op = '&>' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t &> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzrange t1, tbl_tstzmultirange t2 WHERE t1.t &> t2.t )
 WHERE op = '&>' AND leftarg = 'tstzrange' AND rightarg = 'tstzmultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t &> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzrange t2 WHERE t1.t &> t2.t )
 WHERE op = '&>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzrange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t &> t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t &> t2.t )
 WHERE op = '&>' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
 
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d = t2.d )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_datemultirange t1, tbl_datemultirange t2 WHERE t1.d = t2.d )
 WHERE op = '=' AND leftarg = 'datemultirange' AND rightarg = 'datemultirange';
-UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*) FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t = t2.t )
+UPDATE test_multirange_mspgist SET mspgist_opts_idx = ( SELECT COUNT(*)
+FROM tbl_tstzmultirange t1, tbl_tstzmultirange t2 WHERE t1.t = t2.t )
 WHERE op = '=' AND leftarg = 'tstzmultirange' AND rightarg = 'tstzmultirange';
 
 -------------------------------------------------------------------------------
