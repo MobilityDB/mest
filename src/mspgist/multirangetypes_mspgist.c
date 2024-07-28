@@ -22,13 +22,7 @@
 #include "utils/multirangetypes.h"
 #include "utils/rangetypes.h"
 
-/*****************************************************************************/
-
-/* Copy a RangeType datum (hardwires typbyval and typlen for ranges...) 
- * Borrowed from rangetypes_gist */
-#define rangeCopy(r) \
-  ((RangeType *) DatumGetPointer(datumCopy(PointerGetDatum(r), \
-                       false, -1)))
+#include "multirangetypes_mest.h"
 
 /*****************************************************************************
  * ME-SP-GiST methods for multirange types
@@ -56,21 +50,25 @@ mspg_multirange_extract(PG_FUNCTION_ARGS)
 {
   MultirangeType  *mr = PG_GETARG_MULTIRANGE_P(0);
   int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  TypeCacheEntry *typcache;
   int32   range_count;
+  int32   max_ranges = -1;
   RangeType **ranges;
-
-  typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
 
   /* TODO: handle empty ranges. Do we return a single emtpy range? */
   if (MultirangeIsEmpty(mr))
     elog(ERROR, "multirange_mgist_extract: multirange cannot be empty");
 
-  multirange_deserialize(typcache->rngtype, mr, &range_count, &ranges);
+  /* Apply mgist index options if any */
+  if (PG_HAS_OPCLASS_OPTIONS())
+  {
+    MEST_MULTIRANGE_Options *options = 
+      (MEST_MULTIRANGE_Options *) PG_GET_OPCLASS_OPTIONS();
+    max_ranges = options->max_ranges;
+  }
 
+  ranges = multirange_ranges_internal(fcinfo, mr, max_ranges, &range_count);
   *nkeys = range_count;
 
-  /* we should not free array, elems[i] points into it */
   PG_FREE_IF_COPY(mr, 0);
   PG_RETURN_POINTER(ranges);
 }
@@ -790,57 +788,25 @@ mspg_multirange_quad_leaf_consistent(PG_FUNCTION_ARGS)
   res = true;
   for (i = 0; i < in->nkeys; i++)
   {
-    Datum    keyDatum = in->scankeys[i].sk_argument;
+    Datum keyDatum = in->scankeys[i].sk_argument;
+    StrategyNumber strategy = in->scankeys[i].sk_strategy;
 
-    /* Call the function corresponding to the scan strategy */
-    switch (in->scankeys[i].sk_strategy)
+    if (in->scankeys[i].sk_subtype == ANYMULTIRANGEOID)
     {
-      case RANGESTRAT_BEFORE:
-        res = range_before_internal(typcache, leafRange,
-                      DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_OVERLEFT:
-        res = range_overleft_internal(typcache, leafRange,
-                        DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_OVERLAPS:
-        res = range_overlaps_internal(typcache, leafRange,
-                        DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_OVERRIGHT:
-        res = range_overright_internal(typcache, leafRange,
-                         DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_AFTER:
-        res = range_after_internal(typcache, leafRange,
-                       DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_ADJACENT:
-        res = range_adjacent_internal(typcache, leafRange,
-                        DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_CONTAINS:
-        res = range_contains_internal(typcache, leafRange,
-                        DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_CONTAINED_BY:
-        res = range_contained_by_internal(typcache, leafRange,
-                          DatumGetRangeTypeP(keyDatum));
-        break;
-      case RANGESTRAT_CONTAINS_ELEM:
-        res = range_contains_elem_internal(typcache, leafRange,
-                           keyDatum);
-        break;
-      case RANGESTRAT_EQ:
-        res = range_eq_internal(typcache, leafRange,
-                    DatumGetRangeTypeP(keyDatum));
-        break;
-      default:
-        elog(ERROR, "unrecognized range strategy: %d",
-           in->scankeys[i].sk_strategy);
-        break;
+      res = range_gist_consistent_leaf_multirange(typcache, strategy, 
+        leafRange, DatumGetMultirangeTypeP(keyDatum));
     }
-
+    else if (in->scankeys[i].sk_subtype == ANYRANGEOID)
+    {
+      res = range_gist_consistent_leaf_range(typcache, strategy, leafRange,
+        DatumGetRangeTypeP(keyDatum));
+    }
+    else 
+    {
+      res = range_gist_consistent_leaf_element(typcache, strategy, leafRange,
+        keyDatum);
+    }
+      
     /*
      * If leaf datum doesn't match to a query key, no need to check
      * subsequent keys.

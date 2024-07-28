@@ -23,57 +23,12 @@
 #include "utils/multirangetypes.h"
 #include "utils/rangetypes.h"
 
-/* Copy a RangeType datum (hardwires typbyval and typlen for ranges...) 
- * Borrowed from rangetypes_gist */
-#define rangeCopy(r) \
-  ((RangeType *) DatumGetPointer(datumCopy(PointerGetDatum(r), \
-                       false, -1)))
+#include "multirangetypes_mest.h"
 
-/* Maximum number of ranges for the extract function 
- * The default value -1 is used to extract all ranges from a multirange
- * The maximum value is used to restrict the range of large multiranges */
-#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT    -1
-#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX        10000
-#define MGIST_MULTIRANGE_EXTRACT_MAX_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MGIST_MULTIRANGE_Options *) PG_GET_OPCLASS_OPTIONS())->max_ranges : \
-          MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT)
-
-/* mgist_multirange_ops opclass extract options */
-typedef struct
-{
-  int32   vl_len_;      /* varlena header (do not touch directly!) */
-  int     max_ranges;   /* number of ranges */
-} MGIST_MULTIRANGE_EXTRACT_Options;
-
-static RangeType **multirange_ranges_internal(FunctionCallInfo fcinfo,
-  MultirangeType *mr, int32 max_ranges, int32 *count);
+/*****************************************************************************/
 
 static RangeType *range_super_union(TypeCacheEntry *typcache, RangeType *r1,
                   RangeType *r2);
-static bool range_gist_consistent_int_range(TypeCacheEntry *typcache,
-                      StrategyNumber strategy,
-                      const RangeType *key,
-                      const RangeType *query);
-static bool range_gist_consistent_int_multirange(TypeCacheEntry *typcache,
-                         StrategyNumber strategy,
-                         const RangeType *key,
-                         const MultirangeType *query);
-static bool range_gist_consistent_int_element(TypeCacheEntry *typcache,
-                        StrategyNumber strategy,
-                        const RangeType *key,
-                        Datum query);
-static bool range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
-                       StrategyNumber strategy,
-                       const RangeType *key,
-                       const RangeType *query);
-static bool range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
-                          StrategyNumber strategy,
-                          const RangeType *key,
-                          const MultirangeType *query);
-static bool range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
-                         StrategyNumber strategy,
-                         const RangeType *key,
-                         Datum query);
 
 /*****************************************************************************/
 
@@ -81,7 +36,7 @@ static bool range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
  * Extract the ranges of a multirange merging them (if needed) to reach the
  * number of ranges specified in the last argument (internal function)
  */
-static RangeType **
+RangeType **
 multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
   int32 max_ranges, int32 *count)
 {
@@ -241,21 +196,21 @@ multirange_mgist_consistent(PG_FUNCTION_ARGS)
 
 /*****************************************************************************/
 
-PG_FUNCTION_INFO_V1(multirange_mgist_options);
+PG_FUNCTION_INFO_V1(multirange_mest_options);
 /**
- * ME-GiST extract options for multirange types
+ * ME-GiST options for multirange types
  */
 PGDLLEXPORT Datum
-multirange_mgist_options(PG_FUNCTION_ARGS)
+multirange_mest_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MGIST_MULTIRANGE_EXTRACT_Options));
+  init_local_reloptions(relopts, sizeof(MestMultirangeOptions));
   add_local_int_reloption(relopts, "max_ranges",
               "maximum number of ranges for extract method",
-              MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT, 1, 
-              MGIST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX,
-              offsetof(MGIST_MULTIRANGE_EXTRACT_Options, max_ranges));
+              MEST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT, 1, 
+              MEST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX,
+              offsetof(MestMultirangeOptions, max_ranges));
 
   PG_RETURN_VOID();
 }
@@ -278,8 +233,8 @@ multirange_mgist_extract(PG_FUNCTION_ARGS)
   /* Apply mgist index options if any */
   if (PG_HAS_OPCLASS_OPTIONS())
   {
-    MGIST_MULTIRANGE_EXTRACT_Options *options = 
-      (MGIST_MULTIRANGE_EXTRACT_Options *) PG_GET_OPCLASS_OPTIONS();
+    MestMultirangeOptions *options = 
+      (MestMultirangeOptions *) PG_GET_OPCLASS_OPTIONS();
     max_ranges = options->max_ranges;
   }
 
@@ -400,7 +355,7 @@ multirange_union_range_equal(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index internal page with range query
  */
-static bool
+bool
 range_gist_consistent_int_range(TypeCacheEntry *typcache,
                 StrategyNumber strategy,
                 const RangeType *key,
@@ -462,7 +417,7 @@ range_gist_consistent_int_range(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index internal page with multirange query
  */
-static bool
+bool
 range_gist_consistent_int_multirange(TypeCacheEntry *typcache,
                    StrategyNumber strategy,
                    const RangeType *key,
@@ -524,7 +479,7 @@ range_gist_consistent_int_multirange(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index internal page with element query
  */
-static bool
+bool
 range_gist_consistent_int_element(TypeCacheEntry *typcache,
                   StrategyNumber strategy,
                   const RangeType *key,
@@ -543,7 +498,7 @@ range_gist_consistent_int_element(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index leaf page with range query
  */
-static bool
+bool
 range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
                  StrategyNumber strategy,
                  const RangeType *key,
@@ -578,7 +533,7 @@ range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index leaf page with multirange query
  */
-static bool
+bool
 range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
                     StrategyNumber strategy,
                     const RangeType *key,
@@ -612,7 +567,7 @@ range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
 /*
  * GiST consistent test on an index leaf page with element query
  */
-static bool
+bool
 range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
                    StrategyNumber strategy,
                    const RangeType *key,

@@ -40,7 +40,7 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION multirange_mgist_options(internal)
+CREATE FUNCTION multirange_mest_options(internal)
   RETURNS void
   AS 'MODULE_PATHNAME'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
@@ -94,7 +94,7 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    5   range_gist_penalty(internal, internal, internal),
     FUNCTION    6   range_gist_picksplit(internal, internal),
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
-    FUNCTION    10  multirange_mgist_options(internal),
+    FUNCTION    10  multirange_mest_options(internal),
     FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
     -- FUNCTION    12  multirange_mgist_extract_value(internal, internal, internal);
     -- FUNCTION    13  multirange_mgist_extract_query(internal, internal, internal);
@@ -154,6 +154,7 @@ DEFAULT FOR TYPE anymultirange USING mspgist AS
     FUNCTION  4  mspg_multirange_quad_inner_consistent(internal, internal),
     FUNCTION  5  mspg_multirange_quad_leaf_consistent(internal, internal),
     FUNCTION  6  mspg_multirange_compress(internal),
+    FUNCTION  7  multirange_mest_options(internal),
     FUNCTION  8  mspg_multirange_extract(internal, internal, internal);
 
 /******************************************************************************
