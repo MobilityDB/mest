@@ -12,11 +12,11 @@ The repository contains 3 PostgreSQL extensions split into 3 separate folders:
 
 - [mest](mest): 
     - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL *multirange* and *path* types.
-    - contains the Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree and Kd-tree for the PostgreSQL *multirange* and *path* types.
+    - contains the Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree for the PostgreSQL *multirange* and *path* types.
 - [postgis-mest](postgis-mest): 
-    - contains the implementation of a multi-entry R-tree, Quadtree, and Kd-tree for the PostGIS *geometry* and *geography* types.
+    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the PostGIS *geometry* and *geography* types.
 - [mobilitydb-mest](mobilitydb-mest): 
-    - contains the implementation of a multi-entry R-tree, Quadtree, and Kd-tree for the MobilityDB *spanset* and *tgeompoint* types.
+    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB *spanset*, *tgeompoint* , and *tgeogpoint* types.
     
 For more information about each extension, please refer to their associated README file.
 
