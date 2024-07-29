@@ -35,16 +35,32 @@ RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION multirange_mgist_extract(internal, internal, internal)
+CREATE FUNCTION multirange_mest_extract(internal, internal, internal)
 RETURNS bool
 AS 'MODULE_PATHNAME'
 LANGUAGE C IMMUTABLE STRICT;
 
-CREATE FUNCTION multirange_mgist_extract_options(internal)
+CREATE FUNCTION multirange_mest_options(internal)
   RETURNS void
   AS 'MODULE_PATHNAME'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
+CREATE FUNCTION ranges(int4multirange, int DEFAULT 0)
+  RETURNS int4range[]
+  AS 'MODULE_PATHNAME', 'multirange_ranges'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION ranges(int8multirange, int DEFAULT 0)
+  RETURNS int8range[]
+  AS 'MODULE_PATHNAME', 'multirange_ranges'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION ranges(datemultirange, int DEFAULT 0)
+  RETURNS daterange[]
+  AS 'MODULE_PATHNAME', 'multirange_ranges'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION ranges(tstzmultirange, int DEFAULT 0)
+  RETURNS tstzrange[]
+  AS 'MODULE_PATHNAME', 'multirange_ranges'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Opclasses
 
@@ -78,9 +94,8 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    5   range_gist_penalty(internal, internal, internal),
     FUNCTION    6   range_gist_picksplit(internal, internal),
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
-    FUNCTION    10  multirange_mgist_extract_options(internal),
-    FUNCTION    12  multirange_mgist_extract(internal, internal, internal);
-    -- FUNCTION    12  multirange_mgist_extract_value(internal, internal, internal);
+    FUNCTION    10  multirange_mest_options(internal),
+    FUNCTION    12  multirange_mest_extract(internal, internal, internal);
     -- FUNCTION    13  multirange_mgist_extract_query(internal, internal, internal);
 
 /******************************************************************************
@@ -89,11 +104,19 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
 
 -- Functions
 
-CREATE FUNCTION multirange_mspgist_compress(internal)
+CREATE FUNCTION mspg_multirange_config(internal, internal)
   RETURNS internal
   AS 'MODULE_PATHNAME'
   LANGUAGE C IMMUTABLE STRICT;
-CREATE FUNCTION multirange_mspgist_extract(internal, internal, internal)
+CREATE FUNCTION mspg_multirange_compress(internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION mspg_multirange_quad_inner_consistent(internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION mspg_multirange_quad_leaf_consistent(internal, internal)
   RETURNS internal
   AS 'MODULE_PATHNAME'
   LANGUAGE C IMMUTABLE STRICT;
@@ -124,13 +147,14 @@ DEFAULT FOR TYPE anymultirange USING mspgist AS
     OPERATOR    16   @> (anymultirange,anyelement),
     OPERATOR    18   =  (anymultirange,anymultirange),
     -- Functions
-    FUNCTION  1  spg_range_quad_config(internal, internal),
+    FUNCTION  1  mspg_multirange_config(internal, internal),
     FUNCTION  2  spg_range_quad_choose(internal, internal),
     FUNCTION  3  spg_range_quad_picksplit(internal, internal),
-    FUNCTION  4  spg_range_quad_inner_consistent(internal, internal),
-    FUNCTION  5  spg_range_quad_leaf_consistent(internal, internal),
-    FUNCTION  6  multirange_mspgist_compress(internal),
-    FUNCTION  8  multirange_mspgist_extract(internal, internal, internal);
+    FUNCTION  4  mspg_multirange_quad_inner_consistent(internal, internal),
+    FUNCTION  5  mspg_multirange_quad_leaf_consistent(internal, internal),
+    FUNCTION  6  mspg_multirange_compress(internal),
+    FUNCTION  7  multirange_mest_options(internal),
+    FUNCTION  8  multirange_mest_extract(internal, internal, internal);
 
 /******************************************************************************
  * Multi-Entry R-Tree for path type using ME-GiST
