@@ -109,7 +109,7 @@ DROP INDEX tbl_path_mrtree_idx;
 ------------------------------------------------------------------
 
 CREATE INDEX tbl_path_mrtree_opts_idx ON tbl_path 
-  USING MGIST(p path_mgist_ops (max_boxes = 3));
+  USING MGIST(p path_mrtree_ops (max_boxes = 3));
 
 -------------------------------------------------------------------------------
 

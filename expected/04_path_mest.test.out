@@ -84,7 +84,7 @@ WHERE op = '|&>' AND leftarg = 'path' AND rightarg = 'path';
 DROP INDEX tbl_path_mrtree_idx;
 ------------------------------------------------------------------
 CREATE INDEX tbl_path_mrtree_opts_idx ON tbl_path 
-  USING MGIST(p path_mgist_ops (max_boxes = 3));
+  USING MGIST(p path_mrtree_ops (max_boxes = 3));
 -------------------------------------------------------------------------------
 UPDATE test_path_mest SET mrtree_opts_idx = ( SELECT COUNT(*)
 FROM tbl_path t1, tbl_path t2 WHERE t1.p << t2.p )
