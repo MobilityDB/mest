@@ -779,13 +779,13 @@ DROP INDEX tbl_tstzmultirange_mrtree_idx;
 ------------------------------------------------------------------
 
 CREATE INDEX tbl_int4multirange_mrtree_opts_idx ON tbl_int4multirange 
-  USING MGIST(i multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(i multirange_mrtree_ops (max_ranges = 3));
 CREATE INDEX tbl_int8multirange_mrtree_opts_idx ON tbl_int8multirange
-  USING MGIST(b multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(b multirange_mrtree_ops (max_ranges = 3));
 CREATE INDEX tbl_datemultirange_mrtree_opts_idx ON tbl_datemultirange
-  USING MGIST(d multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(d multirange_mrtree_ops (max_ranges = 3));
 CREATE INDEX tbl_tstzmultirange_mrtree_opts_idx ON tbl_tstzmultirange
-  USING MGIST(t multirange_mgist_ops (max_ranges = 3));
+  USING MGIST(t multirange_mrtree_ops (max_ranges = 3));
 
 -------------------------------------------------------------------------------
 

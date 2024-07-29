@@ -64,7 +64,7 @@ CREATE FUNCTION ranges(tstzmultirange, int DEFAULT 0)
 
 -- Opclasses
 
-CREATE OPERATOR CLASS multirange_mgist_ops
+CREATE OPERATOR CLASS multirange_mrtree_ops
 DEFAULT FOR TYPE anymultirange USING mgist AS
     -- Storage
     STORAGE     anyrange,
@@ -157,15 +157,103 @@ DEFAULT FOR TYPE anymultirange USING mspgist AS
     FUNCTION  8  multirange_mest_extract(internal, internal, internal);
 
 /******************************************************************************
- * Multi-Entry R-Tree for path type using ME-GiST
+ * Multi-Entry R-Tree for path type using MGiST
  ******************************************************************************/
 
+-- Operator functions 
+
+CREATE FUNCTION path_left(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_overleft(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_right(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_overright(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_below(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_overbelow(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_above(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION path_overabove(path, path)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 -- Operators
+
 CREATE OPERATOR && (
   PROCEDURE = path_inter,
   LEFTARG = path, RIGHTARG = path,
   COMMUTATOR = &&
 );
+
+CREATE OPERATOR << (
+  PROCEDURE = path_left,
+  LEFTARG = path, RIGHTARG = path,
+  COMMUTATOR = >>
+);
+
+CREATE OPERATOR &< (
+  PROCEDURE = path_overleft,
+  LEFTARG = path, RIGHTARG = path
+);
+
+CREATE OPERATOR >> (
+  PROCEDURE = path_right,
+  LEFTARG = path, RIGHTARG = path,
+  COMMUTATOR = <<
+);
+
+CREATE OPERATOR &> (
+  PROCEDURE = path_overright,
+  LEFTARG = path, RIGHTARG = path
+);
+
+CREATE OPERATOR <<| (
+  PROCEDURE = path_left,
+  LEFTARG = path, RIGHTARG = path,
+  COMMUTATOR = |>>
+);
+
+CREATE OPERATOR &<| (
+  PROCEDURE = path_overleft,
+  LEFTARG = path, RIGHTARG = path
+);
+
+CREATE OPERATOR |>> (
+  PROCEDURE = path_right,
+  LEFTARG = path, RIGHTARG = path,
+  COMMUTATOR = <<|
+);
+
+CREATE OPERATOR |&> (
+  PROCEDURE = path_overright,
+  LEFTARG = path, RIGHTARG = path
+);
+
+/******************************************************************************/
+
+
+CREATE FUNCTION path_construct(point[])
+  RETURNS path
+  AS 'MODULE_PATHNAME', 'path_construct'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 -- Functions
 CREATE FUNCTION gist_path_consistent(internal, path, smallint, oid, internal)
@@ -183,19 +271,32 @@ RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
-CREATE FUNCTION mgist_path_extract(internal, internal, internal)
+CREATE FUNCTION mest_path_extract(internal, internal, internal)
 RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
+CREATE FUNCTION mest_path_options(internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
 -- Opclasses
 
-CREATE OPERATOR CLASS path_gist_ops
+CREATE OPERATOR CLASS path_rtree_ops
 DEFAULT FOR TYPE path USING gist AS
     -- Storage
     STORAGE     box,
     -- Operators
-    OPERATOR    3   &&(path,path),
+    OPERATOR    1   << (path, path),
+    OPERATOR    2   &< (path, path),
+    OPERATOR    3   && (path, path),
+    OPERATOR    4   &> (path, path),
+    OPERATOR    5   >> (path, path),
+    OPERATOR    9   &<| (path, path),
+    OPERATOR   10   <<| (path, path),
+    OPERATOR   11   |>> (path, path),
+    OPERATOR   12   |&> (path, path),
     -- Functions
     FUNCTION    1   gist_path_consistent(internal, path, smallint, oid, internal),
     FUNCTION    2   gist_box_union(internal, internal),
@@ -204,12 +305,20 @@ DEFAULT FOR TYPE path USING gist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal);
 
-CREATE OPERATOR CLASS path_mgist_ops
+CREATE OPERATOR CLASS path_mrtree_ops
 DEFAULT FOR TYPE path USING mgist AS
     -- Storage
     STORAGE     box,
     -- Operators
-    OPERATOR    3   &&(path,path),
+    OPERATOR    1   << (path, path),
+    OPERATOR    2   &< (path, path),
+    OPERATOR    3   && (path, path),
+    OPERATOR    4   &> (path, path),
+    OPERATOR    5   >> (path, path),
+    OPERATOR    9   &<| (path, path),
+    OPERATOR   10   <<| (path, path),
+    OPERATOR   11   |>> (path, path),
+    OPERATOR   12   |&> (path, path),
     -- Functions
     FUNCTION    1   gist_path_consistent(internal, path, smallint, oid, internal),
     FUNCTION    2   gist_box_union(internal, internal),
@@ -217,6 +326,52 @@ DEFAULT FOR TYPE path USING mgist AS
     FUNCTION    5   gist_box_penalty(internal, internal, internal),
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal),
-    FUNCTION    12  mgist_path_extract(internal, internal, internal);
+    FUNCTION    10  mest_path_options(internal),
+    FUNCTION    12  mest_path_extract(internal, internal, internal);
+
+/******************************************************************************
+ * Multi-Entry Quad-Tree for path types using MSPGiST
+ ******************************************************************************/
+
+-- Functions
+
+CREATE FUNCTION mspg_path_compress(internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION mspg_path_quad_inner_consistent(internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+CREATE FUNCTION mspg_path_quad_leaf_consistent(internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
+
+-- Opclasses
+
+CREATE OPERATOR CLASS path_mquadtree_ops
+DEFAULT FOR TYPE path USING mspgist AS
+    -- Storage
+    STORAGE     BOX,
+    -- Operators
+    OPERATOR    1   << (path, path),
+    OPERATOR    2   &< (path, path),
+    OPERATOR    3   && (path, path),
+    OPERATOR    4   &> (path, path),
+    OPERATOR    5   >> (path, path),
+    OPERATOR    9   &<| (path, path),
+    OPERATOR   10   <<| (path, path),
+    OPERATOR   11   |>> (path, path),
+    OPERATOR   12   |&> (path, path),
+    -- Functions
+    FUNCTION    1   spg_box_quad_config(internal, internal),
+    FUNCTION    2   spg_box_quad_choose(internal, internal),
+    FUNCTION    3   spg_box_quad_picksplit(internal, internal),
+    FUNCTION    4   mspg_path_quad_inner_consistent(internal, internal),
+    FUNCTION    5   mspg_path_quad_leaf_consistent(internal, internal),
+    FUNCTION    6   mspg_path_compress(internal),
+    FUNCTION    7   mest_path_options(internal),
+    FUNCTION    8   mest_path_extract(internal, internal, internal);
 
 /*****************************************************************************/

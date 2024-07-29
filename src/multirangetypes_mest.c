@@ -35,11 +35,11 @@
 /* Maximum number of ranges for the extract function 
  * The default value -1 is used to extract all ranges from a multirange
  * The maximum value is used to restrict the range of large multiranges */
-#define MEST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT    -1
-#define MEST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX        10000
-#define MEST_MULTIRANGE_EXTRACT_MAX_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
+#define MEST_MULTIRANGE_MAX_RANGES_DEFAULT    -1
+#define MEST_MULTIRANGE_MAX_RANGES_MAX        10000
+#define MEST_MULTIRANGE_MAX_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MestMultirangeOptions *) PG_GET_OPCLASS_OPTIONS())->max_ranges : \
-          MEST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT)
+          MEST_MULTIRANGE_MAX_RANGES_DEFAULT)
 
 /* mgist_multirange_ops opclass extract options */
 typedef struct
@@ -262,7 +262,7 @@ multirange_mgist_consistent(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(multirange_mest_options);
 /**
- * ME-GiST options for multirange types
+ * Multi-Entry Search Trees options for multirange types
  */
 PGDLLEXPORT Datum
 multirange_mest_options(PG_FUNCTION_ARGS)
@@ -272,8 +272,8 @@ multirange_mest_options(PG_FUNCTION_ARGS)
   init_local_reloptions(relopts, sizeof(MestMultirangeOptions));
   add_local_int_reloption(relopts, "max_ranges",
               "maximum number of ranges for extract method",
-              MEST_MULTIRANGE_EXTRACT_MAX_RANGES_DEFAULT, 1, 
-              MEST_MULTIRANGE_EXTRACT_MAX_RANGES_MAX,
+              MEST_MULTIRANGE_MAX_RANGES_DEFAULT, 1, 
+              MEST_MULTIRANGE_MAX_RANGES_MAX,
               offsetof(MestMultirangeOptions, max_ranges));
 
   PG_RETURN_VOID();
