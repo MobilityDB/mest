@@ -312,6 +312,23 @@ multirange_mest_extract(PG_FUNCTION_ARGS)
  * Multi-Entry SP-GiST functions for multiranges
  *****************************************************************************/
 
+PG_FUNCTION_INFO_V1(mspg_multirange_config);
+/*
+ * SP-GiST 'config' interface function.
+ */
+PGDLLEXPORT Datum
+mspg_multirange_config(PG_FUNCTION_ARGS)
+{
+  /* spgConfigIn *cfgin = (spgConfigIn *) PG_GETARG_POINTER(0); */
+  spgConfigOut *cfg = (spgConfigOut *) PG_GETARG_POINTER(1);
+
+  cfg->prefixType = ANYRANGEOID;
+  cfg->labelType = VOIDOID; /* we don't need node labels */
+  cfg->canReturnData = false;
+  cfg->longValuesOK = false;
+  PG_RETURN_VOID();
+}
+
 PG_FUNCTION_INFO_V1(mspg_multirange_compress);
 /**
  * ME-SP-GiST compress method for multirange types
@@ -319,8 +336,8 @@ PG_FUNCTION_INFO_V1(mspg_multirange_compress);
 PGDLLEXPORT Datum
 mspg_multirange_compress(PG_FUNCTION_ARGS)
 {
-  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
-  PG_RETURN_POINTER(entry);
+  MultirangeType *mr = PG_GETARG_MULTIRANGE_P(0);
+  PG_RETURN_POINTER(mr);
 }
 
 /*****************************************************************************/

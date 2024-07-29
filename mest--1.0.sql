@@ -104,6 +104,10 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
 
 -- Functions
 
+CREATE FUNCTION mspg_multirange_config(internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
 CREATE FUNCTION mspg_multirange_compress(internal)
   RETURNS internal
   AS 'MODULE_PATHNAME'
@@ -143,7 +147,7 @@ DEFAULT FOR TYPE anymultirange USING mspgist AS
     OPERATOR    16   @> (anymultirange,anyelement),
     OPERATOR    18   =  (anymultirange,anymultirange),
     -- Functions
-    FUNCTION  1  spg_range_quad_config(internal, internal),
+    FUNCTION  1  mspg_multirange_config(internal, internal),
     FUNCTION  2  spg_range_quad_choose(internal, internal),
     FUNCTION  3  spg_range_quad_picksplit(internal, internal),
     FUNCTION  4  mspg_multirange_quad_inner_consistent(internal, internal),
