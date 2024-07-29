@@ -64,7 +64,7 @@ CREATE FUNCTION ranges(tstzmultirange, int DEFAULT 0)
 
 -- Opclasses
 
-CREATE OPERATOR CLASS multirange_mgist_ops
+CREATE OPERATOR CLASS multirange_mrtree_ops
 DEFAULT FOR TYPE anymultirange USING mgist AS
     -- Storage
     STORAGE     anyrange,
@@ -305,7 +305,7 @@ DEFAULT FOR TYPE path USING gist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal);
 
-CREATE OPERATOR CLASS path_mgist_ops
+CREATE OPERATOR CLASS path_mrtree_ops
 DEFAULT FOR TYPE path USING mgist AS
     -- Storage
     STORAGE     box,

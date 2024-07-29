@@ -1,32 +1,17 @@
 Multi-Entry GiST and Multi-Entry SP-GiST Indexing
 =================================================
 
-This directory contains an implementation of the Multi-Entry GiST and Multi-Entry SP-GiST access methods for PostgreSQL. They are a variation of the GiST and SP-GiST indexes that allow for more efficient indexing of complex and composite data types.
+This directory contains an implementation of the Multi-Entry GiST and Multi-Entry SP-GiST access methods for PostgreSQL. They are a variation of the GiST and SP-GiST indices that allow for more efficient indexing of complex and composite data types.
 
 The extension on its own adds
 
    - a Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL `multirange` and `path` types.
    - a Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree for the PostgreSQL `multirange` and `path` types.
 
-For more advanced uses of the Multi-Entry GiST and Multi-Entry SP-GiST indexes, see the example use-cases below.
+Usage
+-----
 
-Dependencies
-------------
-- [PostgreSQL 16](https://www.postgresql.org/)
-
-Installation
-------------
-Compiling and installing the extension
-```
-make
-sudo make install
-```
-
-Enabling the `mest` extension
-```sql
-CREATE EXTENSION mest CASCADE;
-```
-
+Please refer to the top directory for instructions to compile, install, and enable the `mest` extension
 
 Create a Multi-Entry R-Tree on the `path` column from the table `tbl_path(id int, p path)`
 ```sql
