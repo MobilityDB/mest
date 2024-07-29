@@ -283,7 +283,7 @@ CREATE FUNCTION mest_path_options(internal)
 
 -- Opclasses
 
-CREATE OPERATOR CLASS path_gist_ops
+CREATE OPERATOR CLASS path_rtree_ops
 DEFAULT FOR TYPE path USING gist AS
     -- Storage
     STORAGE     box,
