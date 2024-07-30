@@ -53,10 +53,14 @@ extern void stbox_tile_state_next(STboxGridState *state);
 extern bool stbox_tile_state_get(STboxGridState *state, STBox *box);
 extern STboxGridState *tpoint_space_time_split_init(const Temporal *temp,
   float xsize, float ysize, float zsize, const Interval *duration,
-  const GSERIALIZED *sorigin, TimestampTz torigin, bool bitmatrix,
-  bool border_inc, int *ntiles);
-extern STBox *tpoint_space_tiles(const Temporal *temp, float xsize, float ysize, float zsize, const GSERIALIZED *sorigin, bool bitmatrix, bool border_inc, int *count);
-extern STBox *tpoint_space_time_tiles(const Temporal *temp, float xsize, float ysize, float zsize, const Interval *duration, const GSERIALIZED *sorigin, TimestampTz torigin, bool bitmatrix, bool border_inc, int *count);
+  GSERIALIZED *sorigin, TimestampTz torigin, bool bitmatrix, bool border_inc,
+  int *ntiles);
+extern STBox *tpoint_space_tiles(const Temporal *temp, float xsize, 
+  float ysize, float zsize, GSERIALIZED *sorigin, bool bitmatrix, 
+  bool border_inc, int *count);
+extern STBox *tpoint_space_time_tiles(const Temporal *temp, float xsize, 
+  float ysize, float zsize, const Interval *duration, GSERIALIZED *sorigin, 
+  TimestampTz torigin, bool bitmatrix, bool border_inc, int *count);
 
 /*****************************************************************************/
 

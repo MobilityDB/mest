@@ -742,8 +742,8 @@ PG_FUNCTION_INFO_V1(mspg_path_compress);
 PGDLLEXPORT Datum
 mspg_path_compress(PG_FUNCTION_ARGS)
 {
-  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
-  PG_RETURN_POINTER(entry);
+  BOX *b = PG_GETARG_BOX_P(0);
+  PG_RETURN_BOX_P(b);
 }
 
 /*****************************************************************************/

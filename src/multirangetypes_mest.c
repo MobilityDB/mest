@@ -67,15 +67,15 @@ static bool range_gist_consistent_int_element(TypeCacheEntry *typcache,
                         StrategyNumber strategy,
                         const RangeType *key,
                         Datum query);
-static bool range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
+static bool range_mest_consistent_leaf_range(TypeCacheEntry *typcache,
                        StrategyNumber strategy,
                        const RangeType *key,
                        const RangeType *query);
-static bool range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
+static bool range_mest_consistent_leaf_multirange(TypeCacheEntry *typcache,
                           StrategyNumber strategy,
                           const RangeType *key,
                           const MultirangeType *query);
-static bool range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
+static bool range_mest_consistent_leaf_element(TypeCacheEntry *typcache,
                          StrategyNumber strategy,
                          const RangeType *key,
                          Datum query);
@@ -232,15 +232,15 @@ multirange_mgist_consistent(PG_FUNCTION_ARGS)
   {
     if (!OidIsValid(subtype) || subtype == ANYMULTIRANGEOID)
     {
-      result = range_gist_consistent_leaf_multirange(typcache, strategy, key,
+      result = range_mest_consistent_leaf_multirange(typcache, strategy, key,
                                DatumGetMultirangeTypeP(query));
       *recheck = true;
     }
     else if (subtype == ANYRANGEOID)
-      result = range_gist_consistent_leaf_range(typcache, strategy, key,
+      result = range_mest_consistent_leaf_range(typcache, strategy, key,
                             DatumGetRangeTypeP(query));
     else
-      result = range_gist_consistent_leaf_element(typcache, strategy,
+      result = range_mest_consistent_leaf_element(typcache, strategy,
                             key, query);
   }
   else
@@ -321,7 +321,6 @@ mspg_multirange_config(PG_FUNCTION_ARGS)
 {
   /* spgConfigIn *cfgin = (spgConfigIn *) PG_GETARG_POINTER(0); */
   spgConfigOut *cfg = (spgConfigOut *) PG_GETARG_POINTER(1);
-
   cfg->prefixType = ANYRANGEOID;
   cfg->labelType = VOIDOID; /* we don't need node labels */
   cfg->canReturnData = false;
@@ -848,7 +847,7 @@ mspg_multirange_quad_leaf_consistent(PG_FUNCTION_ARGS)
   bool    res;
   int      i;
 
-  /* all tests are exact */
+  /* all tests are inexact */
   out->recheck = true;
 
   /* leafDatum is what it is... */
@@ -865,17 +864,17 @@ mspg_multirange_quad_leaf_consistent(PG_FUNCTION_ARGS)
 
     if (in->scankeys[i].sk_subtype == ANYMULTIRANGEOID)
     {
-      res = range_gist_consistent_leaf_multirange(typcache, strategy, 
+      res = range_mest_consistent_leaf_multirange(typcache, strategy, 
         leafRange, DatumGetMultirangeTypeP(keyDatum));
     }
     else if (in->scankeys[i].sk_subtype == ANYRANGEOID)
     {
-      res = range_gist_consistent_leaf_range(typcache, strategy, leafRange,
+      res = range_mest_consistent_leaf_range(typcache, strategy, leafRange,
         DatumGetRangeTypeP(keyDatum));
     }
     else 
     {
-      res = range_gist_consistent_leaf_element(typcache, strategy, leafRange,
+      res = range_mest_consistent_leaf_element(typcache, strategy, leafRange,
         keyDatum);
     }
       
@@ -1117,7 +1116,8 @@ range_gist_consistent_int_multirange(TypeCacheEntry *typcache,
        */
       if (MultirangeIsEmpty(query))
         return RangeIsOrContainsEmpty(key);
-      return range_contains_multirange_internal(typcache, key, query);
+      // return range_contains_multirange_internal(typcache, key, query);
+      return range_overlaps_multirange_internal(typcache, key, query);
     default:
       elog(ERROR, "unrecognized range strategy: %d", strategy);
       return false;   /* keep compiler quiet */
@@ -1144,10 +1144,11 @@ range_gist_consistent_int_element(TypeCacheEntry *typcache,
 }
 
 /*
- * GiST consistent test on an index leaf page with range query
+ * Multi-Entry GiST and SP-GiST consistent test on an index leaf page with 
+ * range query
  */
 bool
-range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
+range_mest_consistent_leaf_range(TypeCacheEntry *typcache,
                  StrategyNumber strategy,
                  const RangeType *key,
                  const RangeType *query)
@@ -1167,9 +1168,11 @@ range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
     case RANGESTRAT_ADJACENT:
       return range_adjacent_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
-      return range_contains_internal(typcache, key, query);
+      // return range_contains_internal(typcache, key, query);
+      return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
-      return range_contained_by_internal(typcache, key, query);
+      // return range_contained_by_internal(typcache, key, query);
+      return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_EQ:
       return range_eq_internal(typcache, key, query);
     default:
@@ -1179,10 +1182,11 @@ range_gist_consistent_leaf_range(TypeCacheEntry *typcache,
 }
 
 /*
- * GiST consistent test on an index leaf page with multirange query
+ * Multi-Entry GiST and SP-GiST consistent test on an index leaf page with 
+ * multirange query
  */
 bool
-range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
+range_mest_consistent_leaf_multirange(TypeCacheEntry *typcache,
                     StrategyNumber strategy,
                     const RangeType *key,
                     const MultirangeType *query)
@@ -1194,6 +1198,8 @@ range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
     case RANGESTRAT_OVERLEFT:
       return range_overleft_multirange_internal(typcache, key, query);
     case RANGESTRAT_OVERLAPS:
+    case RANGESTRAT_CONTAINS:
+    case RANGESTRAT_CONTAINED_BY:
       return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_OVERRIGHT:
       return range_overright_multirange_internal(typcache, key, query);
@@ -1201,9 +1207,6 @@ range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
       return range_after_multirange_internal(typcache, key, query);
     case RANGESTRAT_ADJACENT:
       return range_adjacent_multirange_internal(typcache, key, query);
-    case RANGESTRAT_CONTAINS:
-    case RANGESTRAT_CONTAINED_BY:
-      return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_EQ:
       return multirange_union_range_equal(typcache, key, query);
     default:
@@ -1213,10 +1216,11 @@ range_gist_consistent_leaf_multirange(TypeCacheEntry *typcache,
 }
 
 /*
- * GiST consistent test on an index leaf page with element query
+ * Multi-Entry GiST and SP-GiST consistent test on an index leaf page with 
+ * element query
  */
 bool
-range_gist_consistent_leaf_element(TypeCacheEntry *typcache,
+range_mest_consistent_leaf_element(TypeCacheEntry *typcache,
                    StrategyNumber strategy,
                    const RangeType *key,
                    Datum query)
