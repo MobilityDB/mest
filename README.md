@@ -16,7 +16,7 @@ The repository contains 3 PostgreSQL extensions split into 3 separate folders:
 - [postgis-mest](contrib/postgis-mest): 
     - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the PostGIS `geometry` and `geography` types.
 - [mobilitydb-mest](contrib/mobilitydb): 
-    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB `spanset`, `tgeompoint` , and `tgeogpoint` types.
+    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB `spanset` and `tgeompoint` types.
     
 For more information about each extension, please refer to their associated README file.
 

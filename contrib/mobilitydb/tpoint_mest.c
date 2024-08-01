@@ -12,6 +12,7 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "access/gist.h"
+#include "access/spgist.h"
 #include "access/reloptions.h"
 #include "utils/array.h"
 #include "utils/date.h"
@@ -25,6 +26,10 @@
 
 PG_MODULE_MAGIC;
 
+/*****************************************************************************
+ * Definitions borrowed from MobilityDB
+ *****************************************************************************/
+
 #define FLOAT8_LT(a,b)   (float8_cmp_internal(a, b) < 0)
 #define FLOAT8_LE(a,b)   (float8_cmp_internal(a, b) <= 0)
 #define FLOAT8_GT(a,b)   (float8_cmp_internal(a, b) > 0)
@@ -32,48 +37,99 @@ PG_MODULE_MAGIC;
 #define FLOAT8_MIN(a,b)  (FLOAT8_LT(a, b) ? (a) : (b))
 
 #define PG_GETARG_TEMPORAL_P(X)    ((Temporal *) PG_GETARG_VARLENA_P(X))
+#define PG_RETURN_TEMPORAL_P(X)      PG_RETURN_POINTER(X)
+
+#define DatumGetSTboxP(X)    ((STBox *) DatumGetPointer(X))
+#define STboxPGetDatum(X)    PointerGetDatum(X)
+#define PG_GETARG_STBOX_P(X) DatumGetSTboxP(PG_GETARG_DATUM(X))
+#define PG_RETURN_STBOX_P(X) return STboxPGetDatum(X)
+
+#define PG_GETARG_SET_P(X)     ((Set *) PG_GETARG_VARLENA_P(X))
+#define PG_RETURN_SET_P(X)     PG_RETURN_POINTER(X)
+
+extern Oid type_oid(meosType t);
+
+/** Enumeration for the types of SP-GiST indexes */
+typedef enum
+{
+  SPGIST_QUADTREE,
+  SPGIST_KDTREE,
+} SPGistIndexType;
+
+/**
+ * @brief Structure to represent the bounding box of an inner node containing a
+ * set of spans
+ */
+typedef struct
+{
+  Span left;
+  Span right;
+} SpanNode;
+
+extern void spannode_init(SpanNode *nodebox, meosType spantype,
+  meosType basetype);
+extern bool span_spgist_get_span(const ScanKeyData *scankey, Span *result);
+extern SpanNode *spannode_copy(const SpanNode *orig);
+extern double distance_span_nodespan(Span *query, SpanNode *nodebox);
+extern void spannode_quadtree_next(const SpanNode *nodebox, 
+  const Span *centroid, uint8 quadrant, SpanNode *next_nodespan);
+extern void spannode_kdtree_next(const SpanNode *nodebox, const Span *centroid,
+  uint8 node, int level, SpanNode *next_nodespan);
+extern bool overlap2D(const SpanNode *nodebox, const Span *query);
+extern bool contain2D(const SpanNode *nodebox, const Span *query);
+extern bool left2D(const SpanNode *nodebox, const Span *query);
+extern bool overLeft2D(const SpanNode *nodebox, const Span *query);
+extern bool right2D(const SpanNode *nodebox, const Span *query);
+extern bool overRight2D(const SpanNode *nodebox, const Span *query);
+
+/*****************************************************************************
+ * Options for temporal point types with equisplit, mergesplit, segsplit, and
+ * adaptsplit
+ *****************************************************************************/
 
 /* number boxes for extract function */
-#define MEST_EXTRACT_BOXES_DEFAULT    10
-#define MEST_EXTRACT_BOXES_MAX        1000
-#define MEST_EXTRACT_GET_BOXES()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_BOXES_Options *) PG_GET_OPCLASS_OPTIONS())->num_boxes : \
-          MEST_EXTRACT_BOXES_DEFAULT)
+#define MEST_TPOINT_BOXES_DEFAULT    10
+#define MEST_TPOINT_BOXES_MAX        1000
+#define MEST_TPOINT_GET_BOXES()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestBoxesOptions *) PG_GET_OPCLASS_OPTIONS())->num_boxes : \
+          MEST_TPOINT_BOXES_DEFAULT)
 
-/* gist_int_ops opclass options */
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
-  int     num_boxes;    /* number of ranges */
-} MEST_BOXES_Options;
+  int     num_boxes;    /* number of boxes */
+} MestBoxesOptions;
+
+/*****************************************************************************
+ * Options for temporal point types with querysplit
+ *****************************************************************************/
 
 /* Average query width (in meters) */
-#define MEST_EXTRACT_QX_DEFAULT    1000.0
-#define MEST_EXTRACT_QX_MAX        1000000.0
-#define MEST_EXTRACT_GET_QX()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_QUERY_Options *) PG_GET_OPCLASS_OPTIONS())->qx : \
-          MEST_EXTRACT_QX_DEFAULT)
+#define MEST_TPOINT_QX_DEFAULT    1000.0
+#define MEST_TPOINT_QX_MAX        1000000.0
+#define MEST_TPOINT_GET_QX()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestQueryOptions *) PG_GET_OPCLASS_OPTIONS())->qx : \
+          MEST_TPOINT_QX_DEFAULT)
 
 /* Average query height (in meters) */
-#define MEST_EXTRACT_QY_DEFAULT    1000.0
-#define MEST_EXTRACT_QY_MAX        1000000.0
-#define MEST_EXTRACT_GET_QY()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_QUERY_Options *) PG_GET_OPCLASS_OPTIONS())->qy : \
-          MEST_EXTRACT_QY_DEFAULT)
+#define MEST_TPOINT_QY_DEFAULT    1000.0
+#define MEST_TPOINT_QY_MAX        1000000.0
+#define MEST_TPOINT_GET_QY()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestQueryOptions *) PG_GET_OPCLASS_OPTIONS())->qy : \
+          MEST_TPOINT_QY_DEFAULT)
 
 /* Average query duration (in minutes) */
-#define MEST_EXTRACT_QT_DEFAULT    1000.0
-#define MEST_EXTRACT_QT_MAX        1000000.0
-#define MEST_EXTRACT_GET_QT()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_QUERY_Options *) PG_GET_OPCLASS_OPTIONS())->qt : \
-          MEST_EXTRACT_QT_DEFAULT)
+#define MEST_TPOINT_QT_DEFAULT    1000.0
+#define MEST_TPOINT_QT_MAX        1000000.0
+#define MEST_TPOINT_GET_QT()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestQueryOptions *) PG_GET_OPCLASS_OPTIONS())->qt : \
+          MEST_TPOINT_QT_DEFAULT)
 
-/* gist_int_ops opclass options */
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
   double  qx, qy, qt;   /* avg query range width per dimension */
-} MEST_QUERY_Options;
+} MestQueryOptions;
 
 /* Enum for MergeSplit Algorithm */
 enum stbox_state {
@@ -84,29 +140,31 @@ enum stbox_state {
   STBOX_DELETED
 };
 
+/*****************************************************************************
+ * Options for temporal point types with tilesplit
+ *****************************************************************************/
 
 /* Tile size in the X, Y, and Z dimensions for the extract function */
-#define MEST_EXTRACT_XSIZE_DEFAULT    1.0
-#define MEST_EXTRACT_XSIZE_MAX        1000000.0
-#define MEST_EXTRACT_GET_XSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->xsize : \
-          MEST_EXTRACT_XSIZE_DEFAULT)
+#define MEST_TPOINT_XSIZE_DEFAULT    1.0
+#define MEST_TPOINT_XSIZE_MAX        1000000.0
+#define MEST_TPOINT_GET_XSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->xsize : \
+          MEST_TPOINT_XSIZE_DEFAULT)
 
-#define MEST_EXTRACT_YSIZE_DEFAULT    -1.0
-#define MEST_EXTRACT_YSIZE_MAX        1000000.0
-#define MEST_EXTRACT_GET_YSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->ysize : \
-          MEST_EXTRACT_YSIZE_DEFAULT)
+#define MEST_TPOINT_YSIZE_DEFAULT    -1.0
+#define MEST_TPOINT_YSIZE_MAX        1000000.0
+#define MEST_TPOINT_GET_YSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->ysize : \
+          MEST_TPOINT_YSIZE_DEFAULT)
 
-#define MEST_EXTRACT_ZSIZE_DEFAULT    -1.0
-#define MEST_EXTRACT_ZSIZE_MAX        1000000.0
-#define MEST_EXTRACT_GET_ZSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS())->zsize : \
-          MEST_EXTRACT_ZSIZE_DEFAULT)
+#define MEST_TPOINT_ZSIZE_DEFAULT    -1.0
+#define MEST_TPOINT_ZSIZE_MAX        1000000.0
+#define MEST_TPOINT_GET_ZSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->zsize : \
+          MEST_TPOINT_ZSIZE_DEFAULT)
 
-#define MEST_EXTRACT_DURATION_DEFAULT    ""
+#define MEST_TPOINT_DURATION_DEFAULT    ""
 
-/* mgist_multirange_ops opclass extract options */
 typedef struct
 {
   int32 vl_len_;      /* varlena header (do not touch directly!) */
@@ -115,8 +173,7 @@ typedef struct
   double zsize;       /* tile size in the Z dimension */
   int duration;       /* tile size in the T dimension, which is an interval 
                          represented as a string */
-} MEST_TILE_Options;
-
+} MestTileOptions;
 
 /*****************************************************************************
  * External functions
@@ -130,7 +187,6 @@ extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
 extern Datum call_function1(PGFunction func, Datum arg1);
 extern Datum interval_in(PG_FUNCTION_ARGS);
 extern Temporal *temporal_slice(Datum tempdatum);
-extern void spanset_span_slice(Datum d, Span *s);
 extern meosType oid_type(Oid typid);
 
 /*****************************************************************************
@@ -166,252 +222,7 @@ extern meosType oid_type(Oid typid);
 #define PG_RETURN_SPANSET_P(X)     PG_RETURN_POINTER(X)
 
 /*****************************************************************************
- * Prototypes
- *****************************************************************************/
-
-static bool span_mgist_recheck(StrategyNumber strategy);
-static bool span_index_consistent_leaf(const Span *key, const Span *query,
-  StrategyNumber strategy);
-static bool span_gist_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy);
-  
-/*****************************************************************************
- * ME-GiST consistent methods for spanset types
- *****************************************************************************/
-
-/**
- * @brief Return true if a recheck is necessary depending on the strategy
- */
-bool
-span_mgist_recheck(StrategyNumber strategy)
-{
-  /* These operators are based on bounding boxes */
-  if (strategy == RTLeftStrategyNumber ||
-      strategy == RTBeforeStrategyNumber ||
-      strategy == RTOverLeftStrategyNumber ||
-      strategy == RTOverBeforeStrategyNumber ||
-      strategy == RTRightStrategyNumber ||
-      strategy == RTAfterStrategyNumber ||
-      strategy == RTOverRightStrategyNumber ||
-      strategy == RTOverAfterStrategyNumber ||
-      strategy == RTKNNSearchStrategyNumber)
-    return false;
-  return true;
-}
-
-/**
- * @brief Transform the query argument into a span
- */
-static bool
-span_mgist_get_span(FunctionCallInfo fcinfo, Span *result, Oid typid)
-{
-  meosType type = oid_type(typid);
-  if (span_basetype(type))
-  {
-    /* Since function span_gist_consistent is strict, value is not NULL */
-    Datum value = PG_GETARG_DATUM(1);
-    meosType spantype = basetype_spantype(type);
-    span_set(value, value, true, true, type, spantype, result);
-  }
-  // else if (set_type(type))
-  // {
-    // Set *s = PG_GETARG_SET_P(1);
-    // set_set_span(s, result);
-  // }
-  else if (span_type(type))
-  {
-    Span *s = PG_GETARG_SPAN_P(1);
-    if (s == NULL)
-      PG_RETURN_BOOL(false);
-    memcpy(result, s, sizeof(Span));
-  }
-  else if (spanset_type(type))
-  {
-    Datum psdatum = PG_GETARG_DATUM(1);
-    spanset_span_slice(psdatum, result);
-  }
-  /* For temporal types whose bounding box is a timestamptz span */
-  else if (talpha_type(type))
-  {
-    Datum tempdatum = PG_GETARG_DATUM(1);
-    Temporal *temp = temporal_slice(tempdatum);
-    temporal_set_tstzspan(temp, result);
-  }
-  else
-    elog(ERROR, "Unsupported type for indexing: %d", type);
-  return true;
-}
-
-/**
- * @brief Leaf-level consistency for span types
- *
- * @param[in] key Element in the index
- * @param[in] query Value being looked up in the index
- * @param[in] strategy Operator of the operator class being applied
- * @note This function is used for both GiST and SP-GiST indexes
- */
-static bool
-span_index_consistent_leaf(const Span *key, const Span *query,
-  StrategyNumber strategy)
-{
-  switch (strategy)
-  {
-    case RTOverlapStrategyNumber:
-      return over_span_span(key, query);
-    case RTContainsStrategyNumber:
-      return cont_span_span(key, query);
-    case RTContainedByStrategyNumber:
-      return cont_span_span(query, key);
-    case RTEqualStrategyNumber:
-    case RTSameStrategyNumber:
-      return span_eq(key, query);
-    case RTAdjacentStrategyNumber:
-      return adj_span_span(key, query);
-    case RTLeftStrategyNumber:
-    case RTBeforeStrategyNumber:
-      return lf_span_span(key, query);
-    case RTOverLeftStrategyNumber:
-    case RTOverBeforeStrategyNumber:
-      return ovlf_span_span(key, query);
-    case RTRightStrategyNumber:
-    case RTAfterStrategyNumber:
-      return ri_span_span(key, query);
-    case RTOverRightStrategyNumber:
-    case RTOverAfterStrategyNumber:
-      return ovri_span_span(key, query);
-    default:
-      elog(ERROR, "unrecognized span strategy: %d", strategy);
-      return false;    /* keep compiler quiet */
-  }
-}
-
-/**
- * @brief GiST internal-page consistency for span types
- *
- * @param[in] key Element in the index
- * @param[in] query Value being looked up in the index
- * @param[in] strategy Operator of the operator class being applied
- */
-static bool
-span_gist_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy)
-{
-  switch (strategy)
-  {
-    case RTOverlapStrategyNumber:
-    case RTContainedByStrategyNumber:
-      return over_span_span(key, query);
-    case RTContainsStrategyNumber:
-    case RTEqualStrategyNumber:
-    case RTSameStrategyNumber:
-      return cont_span_span(key, query);
-    case RTAdjacentStrategyNumber:
-      return adj_span_span(key, query) || overlaps_span_span(key, query);
-    case RTLeftStrategyNumber:
-    case RTBeforeStrategyNumber:
-      return ! ovri_span_span(key, query);
-    case RTOverLeftStrategyNumber:
-    case RTOverBeforeStrategyNumber:
-      return ! ri_span_span(key, query);
-    case RTRightStrategyNumber:
-    case RTAfterStrategyNumber:
-      return ! ovlf_span_span(key, query);
-    case RTOverRightStrategyNumber:
-    case RTOverAfterStrategyNumber:
-      return ! lf_span_span(key, query);
-    default:
-      elog(ERROR, "unrecognized span strategy: %d", strategy);
-      return false;    /* keep compiler quiet */
-  }
-}
-
-PGDLLEXPORT Datum Spanset_mgist_consistent(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mgist_consistent);
-/**
- * @brief MGiST consistent method for spanset types
- */
-Datum
-Spanset_mgist_consistent(PG_FUNCTION_ARGS)
-{
-  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
-  StrategyNumber strategy = (StrategyNumber) PG_GETARG_UINT16(2);
-  Oid typid = PG_GETARG_OID(3);
-  bool *recheck = (bool *) PG_GETARG_POINTER(4);
-  bool result;
-  const Span *key = DatumGetSpanP(entry->key);
-  Span query;
-
-  /* Determine whether the operator is exact */
-  // *recheck = span_index_recheck(strategy);
-  *recheck = span_mgist_recheck(strategy);
-
-  if (key == NULL)
-    PG_RETURN_BOOL(false);
-
-  /* Transform the query into a box */
-  if (! span_mgist_get_span(fcinfo, &query, typid))
-    PG_RETURN_BOOL(false);
-
-  if (GIST_LEAF(entry))
-    result = span_index_consistent_leaf(key, &query, strategy);
-  else
-    result = span_gist_consistent(key, &query, strategy);
-
-  PG_RETURN_BOOL(result);
-}
-
-/*****************************************************************************
- * MEST compress method for spanset types
- *****************************************************************************/
-
-PGDLLEXPORT Datum Spanset_mgist_compress(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mgist_compress);
-/**
- * @brief MGiST compress method for span sets
- */
-Datum
-Spanset_mgist_compress(PG_FUNCTION_ARGS)
-{
-  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
-  PG_RETURN_POINTER(entry);
-}
-
-PGDLLEXPORT Datum Spanset_mspgist_compress(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mspgist_compress);
-/**
- * @brief SP-GiST compress function for span sets
- */
-Datum
-Spanset_mspgist_compress(PG_FUNCTION_ARGS)
-{
-  SpanSet *ss = PG_GETARG_SPANSET_P(0);
-  PG_RETURN_SPANSET_P(ss);
-}
-
-/*****************************************************************************
- * ME-GiST extract method for spanset types
- *****************************************************************************/
-
-PGDLLEXPORT Datum Spanset_mest_extract(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mest_extract);
-/**
- * @brief MGiST extract method for spanset types
- */
-Datum
-Spanset_mest_extract(PG_FUNCTION_ARGS)
-{
-  SpanSet *ss = PG_GETARG_SPANSET_P(0);
-  int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  Span *spanarr = spanset_spans(ss, ss->count, nkeys);
-  Span **spans = palloc(sizeof(Span *) * (*nkeys));
-  for (int i = 0; i < *nkeys; i++)
-    spans[i] = &spanarr[i];
-  PG_FREE_IF_COPY(ss, 0);
-  PG_RETURN_POINTER(spans);
-}
-
-/*****************************************************************************
- * M(SP-)GiST compress functions for temporal points
+ * Multi-Entry GiST and SP-GiST compress functions for temporal points
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mgist_compress);
@@ -432,30 +243,28 @@ PG_FUNCTION_INFO_V1(Tpoint_mspgist_compress);
 PGDLLEXPORT Datum
 Tpoint_mspgist_compress(PG_FUNCTION_ARGS)
 {
-  STBox *box = (STBox *) PG_GETARG_POINTER(0);
-  STBox *result = palloc(sizeof(STBox));
-  memcpy(result, box, sizeof(STBox));
-  PG_RETURN_POINTER(result);
+  STBox *box = PG_GETARG_STBOX_P(0);
+  PG_RETURN_STBOX_P(box);
 }
 
 /*****************************************************************************
- * M(SP-)GiST option functions
+ * Multi-Entry GiST and SP-GiST option methods
  *****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_box_options);
 /**
- * M(SP-)GiST options for temporal points
+ * Multi-Entry GiST and SP-GiST options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_box_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MEST_BOXES_Options));
-  add_local_int_reloption(relopts, "k",
-              "number of boxes for extract method",
-              MEST_EXTRACT_BOXES_DEFAULT, 1, MEST_EXTRACT_BOXES_MAX,
-              offsetof(MEST_BOXES_Options, num_boxes));
+  init_local_reloptions(relopts, sizeof(MestBoxesOptions));
+  add_local_int_reloption(relopts, "num_boxes",
+              "number of boxes for the extract method",
+              MEST_TPOINT_BOXES_DEFAULT, 1, MEST_TPOINT_BOXES_MAX,
+              offsetof(MestBoxesOptions, num_boxes));
 
   PG_RETURN_VOID();
 }
@@ -474,58 +283,58 @@ fill_duration_relopt(const char *value, void *ptr)
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_tile_options);
 /**
- * M(SP-)GiST options for temporal points
+ * Multi-Entry GiST and SP-GiST options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_tile_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MEST_TILE_Options));
+  init_local_reloptions(relopts, sizeof(MestTileOptions));
   add_local_real_reloption(relopts, "xsize",
               "Tile size in the X dimension (in units of the SRID)",
-              MEST_EXTRACT_XSIZE_DEFAULT, 1, MEST_EXTRACT_XSIZE_MAX,
-              offsetof(MEST_TILE_Options, xsize));
+              MEST_TPOINT_XSIZE_DEFAULT, 1, MEST_TPOINT_XSIZE_MAX,
+              offsetof(MestTileOptions, xsize));
   add_local_real_reloption(relopts, "ysize",
               "Tile size in the Y dimension (in units of the SRID)",
-              MEST_EXTRACT_YSIZE_DEFAULT, 1, MEST_EXTRACT_YSIZE_MAX,
-              offsetof(MEST_TILE_Options, ysize));
+              MEST_TPOINT_YSIZE_DEFAULT, 1, MEST_TPOINT_YSIZE_MAX,
+              offsetof(MestTileOptions, ysize));
   add_local_real_reloption(relopts, "zsize",
               "Tile size in the Z dimension (in units of the SRID)",
-              MEST_EXTRACT_ZSIZE_DEFAULT, 1, MEST_EXTRACT_ZSIZE_MAX,
-              offsetof(MEST_TILE_Options, zsize));
+              MEST_TPOINT_ZSIZE_DEFAULT, 1, MEST_TPOINT_ZSIZE_MAX,
+              offsetof(MestTileOptions, zsize));
   add_local_string_reloption(relopts, "duration",
               "Tile size in the T dimension (a time interval)",
-              MEST_EXTRACT_DURATION_DEFAULT,
+              MEST_TPOINT_DURATION_DEFAULT,
               NULL,
               &fill_duration_relopt,
-              offsetof(MEST_TILE_Options, duration));
+              offsetof(MestTileOptions, duration));
 
   PG_RETURN_VOID();
 }
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_query_options);
 /**
- * M(SP-)GiST options for temporal points
+ * Multi-Entry GiST and SP-GiST query options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_query_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MEST_QUERY_Options));
+  init_local_reloptions(relopts, sizeof(MestQueryOptions));
   add_local_real_reloption(relopts, "qx",
               "Average query width (in meters)",
-              MEST_EXTRACT_QX_DEFAULT, 1, MEST_EXTRACT_QX_MAX,
-              offsetof(MEST_QUERY_Options, qx));
+              MEST_TPOINT_QX_DEFAULT, 1, MEST_TPOINT_QX_MAX,
+              offsetof(MestQueryOptions, qx));
   add_local_real_reloption(relopts, "qy",
               "Average query height (in meters)",
-              MEST_EXTRACT_QY_DEFAULT, 1, MEST_EXTRACT_QY_MAX,
-              offsetof(MEST_QUERY_Options, qy));
+              MEST_TPOINT_QY_DEFAULT, 1, MEST_TPOINT_QY_MAX,
+              offsetof(MestQueryOptions, qy));
   add_local_real_reloption(relopts, "qt",
               "Average query duration (in minutes)",
-              MEST_EXTRACT_QT_DEFAULT, 1, MEST_EXTRACT_QT_MAX,
-              offsetof(MEST_QUERY_Options, qt));
+              MEST_TPOINT_QT_DEFAULT, 1, MEST_TPOINT_QT_MAX,
+              offsetof(MestQueryOptions, qt));
 
   PG_RETURN_VOID();
 }
@@ -606,12 +415,11 @@ tpoint_mest_extract(FunctionCallInfo fcinfo,
 /* Equisplit */
 
 static STBox *
-tsequence_equisplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+tsequence_equisplit(const TSequence *seq, int32 count, int32 *nkeys)
 {
   STBox *result;
   STBox box1;
   int segs_per_split, segs_this_split, k;
-  int32 count = MEST_EXTRACT_GET_BOXES();
 
   segs_per_split = ceil((double) (seq->count - 1) / (double) (count));
   if (ceil((double) (seq->count - 1) / (double) segs_per_split) < count)
@@ -634,6 +442,22 @@ tsequence_equisplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
   }
   *nkeys = count;
   return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_equisplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_equisplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32     count = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  STBox *boxes = tsequence_equisplit((TSequence *) temp, count, &nkeys);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
+  PG_RETURN_POINTER(result);
 }
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_equisplit);
@@ -643,53 +467,17 @@ PG_FUNCTION_INFO_V1(Tpoint_mest_equisplit);
 PGDLLEXPORT Datum
 Tpoint_mest_equisplit(PG_FUNCTION_ARGS)
 {
-  return tpoint_mest_extract(fcinfo, &tsequence_equisplit);
-}
-
-static STBox *
-tsequence_static_equisplit(const TSequence *seq, int32 count, int32 *nkeys)
-{
-  STBox *result;
-  STBox box1;
-  int segs_per_split, segs_this_split, k;
-
-  segs_per_split = ceil((double) (seq->count - 1) / (double) (count));
-  if (ceil((double) (seq->count - 1) / (double) segs_per_split) < count)
-    count = ceil((double) (seq->count - 1) / (double) segs_per_split);
-
-  k = 0;
-  result = palloc(sizeof(STBox) * count);
-  for (int i = 0; i < seq->count - 1; i += segs_per_split)
-  {
-    segs_this_split = segs_per_split;
-    if (seq->count - 1 - i < segs_per_split)
-      segs_this_split = seq->count - 1 - i;
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &result[k]);
-    for (int j = 1; j < segs_this_split + 1; j++)
-    {
-      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i + j), &box1);
-      stbox_expand(&box1, &result[k]);
-    }
-    k++;
-  }
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_static_equisplit);
-/**
- * M(SP-)GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_static_equisplit(PG_FUNCTION_ARGS)
-{
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  int32     count = PG_GETARG_INT32(1);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  int32 count = MEST_TPOINT_GET_BOXES();
 
-  int32 nkeys;
-  STBox *boxes = tsequence_static_equisplit((TSequence *) temp, count, &nkeys);
-  ArrayType *result = stboxarr_to_array(boxes, nkeys);
-  PG_RETURN_POINTER(result);
+  STBox *boxes = tsequence_equisplit((TSequence *) temp, count, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  assert(temp);
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  PG_RETURN_POINTER(keys);
 }
 
 /*****************************************************************************/
@@ -846,109 +634,7 @@ stbox_penalty(const STBox *box1, const STBox *box2)
 }
 
 static STBox *
-tsequence_mergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
-{
-  min_heap heap;
-  min_heap_elem elem;
-  int *box_states;
-  STBox *boxes, *result;
-  int32 count = seq->count - 1, max_count = MEST_EXTRACT_GET_BOXES();
-  int i, k = 0;
-
-  if (max_count == 1)
-    return tsequence_extract1(seq, nkeys);
-
-  boxes = palloc(sizeof(STBox) * seq->count);
-  for (i = 0; i < seq->count; ++i)
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
-  for (i = 0; i < count; ++i)
-    stbox_expand(&boxes[i+1], &boxes[i]);
-
-  /* No need to merge boxes */
-  if (count <= max_count)
-  {
-    *nkeys = count;
-    return boxes;
-  }
-
-  box_states = palloc(sizeof(int) * count);
-  for (i = 0; i < count; ++i)
-    box_states[i] = STBOX_OK;
-
-  heap.size = 0;
-  heap.max_size = count - 1;
-  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
-  for (i = 0; i < count - 1; ++i)
-  {
-    elem.boxid1 = i;
-    elem.boxid2 = i + 1;
-    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
-    heap_insert(&heap, elem);
-  }
-
-  while (count > max_count && heap_delete_min(&heap, &elem))
-  {
-    if ((box_states[elem.boxid1] == STBOX_OK
-        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
-      && (box_states[elem.boxid2] == STBOX_OK
-          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
-    {
-      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
-      box_states[elem.boxid1] = STBOX_CHANGED;
-      box_states[elem.boxid2] = STBOX_DELETED;
-      count--;
-    }
-    else
-    {
-      if (box_states[elem.boxid1] == STBOX_DELETED)
-      {
-        for (i = elem.boxid1 - 1; i >= 0; --i)
-        {
-          if (box_states[i] == STBOX_CHANGED
-            || box_states[i] == STBOX_OK_CHANGED)
-          {
-            elem.boxid1 = i;
-            if (box_states[i] == STBOX_CHANGED)
-              box_states[i] = STBOX_CHANGED_OK;
-            else
-              box_states[i] = STBOX_OK;
-            break;
-          }
-        }
-      }
-      if (box_states[elem.boxid2] == STBOX_CHANGED)
-        box_states[elem.boxid2] = STBOX_OK_CHANGED;
-      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
-        box_states[elem.boxid2] = STBOX_OK;
-      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
-      heap_insert(&heap, elem);
-    }
-  }
-
-  result = palloc(sizeof(STBox) * count);
-  for (i = 0; i < seq->count - 1; ++i)
-    if (box_states[i] != STBOX_DELETED)
-      memcpy(&result[k++], &boxes[i], sizeof(STBox));
-
-  pfree(heap.array);
-  pfree(box_states);
-  pfree(boxes);
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_mest_mergesplit);
-/**
- * M(SP-)GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_mest_mergesplit(PG_FUNCTION_ARGS)
-{
-  return tpoint_mest_extract(fcinfo, &tsequence_mergesplit);
-}
-
-static STBox *
-tsequence_static_mergesplit(const TSequence *seq, int32 max_count, int32 *nkeys)
+tsequence_mergesplit(const TSequence *seq, int32 max_count, int32 *nkeys)
 {
   min_heap heap;
   min_heap_elem elem;
@@ -1039,20 +725,39 @@ tsequence_static_mergesplit(const TSequence *seq, int32 max_count, int32 *nkeys)
   return result;
 }
 
-PG_FUNCTION_INFO_V1(Tpoint_static_mergesplit);
+PG_FUNCTION_INFO_V1(Tpoint_mergesplit);
 /**
  * M(SP-)GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
-Tpoint_static_mergesplit(PG_FUNCTION_ARGS)
+Tpoint_mergesplit(PG_FUNCTION_ARGS)
 {
-  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  int32     count = PG_GETARG_INT32(1);
-
+  Temporal *temp = PG_GETARG_TEMPORAL_P(0);
+  int32 count = PG_GETARG_INT32(1);
   int32 nkeys;
-  STBox *boxes = tsequence_static_mergesplit((TSequence *) temp, count, &nkeys);
+  STBox *boxes = tsequence_mergesplit((TSequence *) temp, count, &nkeys);
   ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_mest_mergesplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mest_mergesplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  int32 max_count = MEST_TPOINT_GET_BOXES();
+
+  STBox *boxes = tsequence_mergesplit((TSequence *) temp, max_count, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  assert(temp);
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  PG_RETURN_POINTER(keys);
 }
 
 /*****************************************************************************/
@@ -1166,14 +871,12 @@ solve_c(STBox *box, int num_segs,
 }
 
 static STBox *
-tsequence_linearsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+tsequence_linearsplit(const TSequence *seq, double qx, double qy, double qt,
+  int32 *nkeys)
 {
   STBox *result, *boxes = palloc(sizeof(STBox)*(seq->count-1));
   STBox box1, box2, newbox;
   int32 count = 0;
-  double  qx = MEST_EXTRACT_GET_QX(),
-          qy = MEST_EXTRACT_GET_QY(),
-          qt = MEST_EXTRACT_GET_QT();
   int i, k, c, u = 0, v = 1;
 
   tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
@@ -1216,6 +919,24 @@ tsequence_linearsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkey
   pfree(boxes);
   *nkeys = count;
   return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_linearsplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_linearsplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  double qx = PG_GETARG_FLOAT8(1);
+  double qy = PG_GETARG_FLOAT8(1);
+  double qt = PG_GETARG_FLOAT8(1);
+
+  int32 nkeys;
+  STBox *boxes = tsequence_linearsplit((TSequence *) temp, qx, qy, qt, &nkeys);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
+  PG_RETURN_POINTER(result);
 }
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_linearsplit);
@@ -1225,75 +946,19 @@ PG_FUNCTION_INFO_V1(Tpoint_mest_linearsplit);
 PGDLLEXPORT Datum
 Tpoint_mest_linearsplit(PG_FUNCTION_ARGS)
 {
-  return tpoint_mest_extract(fcinfo, &tsequence_linearsplit);
-}
-
-static STBox *
-tsequence_static_linearsplit(const TSequence *seq, double qx, double qy, double qt, int32 *nkeys)
-{
-  STBox *result, *boxes = palloc(sizeof(STBox)*(seq->count-1));
-  STBox box1, box2, newbox;
-  int32 count = 0;
-  int i, k, c, u = 0, v = 1;
-
-  tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
-  tinstant_set_bbox(TSEQUENCE_INST_N(seq, v), &box2);
-  stbox_expand(&box2, &box1);
-
-  while (v < seq->count - 1)
-  {
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, v + 1), &newbox);
-    stbox_expand(&newbox, &box2);
-    if (stbox_penalty_ext(&box1, &box2, qx, qy, qt) > 0)
-    {
-      k = 0;
-      c = fmax(1, round(solve_c(&box1, v - u, qx, qy, qt)));
-      tinstant_set_bbox(TSEQUENCE_INST_N(seq, u), &box1);
-      for (i = 1; i < v - u + 1; ++i)
-      {
-        tinstant_set_bbox(TSEQUENCE_INST_N(seq, u + i), &box2);
-        stbox_expand(&box2, &box1);
-        if (i % c == 0)
-        {
-          boxes[count++] = box1;
-          box1 = box2;
-          k++;
-        }
-      }
-      u += k*c;
-    }
-    stbox_expand(&newbox, &box1);
-    box2 = newbox;
-    v++;
-  }
-
-  if (u < seq->count - 1)
-    boxes[count++] = box1;
-
-  result = palloc(sizeof(STBox) * count);
-  for (i = 0; i < count; ++i)
-    result[i] = boxes[i];
-  pfree(boxes);
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_static_linearsplit);
-/**
- * M(SP-)GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_static_linearsplit(PG_FUNCTION_ARGS)
-{
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  double qx = PG_GETARG_FLOAT8(1);
-  double qy = PG_GETARG_FLOAT8(1);
-  double qt = PG_GETARG_FLOAT8(1);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  double qx = MEST_TPOINT_GET_QX(),
+         qy = MEST_TPOINT_GET_QY(),
+         qt = MEST_TPOINT_GET_QT();  
 
-  int32 nkeys;
-  STBox *boxes = tsequence_static_linearsplit((TSequence *) temp, qx, qy, qt, &nkeys);
-  ArrayType *result = stboxarr_to_array(boxes, nkeys);
-  PG_RETURN_POINTER(result);
+  STBox *boxes = tsequence_linearsplit((TSequence *) temp, qx, qy, qt, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  assert(temp);
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  PG_RETURN_POINTER(keys);
 }
 
 /*****************************************************************************/
@@ -1301,11 +966,11 @@ Tpoint_static_linearsplit(PG_FUNCTION_ARGS)
 /* Segsplit */
 
 static STBox *
-tsequence_segsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
+tsequence_segsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
 {
   STBox *result;
   STBox box1;
-  int i, k = 0, segs_per_split = MEST_EXTRACT_GET_BOXES();
+  int i, k = 0;
   int32 count = ceil((double) (seq->count - 1) / (double) segs_per_split);
 
   result = palloc(sizeof(STBox) * count);
@@ -1320,6 +985,22 @@ tsequence_segsplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
   assert(k + 1 == count);
   *nkeys = count;
   return result;
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_segsplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_segsplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32 segs_per_split = PG_GETARG_INT32(1);
+
+  int32 nkeys;
+  STBox *boxes = tsequence_segsplit((TSequence *) temp, segs_per_split, &nkeys);
+  ArrayType *result = stboxarr_to_array(boxes, nkeys);
+  PG_RETURN_POINTER(result);
 }
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_segsplit);
@@ -1329,157 +1010,25 @@ PG_FUNCTION_INFO_V1(Tpoint_mest_segsplit);
 PGDLLEXPORT Datum
 Tpoint_mest_segsplit(PG_FUNCTION_ARGS)
 {
-  return tpoint_mest_extract(fcinfo, &tsequence_segsplit);
-}
-
-static STBox *
-tsequence_static_segsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
-{
-  STBox *result;
-  STBox box1;
-  int i, k = 0;
-  int32 count = ceil((double) (seq->count - 1) / (double) segs_per_split);
-
-  result = palloc(sizeof(STBox) * count);
-  tinstant_set_bbox(TSEQUENCE_INST_N(seq, 0), &result[k]);
-  for (i = 1; i < seq->count; ++i)
-  {
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &box1);
-    stbox_expand(&box1, &result[k]);
-    if ((i % segs_per_split == 0) && (i < seq->count - 1))
-      result[++k] = box1;
-  }
-  assert(k + 1 == count);
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_static_segsplit);
-/**
- * M(SP-)GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_static_segsplit(PG_FUNCTION_ARGS)
-{
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  int32 segs_per_split = PG_GETARG_INT32(1);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  int segs_per_split = MEST_TPOINT_GET_BOXES();
 
-  int32 nkeys;
-  STBox *boxes = tsequence_static_segsplit((TSequence *) temp, segs_per_split, &nkeys);
-  ArrayType *result = stboxarr_to_array(boxes, nkeys);
-  PG_RETURN_POINTER(result);
+  STBox *boxes = tsequence_segsplit((TSequence *) temp, segs_per_split, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  assert(temp);
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  PG_RETURN_POINTER(keys);
 }
-
 
 /*****************************************************************************/
 
-/* Adaptive mergesplit */
+/* Adaptsplit */
 
 static STBox *
-tsequence_adaptivemergesplit(FunctionCallInfo fcinfo, const TSequence *seq, int32 *nkeys)
-{
-  min_heap heap;
-  min_heap_elem elem;
-  int *box_states;
-  STBox *boxes, *result;
-  int32 count = seq->count - 1, segs_per_split = MEST_EXTRACT_GET_BOXES();
-  int32 max_count = seq->count / segs_per_split;
-  int i, k = 0;
-
-  if (max_count <= 1)
-    return tsequence_extract1(seq, nkeys);
-
-  boxes = palloc(sizeof(STBox) * seq->count);
-  for (i = 0; i < seq->count; ++i)
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &boxes[i]);
-  for (i = 0; i < count; ++i)
-    stbox_expand(&boxes[i+1], &boxes[i]);
-
-  /* No need to merge boxes */
-  if (count <= max_count)
-  {
-    *nkeys = count;
-    return boxes;
-  }
-
-  box_states = palloc(sizeof(int) * count);
-  for (i = 0; i < count; ++i)
-    box_states[i] = STBOX_OK;
-
-  heap.size = 0;
-  heap.max_size = count - 1;
-  heap.array = palloc(sizeof(min_heap_elem) * (count - 1));
-  for (i = 0; i < count - 1; ++i)
-  {
-    elem.boxid1 = i;
-    elem.boxid2 = i + 1;
-    elem.penalty = stbox_penalty(&boxes[i], &boxes[i + 1]);
-    heap_insert(&heap, elem);
-  }
-
-  while (count > max_count && heap_delete_min(&heap, &elem))
-  {
-    if ((box_states[elem.boxid1] == STBOX_OK
-        || box_states[elem.boxid1] == STBOX_CHANGED_OK)
-      && (box_states[elem.boxid2] == STBOX_OK
-          || box_states[elem.boxid2] == STBOX_OK_CHANGED))
-    {
-      stbox_expand(&boxes[elem.boxid2], &boxes[elem.boxid1]);
-      box_states[elem.boxid1] = STBOX_CHANGED;
-      box_states[elem.boxid2] = STBOX_DELETED;
-      count--;
-    }
-    else
-    {
-      if (box_states[elem.boxid1] == STBOX_DELETED)
-      {
-        for (i = elem.boxid1 - 1; i >= 0; --i)
-        {
-          if (box_states[i] == STBOX_CHANGED
-            || box_states[i] == STBOX_OK_CHANGED)
-          {
-            elem.boxid1 = i;
-            if (box_states[i] == STBOX_CHANGED)
-              box_states[i] = STBOX_CHANGED_OK;
-            else
-              box_states[i] = STBOX_OK;
-            break;
-          }
-        }
-      }
-      if (box_states[elem.boxid2] == STBOX_CHANGED)
-        box_states[elem.boxid2] = STBOX_OK_CHANGED;
-      else if (box_states[elem.boxid2] == STBOX_CHANGED_OK)
-        box_states[elem.boxid2] = STBOX_OK;
-      elem.penalty = stbox_penalty(&boxes[elem.boxid1], &boxes[elem.boxid2]);
-      heap_insert(&heap, elem);
-    }
-  }
-
-  result = palloc(sizeof(STBox) * count);
-  for (i = 0; i < seq->count - 1; ++i)
-    if (box_states[i] != STBOX_DELETED)
-      memcpy(&result[k++], &boxes[i], sizeof(STBox));
-
-  pfree(heap.array);
-  pfree(box_states);
-  pfree(boxes);
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_mest_adaptivemergesplit);
-/**
- * M(SP-)GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_mest_adaptivemergesplit(PG_FUNCTION_ARGS)
-{
-  return tpoint_mest_extract(fcinfo, &tsequence_adaptivemergesplit);
-}
-
-static STBox *
-tsequence_static_adaptivemergesplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
+tsequence_adaptsplit(const TSequence *seq, int32 segs_per_split, int32 *nkeys)
 {
   min_heap heap;
   min_heap_elem elem;
@@ -1571,20 +1120,39 @@ tsequence_static_adaptivemergesplit(const TSequence *seq, int32 segs_per_split, 
   return result;
 }
 
-PG_FUNCTION_INFO_V1(Tpoint_static_adaptivemergesplit);
+PG_FUNCTION_INFO_V1(Tpoint_adaptsplit);
 /**
  * M(SP-)GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
-Tpoint_static_adaptivemergesplit(PG_FUNCTION_ARGS)
+Tpoint_adaptsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 segs_per_split = PG_GETARG_INT32(1);
-
   int32 nkeys;
-  STBox *boxes = tsequence_static_adaptivemergesplit((TSequence *) temp, segs_per_split, &nkeys);
+  STBox *boxes = tsequence_adaptsplit((TSequence *) temp, segs_per_split, &nkeys);
   ArrayType *result = stboxarr_to_array(boxes, nkeys);
   PG_RETURN_POINTER(result);
+}
+
+PG_FUNCTION_INFO_V1(Tpoint_mest_adaptsplit);
+/**
+ * M(SP-)GiST extract methods for temporal points
+ */
+PGDLLEXPORT Datum
+Tpoint_mest_adaptsplit(PG_FUNCTION_ARGS)
+{
+  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
+  int32    *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool   **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  int32 segs_per_split = MEST_TPOINT_GET_BOXES();
+
+  STBox *boxes = tsequence_adaptsplit((TSequence *) temp, segs_per_split, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  assert(temp);
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
+  PG_RETURN_POINTER(keys);
 }
 
 /*****************************************************************************
@@ -1606,7 +1174,7 @@ Tpoint_static_adaptivemergesplit(PG_FUNCTION_ARGS)
  */
 STBox *
 tpoint_space_time_tiles(const Temporal *temp, float xsize, float ysize,
-  float zsize, const Interval *duration, const GSERIALIZED *sorigin, 
+  float zsize, const Interval *duration, GSERIALIZED *sorigin, 
   TimestampTz torigin, bool bitmatrix, bool border_inc, int *count)
 {
   int ntiles;
@@ -1679,7 +1247,7 @@ tpoint_space_time_tiles(const Temporal *temp, float xsize, float ysize,
  */
 STBox *
 tpoint_space_tiles(const Temporal *temp, float xsize, float ysize, float zsize,
-  const GSERIALIZED *sorigin, bool bitmatrix, bool border_inc, int *count)
+  GSERIALIZED *sorigin, bool bitmatrix, bool border_inc, int *count)
 {
   return tpoint_space_time_tiles(temp, xsize, ysize, zsize, NULL, sorigin, 0,
     bitmatrix, border_inc, count);
@@ -1781,16 +1349,16 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
   Datum *keys;
 
   /* Index parameters */
-  xsize = MEST_EXTRACT_GET_XSIZE();
-  ysize = MEST_EXTRACT_GET_YSIZE();
+  xsize = MEST_TPOINT_GET_XSIZE();
+  ysize = MEST_TPOINT_GET_YSIZE();
   if (ysize == -1)
     ysize = xsize;
-  zsize = MEST_EXTRACT_GET_ZSIZE();
+  zsize = MEST_TPOINT_GET_ZSIZE();
   if (zsize == -1)
     zsize = xsize;
   if (PG_HAS_OPCLASS_OPTIONS())
   {
-    MEST_TILE_Options *options = (MEST_TILE_Options *) PG_GET_OPCLASS_OPTIONS();
+    MestTileOptions *options = (MestTileOptions *) PG_GET_OPCLASS_OPTIONS();
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
