@@ -335,8 +335,8 @@ PG_FUNCTION_INFO_V1(mspg_multirange_compress);
 PGDLLEXPORT Datum
 mspg_multirange_compress(PG_FUNCTION_ARGS)
 {
-  MultirangeType *mr = PG_GETARG_MULTIRANGE_P(0);
-  PG_RETURN_POINTER(mr);
+  RangeType *r = PG_GETARG_RANGE_P(0);
+  PG_RETURN_POINTER(r);
 }
 
 /*****************************************************************************/
@@ -678,8 +678,17 @@ mspg_multirange_quad_inner_consistent(PG_FUNCTION_ARGS)
           if (!empty)
           {
             which &= (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4);
-            maxLower = &lower;
-            minUpper = &upper;
+            if (mr)
+            {
+              /* If the query is a multirange, apply 'overlaps' */
+              maxLower = &upper;
+              minUpper = &lower;
+            }
+            else
+            {
+              maxLower = &lower;
+              minUpper = &upper;
+            }
           }
           break;
 
