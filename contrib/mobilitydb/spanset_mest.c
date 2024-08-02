@@ -1,7 +1,7 @@
 /*
  * mobilitydb_mest.c
  *
- * Multi-Entry Search Trees for MobilityDB
+ * Multi-Entry Search Trees for MobilityDB spanset types
  *
  * Author: Maxime Schoemans <maxime.schoemans@ulb.be>
  */
@@ -27,68 +27,12 @@
 PG_MODULE_MAGIC;
 
 /*****************************************************************************
- * Definitions borrowed from MobilityDB
- *****************************************************************************/
-
-#define FLOAT8_LT(a,b)   (float8_cmp_internal(a, b) < 0)
-#define FLOAT8_LE(a,b)   (float8_cmp_internal(a, b) <= 0)
-#define FLOAT8_GT(a,b)   (float8_cmp_internal(a, b) > 0)
-#define FLOAT8_MAX(a,b)  (FLOAT8_GT(a, b) ? (a) : (b))
-#define FLOAT8_MIN(a,b)  (FLOAT8_LT(a, b) ? (a) : (b))
-
-#define PG_GETARG_TEMPORAL_P(X)    ((Temporal *) PG_GETARG_VARLENA_P(X))
-#define PG_RETURN_TEMPORAL_P(X)      PG_RETURN_POINTER(X)
-
-#define DatumGetSTboxP(X)    ((STBox *) DatumGetPointer(X))
-#define STboxPGetDatum(X)    PointerGetDatum(X)
-#define PG_GETARG_STBOX_P(X) DatumGetSTboxP(PG_GETARG_DATUM(X))
-#define PG_RETURN_STBOX_P(X) return STboxPGetDatum(X)
-
-#define PG_GETARG_SET_P(X)     ((Set *) PG_GETARG_VARLENA_P(X))
-#define PG_RETURN_SET_P(X)     PG_RETURN_POINTER(X)
-
-extern Oid type_oid(meosType t);
-
-/** Enumeration for the types of SP-GiST indexes */
-typedef enum
-{
-  SPGIST_QUADTREE,
-  SPGIST_KDTREE,
-} SPGistIndexType;
-
-/**
- * @brief Structure to represent the bounding box of an inner node containing a
- * set of spans
- */
-typedef struct
-{
-  Span left;
-  Span right;
-} SpanNode;
-
-extern void spannode_init(SpanNode *nodebox, meosType spantype,
-  meosType basetype);
-extern bool span_spgist_get_span(const ScanKeyData *scankey, Span *result);
-extern SpanNode *spannode_copy(const SpanNode *orig);
-extern double distance_span_nodespan(Span *query, SpanNode *nodebox);
-extern void spannode_quadtree_next(const SpanNode *nodebox, 
-  const Span *centroid, uint8 quadrant, SpanNode *next_nodespan);
-extern void spannode_kdtree_next(const SpanNode *nodebox, const Span *centroid,
-  uint8 node, int level, SpanNode *next_nodespan);
-extern bool overlap2D(const SpanNode *nodebox, const Span *query);
-extern bool contain2D(const SpanNode *nodebox, const Span *query);
-extern bool left2D(const SpanNode *nodebox, const Span *query);
-extern bool overLeft2D(const SpanNode *nodebox, const Span *query);
-extern bool right2D(const SpanNode *nodebox, const Span *query);
-extern bool overRight2D(const SpanNode *nodebox, const Span *query);
-
-/*****************************************************************************
  * Options for spanset types
  *****************************************************************************/
 
-/* Maximum number of spans for the extract function 
- * The default value -1 is used to extract all spans from a multirange
- * The maximum value is used to restrict the span of large spansets */
+/* Maximum number of spans for the extract method 
+ * The default value -1 is used to extract all spans from a spanset
+ * The maximum value is used to limit the number of output spans */
 #define MEST_SPANSET_MAX_SPANS_DEFAULT    -1
 #define MEST_SPANSET_MAX_SPANS_MAX        10000
 #define MEST_SPANSET_MAX_SPANS()   (PG_HAS_OPCLASS_OPTIONS() ? \
@@ -102,60 +46,12 @@ typedef struct
 } MestSpansetOptions;
 
 /*****************************************************************************
- * External functions
- *****************************************************************************/
-
-extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
-
-extern Datum Tpoint_space_time_tiles_ext(FunctionCallInfo fcinfo,
-  bool timetile);
-
-extern Datum call_function1(PGFunction func, Datum arg1);
-extern Datum interval_in(PG_FUNCTION_ARGS);
-extern Temporal *temporal_slice(Datum tempdatum);
-extern void spanset_span_slice(Datum d, Span *s);
-extern meosType oid_type(Oid typid);
-
-/*****************************************************************************
- * Additional operator strategy numbers used in the GiST and SP-GiST temporal
- * opclasses with respect to those defined in the file stratnum.h
- *****************************************************************************/
-
-#define RTOverBeforeStrategyNumber    28    /* for &<# */
-#define RTBeforeStrategyNumber        29    /* for <<# */
-#define RTAfterStrategyNumber         30    /* for #>> */
-#define RTOverAfterStrategyNumber     31    /* for #&> */
-#define RTOverFrontStrategyNumber     32    /* for &</ */
-#define RTFrontStrategyNumber         33    /* for <</ */
-#define RTBackStrategyNumber          34    /* for />> */
-#define RTOverBackStrategyNumber      35    /* for /&> */
-
-/*****************************************************************************
- * fmgr macros for span types
- *****************************************************************************/
-
-#define DatumGetSpanP(X)           ((Span *) DatumGetPointer(X))
-#define SpanPGetDatum(X)           PointerGetDatum(X)
-#define PG_GETARG_SPAN_P(X)        DatumGetSpanP(PG_GETARG_DATUM(X))
-#define PG_RETURN_SPAN_P(X)        PG_RETURN_POINTER(X)
-
-#if MEOS
-  #define DatumGetSpanSetP(X)      ((SpanSet *) DatumGetPointer(X))
-#else
-  #define DatumGetSpanSetP(X)      ((SpanSet *) PG_DETOAST_DATUM(X))
-#endif /* MEOS */
-#define SpanSetPGetDatum(X)        PointerGetDatum(X)
-#define PG_GETARG_SPANSET_P(X)     ((SpanSet *) PG_GETARG_VARLENA_P(X))
-#define PG_RETURN_SPANSET_P(X)     PG_RETURN_POINTER(X)
-
-/*****************************************************************************
  * Prototypes
  *****************************************************************************/
 
-// static bool span_mgist_recheck(StrategyNumber strategy);
-static bool span_mest_consistent_leaf(const Span *key, const Span *query,
+static bool span_mest_leaf_consistent(const Span *key, const Span *query,
   StrategyNumber strategy);
-static bool span_mgist_consistent_inner(const Span *key, const Span *query,
+static bool span_mgist_inner_consistent(const Span *key, const Span *query,
   StrategyNumber strategy);
 static Datum Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
   SPGistIndexType idxtype);
@@ -210,7 +106,7 @@ Spanset_mest_extract(PG_FUNCTION_ARGS)
     max_spans = options->max_spans;
   }
 
-  spanarr = spanset_spans(ss, max_spans, &span_count);
+  spanarr = spanset_spans_merge(ss, max_spans, &span_count);
   spans = palloc(sizeof(Span *) * span_count);
   for (int i = 0; i < span_count; i++)
     spans[i] = &spanarr[i];
@@ -226,7 +122,7 @@ Spanset_mest_extract(PG_FUNCTION_ARGS)
 PGDLLEXPORT Datum Spanset_mgist_compress(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mgist_compress);
 /**
- * @brief MGiST compress method for span sets
+ * @brief Multi-Entry GiST compress method for spanset types
  */
 Datum
 Spanset_mgist_compress(PG_FUNCTION_ARGS)
@@ -239,79 +135,15 @@ Spanset_mgist_compress(PG_FUNCTION_ARGS)
  * Multi-Entry GiST consistent methods for spanset types
  *****************************************************************************/
 
-// /**
- // * @brief Return true if a recheck is necessary depending on the strategy
- // */
-// bool
-// span_mgist_recheck(StrategyNumber strategy)
-// {
-  // /* These operators are based on bounding boxes */
-  // if (strategy == RTLeftStrategyNumber ||
-      // strategy == RTBeforeStrategyNumber ||
-      // strategy == RTOverLeftStrategyNumber ||
-      // strategy == RTOverBeforeStrategyNumber ||
-      // strategy == RTRightStrategyNumber ||
-      // strategy == RTAfterStrategyNumber ||
-      // strategy == RTOverRightStrategyNumber ||
-      // strategy == RTOverAfterStrategyNumber ||
-      // strategy == RTKNNSearchStrategyNumber)
-    // return false;
-  // return true;
-// }
-
 /**
- * @brief Transform the query argument into a span
- */
-static bool
-span_mgist_get_span(FunctionCallInfo fcinfo, Span *result, Oid typid)
-{
-  meosType type = oid_type(typid);
-  if (span_basetype(type))
-  {
-    /* Since function span_mgist_consistent_inner is strict, value is not NULL */
-    Datum value = PG_GETARG_DATUM(1);
-    meosType spantype = basetype_spantype(type);
-    span_set(value, value, true, true, type, spantype, result);
-  }
-  else if (set_type(type))
-  {
-    Set *s = PG_GETARG_SET_P(1);
-    set_set_span(s, result);
-  }
-  else if (span_type(type))
-  {
-    Span *s = PG_GETARG_SPAN_P(1);
-    if (s == NULL)
-      PG_RETURN_BOOL(false);
-    memcpy(result, s, sizeof(Span));
-  }
-  else if (spanset_type(type))
-  {
-    Datum psdatum = PG_GETARG_DATUM(1);
-    spanset_span_slice(psdatum, result);
-  }
-  /* For temporal types whose bounding box is a timestamptz span */
-  else if (talpha_type(type))
-  {
-    Datum tempdatum = PG_GETARG_DATUM(1);
-    Temporal *temp = temporal_slice(tempdatum);
-    temporal_set_tstzspan(temp, result);
-  }
-  else
-    elog(ERROR, "Unsupported type for indexing: %d", type);
-  return true;
-}
-
-/**
- * @brief Leaf-level consistency for span types
- *
+ * @brief Multi-Entry GiST leaf consistent method for span types
  * @param[in] key Element in the index
  * @param[in] query Value being looked up in the index
  * @param[in] strategy Operator of the operator class being applied
  * @note This function is used for both GiST and SP-GiST indexes
  */
 static bool
-span_mest_consistent_leaf(const Span *key, const Span *query,
+span_mest_leaf_consistent(const Span *key, const Span *query,
   StrategyNumber strategy)
 {
   switch (strategy)
@@ -343,14 +175,13 @@ span_mest_consistent_leaf(const Span *key, const Span *query,
 }
 
 /**
- * @brief GiST internal-page consistency for span types
- *
+ * @brief Multi-Entry GiST inner consistent method for span types
  * @param[in] key Element in the index
  * @param[in] query Value being looked up in the index
  * @param[in] strategy Operator of the operator class being applied
  */
 static bool
-span_mgist_consistent_inner(const Span *key, const Span *query,
+span_mgist_inner_consistent(const Span *key, const Span *query,
   StrategyNumber strategy)
 {
   switch (strategy)
@@ -381,10 +212,12 @@ span_mgist_consistent_inner(const Span *key, const Span *query,
   }
 }
 
+/*****************************************************************************/
+
 PGDLLEXPORT Datum Spanset_mgist_consistent(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mgist_consistent);
 /**
- * @brief MGiST consistent method for spanset types
+ * @brief Multi-Entry GiST consistent method for spanset types
  */
 Datum
 Spanset_mgist_consistent(PG_FUNCTION_ARGS)
@@ -398,32 +231,31 @@ Spanset_mgist_consistent(PG_FUNCTION_ARGS)
   Span query;
 
   /* Determine whether the operator is exact */
-  // *recheck = span_mgist_recheck(strategy);
   *recheck = true;
 
   if (key == NULL)
     PG_RETURN_BOOL(false);
 
   /* Transform the query into a box */
-  if (! span_mgist_get_span(fcinfo, &query, typid))
+  if (! span_gist_get_span(fcinfo, &query, typid))
     PG_RETURN_BOOL(false);
 
   if (GIST_LEAF(entry))
-    result = span_mest_consistent_leaf(key, &query, strategy);
+    result = span_mest_leaf_consistent(key, &query, strategy);
   else
-    result = span_mgist_consistent_inner(key, &query, strategy);
+    result = span_mgist_inner_consistent(key, &query, strategy);
 
   PG_RETURN_BOOL(result);
 }
-
+ 
 /*****************************************************************************
- * Multi-Entry SP-GiST compress methods for spanset types
+ * Multi-Entry SP-GiST compress method for spanset types
  *****************************************************************************/
 
 PGDLLEXPORT Datum Spanset_mspgist_compress(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mspgist_compress);
 /**
- * @brief SP-GiST compress function for span sets
+ * @brief Multi-Entry SP-GiST compress method for spanset types
  */
 Datum
 Spanset_mspgist_compress(PG_FUNCTION_ARGS)
@@ -433,14 +265,15 @@ Spanset_mspgist_compress(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- * Multi-Entry SP-GiST inner consistent functions
+ * Multi-Entry SP-GiST inner consistent methods
  *****************************************************************************/
 
 /**
- * @brief Generic SP-GiST inner consistent function for span types
+ * @brief Multi-Entry SP-GiST inner consistent method for spanset types
  */
 static Datum
-Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo, SPGistIndexType idxtype)
+Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
+  SPGistIndexType idxtype)
 {
   spgInnerConsistentIn *in = (spgInnerConsistentIn *) PG_GETARG_POINTER(0);
   spgInnerConsistentOut *out = (spgInnerConsistentOut *) PG_GETARG_POINTER(1);
@@ -551,11 +384,14 @@ Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo, SPGistIndexType idxtyp
       {
         case RTOverlapStrategyNumber:
         case RTContainedByStrategyNumber:
-        case RTAdjacentStrategyNumber:
         case RTContainsStrategyNumber:
         case RTEqualStrategyNumber:
         case RTSameStrategyNumber:
           flag = overlap2D(&next_nodespan, &queries[i]);
+          break;
+        case RTAdjacentStrategyNumber:
+          flag = adjacent2D(&next_nodespan, &queries[i]) || 
+            overlap2D(&next_nodespan, &queries[i]);
           break;
         case RTLeftStrategyNumber:
         case RTBeforeStrategyNumber:
@@ -614,7 +450,7 @@ Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo, SPGistIndexType idxtyp
 PGDLLEXPORT Datum Spanset_mquadtree_inner_consistent(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mquadtree_inner_consistent);
 /**
- * @brief Quad-tree inner consistent function for span types
+ * @brief Multi-Entry Quad-tree inner consistent method for spanset types
  */
 Datum
 Spanset_mquadtree_inner_consistent(PG_FUNCTION_ARGS)
@@ -625,7 +461,7 @@ Spanset_mquadtree_inner_consistent(PG_FUNCTION_ARGS)
 PGDLLEXPORT Datum Spanset_mkdtree_inner_consistent(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mkdtree_inner_consistent);
 /**
- * @brief K-d tree inner consistent function for span types
+ * @brief Multi-Entry K-d tree inner consistent method for spanset types
  */
 Datum
 Spanset_mkdtree_inner_consistent(PG_FUNCTION_ARGS)
@@ -634,13 +470,13 @@ Spanset_mkdtree_inner_consistent(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- * Multi-Entry SP-GiST leaf-level consistency function
+ * Multi-Entry SP-GiST leaf consistent method
  *****************************************************************************/
 
 PGDLLEXPORT Datum Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(Spanset_mspgist_leaf_consistent);
 /**
- * @brief SP-GiST leaf-level consistency function for span types
+ * @brief Multi-Entry SP-GiST leaf consistent method for spanset types
  */
 Datum
 Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
@@ -650,7 +486,7 @@ Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
   Span *key = DatumGetSpanP(in->leafDatum), span;
   bool result = true;
   int i;
-
+  
   /* Initialize the value to do not recheck, will be updated below */
   out->recheck = false;
 
@@ -663,12 +499,11 @@ Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
     StrategyNumber strategy = in->scankeys[i].sk_strategy;
 
     /* Update the recheck flag according to the strategy */
-    // out->recheck |= span_mgist_recheck(strategy);
     out->recheck = true;
 
     /* Convert the query to a span and perform the test */
     span_spgist_get_span(&in->scankeys[i], &span);
-    result = span_mest_consistent_leaf(key, &span, strategy);
+    result = span_mest_leaf_consistent(key, &span, strategy);
 
     /* If any check is failed, we have found our answer. */
     if (! result)

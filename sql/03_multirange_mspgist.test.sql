@@ -1170,6 +1170,6 @@ WHERE no_idx <> mquadtree_idx OR no_idx <> mquadtree_opts_idx OR
   no_idx IS NULL OR mquadtree_idx IS NULL OR mquadtree_opts_idx IS NULL
 ORDER BY op, leftarg, rightarg;
 
--- DROP TABLE test_multirange_mspgist;
+DROP TABLE test_multirange_mspgist;
 
 -------------------------------------------------------------------------------

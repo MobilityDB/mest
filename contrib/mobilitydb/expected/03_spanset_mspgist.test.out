@@ -2907,6 +2907,8 @@ WHERE no_idx <> mquadtree_idx OR no_idx <> mquadtree_opts_idx OR
   no_idx IS NULL OR mquadtree_idx IS NULL OR mquadtree_opts_idx IS NULL OR
   mkdtree_idx IS NULL OR mkdtree_opts_idx IS NULL
 ORDER BY op, leftarg, rightarg;
+ op | leftarg | rightarg | no_idx | mquadtree_idx | mquadtree_opts_idx | mkdtree_idx | mkdtree_opts_idx 
+----+---------+----------+--------+---------------+--------------------+-------------+------------------
 (0 rows)
 
 DROP TABLE test_spanset_mspgist;

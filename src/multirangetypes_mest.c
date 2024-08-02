@@ -99,10 +99,13 @@ RangeType **
 multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
   int32 max_ranges, int32 *count)
 {
-  TypeCacheEntry *typcache;
+  TypeCacheEntry *typcache, *typcache1;
   int32 range_count;
   RangeType **ranges;
-
+  RangeType **new_ranges;
+  int size, remainder,
+    i = 0; /* Loop variable for input ranges */
+  
   typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
 
   if (MultirangeIsEmpty(mr))
@@ -115,39 +118,33 @@ multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
     *count = range_count;
     return ranges;
   }
-  else
+
+  /* Merge two consecutive ranges to reach the maximum number of ranges */
+  new_ranges = palloc(sizeof(RangeType *) * max_ranges);
+  typcache1 = range_get_typcache(fcinfo, RangeTypeGetOid(ranges[0]));
+  /* Minimum number of input ranges merged together in a output range */
+  size = range_count / max_ranges;
+  /* Number of output ranges that result from merging (size + 1) ranges */
+  remainder = range_count % max_ranges;
+  for (int k = 0; k < max_ranges; k++)
   {
-    /* Merge two consecutive ranges to reach the maximum number of ranges */
-    RangeType **new_ranges = palloc(sizeof(RangeType *) * max_ranges);
-    TypeCacheEntry *typcache1 = 
-      range_get_typcache(fcinfo, RangeTypeGetOid(ranges[0]));
-    /* Minimum number of input ranges merged together in a output range */
-    int size = range_count / max_ranges;
-    /* Number of output ranges that result from merging (size + 1) ranges */
-    int remainder = range_count % max_ranges;
-    int i = 0; /* Loop variable for input ranges */
-    int k = 0; /* Loop variable for output ranges */
-    while (k < max_ranges)
+    int j = i + size;
+    if (k < remainder)
+      j++;
+    if (i < j - 1)
     {
-      int j = i + size;
-      if (k < remainder)
-        j++;
-      if (i < j - 1)
-      {
-        new_ranges[k++] = range_super_union(typcache1, ranges[i], ranges[j - 1]);
-        for (int l = i; l < j; ++l)
-          pfree(ranges[l]);
-      }
-      else
-        new_ranges[k++] = ranges[i];
-      i = j;
+      new_ranges[k] = range_super_union(typcache1, ranges[i], ranges[j - 1]);
+      for (int l = i; l < j; ++l)
+        pfree(ranges[l]);
     }
-    Assert(i == range_count);
-    Assert(k == max_ranges);
-    pfree(ranges);
-    *count = max_ranges;
-    return new_ranges;
+    else
+      new_ranges[k] = ranges[i];
+    i = j;
   }
+  Assert(i == range_count);
+  pfree(ranges);
+  *count = max_ranges;
+  return new_ranges;
 }
 
 PG_FUNCTION_INFO_V1(multirange_ranges);
