@@ -80,6 +80,14 @@ DROP TABLE IF EXISTS public.tbl_geodstbox3D;
 CREATE TABLE public.tbl_geodstbox3D(k integer PRIMARY KEY, b public.stbox);
 \copy tbl_geodstbox3D FROM 'data/tbl_geodstbox3D.data'
 
+DROP TABLE IF EXISTS public.tbl_tbool;
+CREATE TABLE public.tbl_tbool(k integer PRIMARY KEY, temp public.tbool);
+\copy tbl_tbool FROM 'data/tbl_tbool.data'
+
+DROP TABLE IF EXISTS public.tbl_tfloat;
+CREATE TABLE public.tbl_tfloat(k integer PRIMARY KEY, temp public.tfloat);
+\copy tbl_tfloat FROM 'data/tbl_tfloat.data'
+
 DROP TABLE IF EXISTS public.tbl_tgeogpoint;
 CREATE TABLE public.tbl_tgeogpoint(k integer PRIMARY KEY, temp public.tgeogpoint);
 \copy tbl_tgeogpoint FROM 'data/tbl_tgeogpoint.data'
@@ -96,6 +104,18 @@ DROP TABLE IF EXISTS public.tbl_tgeompoint3D;
 CREATE TABLE public.tbl_tgeompoint3D(k integer PRIMARY KEY, temp public.tgeompoint);
 \copy tbl_tgeompoint3D FROM 'data/tbl_tgeompoint3D.data'
 
+DROP TABLE IF EXISTS public.tbl_tboxfloat;
+CREATE TABLE public.tbl_tboxfloat(k integer PRIMARY KEY, b public.tbox);
+\copy tbl_tboxfloat FROM 'data/tbl_tboxfloat.data'
+
+DROP TABLE IF EXISTS public.tbl_tboxint;
+CREATE TABLE public.tbl_tboxint(k integer PRIMARY KEY, b public.tbox);
+\copy tbl_tboxint FROM 'data/tbl_tboxint.data'
+
+DROP TABLE IF EXISTS public.tbl_tint;
+CREATE TABLE public.tbl_tint(k integer PRIMARY KEY, temp public.tint);
+\copy tbl_tint FROM 'data/tbl_tint.data'
+
 DROP TABLE IF EXISTS public.tbl_timestamptz;
 CREATE TABLE public.tbl_timestamptz(k integer PRIMARY KEY, t timestamptz);
 \copy tbl_timestamptz FROM 'data/tbl_timestamptz.data'
@@ -107,5 +127,10 @@ CREATE TABLE public.tbl_tstzspan(k integer PRIMARY KEY, t public.tstzspan);
 DROP TABLE IF EXISTS public.tbl_tstzspanset;
 CREATE TABLE public.tbl_tstzspanset(k integer PRIMARY KEY, t public.tstzspanset);
 \copy tbl_tstzspanset FROM 'data/tbl_tstzspanset.data'
+
+DROP TABLE IF EXISTS public.tbl_ttext;
+CREATE TABLE public.tbl_ttext(k integer PRIMARY KEY, temp public.ttext);
+\copy tbl_ttext FROM 'data/tbl_ttext.data'
+
 
 ANALYZE;

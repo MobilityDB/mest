@@ -82,6 +82,14 @@ DROP TABLE IF EXISTS public.tbl_geodstbox3D;
 NOTICE:  table "tbl_geodstbox3d" does not exist, skipping
 CREATE TABLE public.tbl_geodstbox3D(k integer PRIMARY KEY, b public.stbox);
 \copy tbl_geodstbox3D FROM 'data/tbl_geodstbox3D.data'
+DROP TABLE IF EXISTS public.tbl_tbool;
+NOTICE:  table "tbl_tbool" does not exist, skipping
+CREATE TABLE public.tbl_tbool(k integer PRIMARY KEY, temp public.tbool);
+\copy tbl_tbool FROM 'data/tbl_tbool.data'
+DROP TABLE IF EXISTS public.tbl_tfloat;
+NOTICE:  table "tbl_tfloat" does not exist, skipping
+CREATE TABLE public.tbl_tfloat(k integer PRIMARY KEY, temp public.tfloat);
+\copy tbl_tfloat FROM 'data/tbl_tfloat.data'
 DROP TABLE IF EXISTS public.tbl_tgeogpoint;
 NOTICE:  table "tbl_tgeogpoint" does not exist, skipping
 CREATE TABLE public.tbl_tgeogpoint(k integer PRIMARY KEY, temp public.tgeogpoint);
@@ -98,6 +106,18 @@ DROP TABLE IF EXISTS public.tbl_tgeompoint3D;
 NOTICE:  table "tbl_tgeompoint3d" does not exist, skipping
 CREATE TABLE public.tbl_tgeompoint3D(k integer PRIMARY KEY, temp public.tgeompoint);
 \copy tbl_tgeompoint3D FROM 'data/tbl_tgeompoint3D.data'
+DROP TABLE IF EXISTS public.tbl_tboxfloat;
+NOTICE:  table "tbl_tboxfloat" does not exist, skipping
+CREATE TABLE public.tbl_tboxfloat(k integer PRIMARY KEY, b public.tbox);
+\copy tbl_tboxfloat FROM 'data/tbl_tboxfloat.data'
+DROP TABLE IF EXISTS public.tbl_tboxint;
+NOTICE:  table "tbl_tboxint" does not exist, skipping
+CREATE TABLE public.tbl_tboxint(k integer PRIMARY KEY, b public.tbox);
+\copy tbl_tboxint FROM 'data/tbl_tboxint.data'
+DROP TABLE IF EXISTS public.tbl_tint;
+NOTICE:  table "tbl_tint" does not exist, skipping
+CREATE TABLE public.tbl_tint(k integer PRIMARY KEY, temp public.tint);
+\copy tbl_tint FROM 'data/tbl_tint.data'
 DROP TABLE IF EXISTS public.tbl_timestamptz;
 NOTICE:  table "tbl_timestamptz" does not exist, skipping
 CREATE TABLE public.tbl_timestamptz(k integer PRIMARY KEY, t timestamptz);
@@ -110,4 +130,8 @@ DROP TABLE IF EXISTS public.tbl_tstzspanset;
 NOTICE:  table "tbl_tstzspanset" does not exist, skipping
 CREATE TABLE public.tbl_tstzspanset(k integer PRIMARY KEY, t public.tstzspanset);
 \copy tbl_tstzspanset FROM 'data/tbl_tstzspanset.data'
+DROP TABLE IF EXISTS public.tbl_ttext;
+NOTICE:  table "tbl_ttext" does not exist, skipping
+CREATE TABLE public.tbl_ttext(k integer PRIMARY KEY, temp public.ttext);
+\copy tbl_ttext FROM 'data/tbl_ttext.data'
 ANALYZE;

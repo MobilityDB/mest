@@ -31,18 +31,18 @@ PG_MODULE_MAGIC;
  *****************************************************************************/
 
 /* Maximum number of spans for the extract method 
- * The default value -1 is used to extract all spans from a spanset
+ * The default value 1 is used to extract a single span from a spanset
  * The maximum value is used to limit the number of output spans */
-#define MEST_SPANSET_MAX_SPANS_DEFAULT    -1
-#define MEST_SPANSET_MAX_SPANS_MAX        10000
-#define MEST_SPANSET_MAX_SPANS()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestSpansetOptions *) PG_GET_OPCLASS_OPTIONS())->max_spans : \
-          MEST_SPANSET_MAX_SPANS_DEFAULT)
+#define MEST_SPANSET_NUM_SPANS_DEFAULT    1
+#define MEST_SPANSET_NUM_SPANS_MAX        10000
+#define MEST_SPANSET_NUM_SPANS()   (PG_HAS_OPCLASS_OPTIONS() ? \
+          ((MestSpansetOptions *) PG_GET_OPCLASS_OPTIONS())->num_spans : \
+          MEST_SPANSET_NUM_SPANS_DEFAULT)
 
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
-  int     max_spans;    /* Maximum number of spans */
+  int     num_spans;    /* Maximum number of spans */
 } MestSpansetOptions;
 
 /*****************************************************************************
@@ -70,11 +70,11 @@ spanset_mest_options(PG_FUNCTION_ARGS)
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
   init_local_reloptions(relopts, sizeof(MestSpansetOptions));
-  add_local_int_reloption(relopts, "max_spans",
+  add_local_int_reloption(relopts, "num_spans",
               "maximum number of spans for the extract method",
-              MEST_SPANSET_MAX_SPANS_DEFAULT, 1, 
-              MEST_SPANSET_MAX_SPANS_MAX,
-              offsetof(MestSpansetOptions, max_spans));
+              MEST_SPANSET_NUM_SPANS_DEFAULT, 1, 
+              MEST_SPANSET_NUM_SPANS_MAX,
+              offsetof(MestSpansetOptions, num_spans));
 
   PG_RETURN_VOID();
 }
@@ -93,8 +93,8 @@ Spanset_mest_extract(PG_FUNCTION_ARGS)
 {
   SpanSet *ss = PG_GETARG_SPANSET_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  int32 span_count;
-  int32 max_spans = -1;
+  int32 num_spans = 1;
+  int32 count;
   Span *spanarr;
   Span **spans;
   
@@ -103,14 +103,14 @@ Spanset_mest_extract(PG_FUNCTION_ARGS)
   {
     MestSpansetOptions *options = 
       (MestSpansetOptions *) PG_GET_OPCLASS_OPTIONS();
-    max_spans = options->max_spans;
+    num_spans = options->num_spans;
   }
 
-  spanarr = spanset_spans_merge(ss, max_spans, &span_count);
-  spans = palloc(sizeof(Span *) * span_count);
-  for (int i = 0; i < span_count; i++)
+  spanarr = spanset_split_n_spans(ss, num_spans, &count);
+  spans = palloc(sizeof(Span *) * count);
+  for (int i = 0; i < count; i++)
     spans[i] = &spanarr[i];
-  *nkeys = span_count;
+  *nkeys = count;
   PG_FREE_IF_COPY(ss, 0);
   PG_RETURN_POINTER(spans);
 }

@@ -25,22 +25,7 @@
 #include "mobilitydb_mest.h"
 
 /*****************************************************************************
- * Prototypes
- *****************************************************************************/
-
-extern STBox *tpoint_stboxes_segs(const Temporal *temp, int32 segs_per_box,
-  int *count);
-
-extern STBox *tpoint_space_time_boxes(const Temporal *temp, float xsize,
-  float ysize, float zsize, const Interval *duration, 
-  const GSERIALIZED *sorigin, TimestampTz torigin, bool bitmatrix,
-  bool border_inc, int *count);
-extern STBox *tpoint_space_boxes(const Temporal *temp, float xsize, 
-  float ysize, float zsize, const GSERIALIZED *sorigin, bool bitmatrix,
-  bool border_inc, int *count); 
-
-/*****************************************************************************
- * Options for temporal point types 
+ * Definitions for the options methods for temporal point types 
  *****************************************************************************/
 
 /* number boxes for extract function */
@@ -53,9 +38,9 @@ extern STBox *tpoint_space_boxes(const Temporal *temp, float xsize,
 typedef struct
 {
   int32 vl_len_;        /* varlena header (do not touch directly!) */
-  int   num_boxes;      /* number of boxes */
+  int num_boxes;        /* number of boxes */
 } MestBoxesOptions;
-
+ 
 /*****************************************************************************/
 
 /* number of instants or segments per box for extract function */
@@ -63,12 +48,12 @@ typedef struct
 #define MEST_TPOINT_SEGS_MAX         1000
 #define MEST_TPOINT_GET_SEGS()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MestSegsOptions *) PG_GET_OPCLASS_OPTIONS())->segs_per_box : \
-          MEST_TPOINT_BOXES_DEFAULT)
+          MEST_TPOINT_SEGS_DEFAULT)
 
 typedef struct
 {
   int32 vl_len_;        /* varlena header (do not touch directly!) */
-  int   segs_per_box;   /* number of segments per box */
+  int segs_per_box;     /* number of segments per box */
 } MestSegsOptions;
 
 /*****************************************************************************/
@@ -77,19 +62,19 @@ typedef struct
 #define MEST_TPOINT_XSIZE_DEFAULT    1.0
 #define MEST_TPOINT_XSIZE_MAX        1000000.0
 #define MEST_TPOINT_GET_XSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->xsize : \
+          ((TPointTileOptions *) PG_GET_OPCLASS_OPTIONS())->xsize : \
           MEST_TPOINT_XSIZE_DEFAULT)
 
 #define MEST_TPOINT_YSIZE_DEFAULT    -1.0
 #define MEST_TPOINT_YSIZE_MAX        1000000.0
 #define MEST_TPOINT_GET_YSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->ysize : \
+          ((TPointTileOptions *) PG_GET_OPCLASS_OPTIONS())->ysize : \
           MEST_TPOINT_YSIZE_DEFAULT)
 
 #define MEST_TPOINT_ZSIZE_DEFAULT    -1.0
 #define MEST_TPOINT_ZSIZE_MAX        1000000.0
 #define MEST_TPOINT_GET_ZSIZE()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestTileOptions *) PG_GET_OPCLASS_OPTIONS())->zsize : \
+          ((TPointTileOptions *) PG_GET_OPCLASS_OPTIONS())->zsize : \
           MEST_TPOINT_ZSIZE_DEFAULT)
 
 #define MEST_TPOINT_DURATION_DEFAULT    ""
@@ -102,7 +87,7 @@ typedef struct
   double zsize;       /* tile size in the Z dimension */
   int duration;       /* tile size in the T dimension, which is an interval 
                          represented as a string */
-} MestTileOptions;
+} TPointTileOptions;
 
 /*****************************************************************************
  * Multi-Entry GiST and SP-GiST compress methods for temporal points
@@ -110,7 +95,7 @@ typedef struct
 
 PG_FUNCTION_INFO_V1(Tpoint_mgist_compress);
 /**
- * Multi-Entry GiST compress method for temporal points
+ * @brief Multi-Entry GiST compress method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mgist_compress(PG_FUNCTION_ARGS)
@@ -121,7 +106,7 @@ Tpoint_mgist_compress(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(Tpoint_mspgist_compress);
 /**
- * Multi-Entry SP-GiST compress method for temporal points
+ * @brief Multi-Entry SP-GiST compress method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mspgist_compress(PG_FUNCTION_ARGS)
@@ -136,7 +121,7 @@ Tpoint_mspgist_compress(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_box_options);
 /**
- * Multi-Entry GiST and SP-GiST box options method for temporal points
+ * @brief Multi-Entry GiST and SP-GiST box options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_box_options(PG_FUNCTION_ARGS)
@@ -154,7 +139,7 @@ Tpoint_mest_box_options(PG_FUNCTION_ARGS)
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_seg_options);
 /**
- * Multi-Entry GiST and SP-GiST box options method for temporal points
+ * @brief Multi-Entry GiST and SP-GiST seg options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_seg_options(PG_FUNCTION_ARGS)
@@ -170,8 +155,8 @@ Tpoint_mest_seg_options(PG_FUNCTION_ARGS)
   PG_RETURN_VOID();
 }
 
-/*
- * Duration filler
+/**
+ * @brief Duration filler
  */
 static Size
 fill_duration_relopt(const char *value, void *ptr)
@@ -184,241 +169,57 @@ fill_duration_relopt(const char *value, void *ptr)
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_tile_options);
 /**
- * Multi-Entry GiST and SP-GiST options method for temporal points
+ * @brief Multi-Entry GiST and SP-GiST options method for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_tile_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MestTileOptions));
+  init_local_reloptions(relopts, sizeof(TPointTileOptions));
   add_local_real_reloption(relopts, "xsize",
               "Tile size in the X dimension (in units of the SRID)",
               MEST_TPOINT_XSIZE_DEFAULT, 1, MEST_TPOINT_XSIZE_MAX,
-              offsetof(MestTileOptions, xsize));
+              offsetof(TPointTileOptions, xsize));
   add_local_real_reloption(relopts, "ysize",
               "Tile size in the Y dimension (in units of the SRID)",
               MEST_TPOINT_YSIZE_DEFAULT, 1, MEST_TPOINT_YSIZE_MAX,
-              offsetof(MestTileOptions, ysize));
+              offsetof(TPointTileOptions, ysize));
   add_local_real_reloption(relopts, "zsize",
               "Tile size in the Z dimension (in units of the SRID)",
               MEST_TPOINT_ZSIZE_DEFAULT, 1, MEST_TPOINT_ZSIZE_MAX,
-              offsetof(MestTileOptions, zsize));
+              offsetof(TPointTileOptions, zsize));
   add_local_string_reloption(relopts, "duration",
               "Tile size in the T dimension (a time interval)",
               MEST_TPOINT_DURATION_DEFAULT,
               NULL,
               &fill_duration_relopt,
-              offsetof(MestTileOptions, duration));
+              offsetof(TPointTileOptions, duration));
 
   PG_RETURN_VOID();
 }
 
 /*****************************************************************************
- * Multi-Entry GiST and SP-GiST segsplit methods for temporal points
+ * Multi-Entry GiST and SP-GiST methods for temporal points
  *****************************************************************************/
 
+PG_FUNCTION_INFO_V1(Tpoint_mest_equisplit);
 /**
- * @brief Return the spatiotemporal boxes of a temporal point sequence with
- * discrete interpolation obtained by merging consecutive instants 
- * @param[in] seq Temporal point sequence
- * @param[in] segs_per_box Maximum number of segments that are merged into a
- * bounding box
- * @param[out] count Number of elements in the output array
- */
-static STBox *
-tpointseq_disc_stboxes_segs(const TSequence *seq, int32 segs_per_box,
-  int *count)
-{
-  int i, k = -1;
-  int nboxes;
-  STBox *result;
-  assert(seq); assert(count); assert(tgeo_type(seq->temptype));
-  assert(MEOS_FLAGS_GET_INTERP(seq->flags) == DISCRETE);
-  assert(segs_per_box > 0);
-
-  nboxes = ceil((double) seq->count / (double) segs_per_box);
-  result = palloc(sizeof(STBox) * nboxes);
-  for (i = 0; i < seq->count; ++i)
-  {
-    if (i % segs_per_box == 0)
-      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &result[++k]);
-    else
-    {
-      STBox box;  
-      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &box);
-      stbox_expand(&box, &result[k]);
-    }
-  }
-  assert(k + 1 == nboxes);
-  *count = k + 1;
-  return result;
-}
-
-/**
- * @brief Return the spatiotemporal boxes of a temporal point sequence with
- * continuous interpolation obtained by merging consecutive segments 
- * (iterator function)
- * @param[in] seq Temporal value
- * @param[in] segs_per_box Maximum number of segments that are merged into a
- * bounding box
- * @param[out] result Spatiotemporal box
- * @return Number of elements in the output array
- */
-static int
-tpointseq_cont_stboxes_segs_iter(const TSequence *seq, int32 segs_per_box,
-  STBox *result)
-{
-  int32 nboxes;
-  int i, k = 0;
-  assert(seq); assert(result); assert(tgeo_type(seq->temptype));
-  assert(MEOS_FLAGS_GET_INTERP(seq->flags) != DISCRETE);
-  assert(segs_per_box > 0);
-
-  /* Instantaneous sequence */
-  if (seq->count == 1)
-  {
-    tsequence_set_bbox(seq, &result[0]);
-    return 1;
-  }
-
-  /* General case */
-  tinstant_set_bbox(TSEQUENCE_INST_N(seq, 0), &result[k]);
-  for (i = 1; i < seq->count; ++i)
-  {
-    STBox box;
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &box);
-    stbox_expand(&box, &result[k]);
-    if ((i % segs_per_box == 0) && (i < seq->count - 1))
-      result[++k] = box;
-  }
-  nboxes = ceil((double) (seq->count - 1) / (double) segs_per_box);
-  assert(k + 1 == nboxes);
-  return nboxes;
-}
-
-/**
- * @ingroup meos_internal_temporal_bbox
- * @brief Return the spatiotemporal boxes of a temporal point sequence obtained
- * by merging consecutive instants or segments, where the choice between 
- * instants or segments depends, respectively, on whether the interpolation
- * is discrete or continuous
- * @param[in] seq Temporal sequence
- * @param[in] segs_per_box Maximum number of segments that are merged into a
- * bounding box
- * @param[out] count Number of elements in the output array
- */
-
-static STBox *
-tpointseq_stboxes_segs(const TSequence *seq, int32 segs_per_box, int32 *count)
-{
-  int32 nelems, nboxes;
-  STBox *result;
-  assert(seq); assert(count); assert(tgeo_type(seq->temptype));
-  assert(segs_per_box > 0);
-  
-  if (MEOS_FLAGS_GET_INTERP(seq->flags) == DISCRETE)
-    return tpointseq_disc_stboxes_segs(seq, segs_per_box, count);
-
-  /* The number of "elements", that is, instants or segments */
-  nelems = (seq->count == 1) ? 1 : seq->count - 1;
-  nboxes = ceil((double) nelems / (double) segs_per_box);
-  result = palloc(sizeof(STBox) * nboxes);
-  *count = tpointseq_cont_stboxes_segs_iter(seq, segs_per_box, result);
-  return result;
-}
-
-/**
- * @ingroup meos_internal_temporal_bbox
- * @brief Return the spatiotemporal boxes of a temporal point sequence set
- * obtained by merging consecutive segments
- * @param[in] ss Temporal sequence set
- * @param[in] segs_per_box Maximum number of segments that are merged into a
- * bounding box
- * @param[out] count Number of elements in the output array
- */
-static STBox *
-tpointseqset_stboxes_segs(const TSequenceSet *ss, int32 segs_per_box,
-  int32 *count)
-{
-  int32 nboxes = 0;
-  int i;
-  STBox *result;
-  assert(ss); assert(count); assert(tgeo_type(ss->temptype));
-  assert(segs_per_box > 0);
-
-  /* Singleton sequence set */
-  if (ss->count == 1)
-    return tpointseq_stboxes_segs(TSEQUENCESET_SEQ_N(ss, 0), segs_per_box, count);
-
-  /* Iterate for every composing sequence */
-  result = palloc(sizeof(STBox) * ss->totalcount);
-  for (i = 0; i < ss->count; ++i)
-    nboxes += tpointseq_cont_stboxes_segs_iter(TSEQUENCESET_SEQ_N(ss, i),
-      segs_per_box, &result[nboxes]);
-  *count = nboxes;
-  return result;
-}
-
-/**
- * @ingroup meos_temporal_bbox
- * @brief Return a set of spatiotemporal boxes obtained by merging consecutive
- * instants or segments of a temporal point, where the choice between instants
- * or segments depends, respectively, on whether the interpolation is discrete
- * or continuous.
- * @param[in] temp Temporal value
- * @param[in] segs_per_box Maximum number of segments that are merged into a
- * bounding box
- * @param[out] count Number of values of the output array
- * @return On error return @p NULL
- * @csqlfn #Tpoint_stboxes_segs()
- */
-STBox *
-tpoint_stboxes_segs(const Temporal *temp, int32 segs_per_box, int *count)
-{
-  STBox *result;
-
-  /* Ensure validity of the arguments */
-  if (! ensure_not_null((void *) temp) || ! ensure_not_null((void *) count) || 
-      ! ensure_positive(segs_per_box))
-    return NULL;
-
-  assert(temptype_subtype(temp->subtype));
-  switch (temp->subtype)
-  {
-    case TINSTANT:
-      result = tpoint_to_stbox(temp);
-      break;
-    case TSEQUENCE:
-      result = tpointseq_stboxes_segs((TSequence *) temp, segs_per_box, count);
-      break;
-    default: /* TSEQUENCESET */
-      result = tpointseqset_stboxes_segs((TSequenceSet *) temp, segs_per_box,
-        count);
-  }
-  return result;
-}
-
-/*****************************************************************************/
-
-PG_FUNCTION_INFO_V1(Tpoint_stboxes_segs);
-/**
- * @brief Return a set of spatiotemporal boxes obtained by merging consecutive
- * instants or segments of a temporal point, where the choice between instants
- * or segments depends, respectively, on whether the interpolation is discrete
- * or continuous
+ * @brief Multi-Entry GiST and SP-GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
-Tpoint_stboxes_segs(PG_FUNCTION_ARGS)
+Tpoint_mest_equisplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
-  int32 segs_per_box = PG_GETARG_INT32(1);
-  int32 count;
-  STBox *boxes = tpoint_stboxes_segs(temp, segs_per_box, &count);
-  ArrayType *result = stboxarr_to_array(boxes, count);
-  pfree(boxes);
+  int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
+  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
+  int32 num_boxes = MEST_TPOINT_GET_BOXES();
+  STBox *boxes = tpoint_split_n_stboxes(temp, num_boxes, nkeys);
+  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
+  for (int i = 0; i < *nkeys; ++i)
+    keys[i] = PointerGetDatum(&boxes[i]);
   PG_FREE_IF_COPY(temp, 0);
-  PG_RETURN_POINTER(result);
+  PG_RETURN_POINTER(keys);
 }
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_segsplit);
@@ -431,203 +232,21 @@ Tpoint_mest_segsplit(PG_FUNCTION_ARGS)
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
-  int segs_per_box = MEST_TPOINT_GET_BOXES();
-  STBox *boxes = tpoint_stboxes_segs(temp, segs_per_box, nkeys);
+  int segs_per_box = MEST_TPOINT_GET_SEGS();
+  STBox *boxes = tpoint_split_each_n_stboxes(temp, segs_per_box, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
   for (int i = 0; i < *nkeys; ++i)
     keys[i] = PointerGetDatum(&boxes[i]);
-  pfree(boxes);
+  /* We cannot pfree boxes */
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
-}
-
-/*****************************************************************************
- * TileSplit Methods
- *****************************************************************************/
-
-/**
- * @brief Return the spatiotemporal boxes of a temporal point split with
- * respect to a space and possibly a time grid
- * @param[in] temp Temporal point
- * @param[in] xsize,ysize,zsize Size of the corresponding dimension
- * @param[in] duration Duration
- * @param[in] sorigin Origin for the space dimension
- * @param[in] torigin Origin for the time dimension
- * @param[in] bitmatrix True when using a bitmatrix to speed up the computation
- * @param[in] border_inc True when the box contains the upper border, otherwise
- * the upper border is assumed as outside of the box.
- * @param[out] count Number of elements in the output arrays
- */
-STBox *
-tpoint_space_time_boxes(const Temporal *temp, float xsize, float ysize,
-  float zsize, const Interval *duration, const GSERIALIZED *sorigin, 
-  TimestampTz torigin, bool bitmatrix, bool border_inc, int *count) 
-{
-  int ntiles;
-  STboxGridState *state;
-  STBox *result;
-  int i = 0;
-  Temporal *atstbox;
-  bool hasz = MEOS_FLAGS_GET_Z(temp->flags);
-
-  /* Ensure validity of the arguments */
-  if (! ensure_not_null((void *) temp) || ! ensure_not_null((void *) count) || 
-      ! ensure_not_null((void *) sorigin) || ! ensure_positive(xsize) ||
-      ! ensure_positive(ysize) || (hasz && ! ensure_positive(zsize)))
-    return NULL;
-
-  /* Initialize state */
-  state = tpoint_space_time_tile_init(temp, xsize, ysize, zsize, duration,
-    sorigin, torigin, bitmatrix, border_inc, &ntiles);
-  if (! state)
-    return NULL;
-
-  result = palloc(sizeof(STBox) * ntiles);
-  /* We need to loop since atStbox may be NULL */
-  while (true)
-  {
-    STBox box;
-    bool found;
-
-    /* Stop when we have used up all the grid tiles */
-    if (state->done)
-    {
-      if (state->bm)
-        pfree(state->bm);
-      pfree(state);
-      break;
-    }
-
-    /* Get current tile (if any) and advance state
-     * It is necessary to test if we found a tile since the previous tile
-     * may be the last one set in the associated bit matrix */
-    found = stbox_tile_state_get(state, &box);
-    if (! found)
-    {
-      if (state->bm)
-        pfree(state->bm);
-      pfree(state);
-      break;
-    }
-    stbox_tile_state_next(state);
-
-    /* Restrict the temporal point to the box and compute its bounding box */
-    atstbox = tpoint_restrict_stbox(state->temp, &box, BORDER_EXC, REST_AT);
-    if (atstbox == NULL)
-      continue;
-    tspatial_set_stbox(atstbox, &box);
-    /* If only space grid */
-    // if (! duration)
-      // MEOS_FLAGS_SET_T(box.flags, false);
-    pfree(atstbox);
-
-    /* Copy the box to the result */
-    memcpy(&result[i++], &box, sizeof(STBox));
-  }
-  *count = i;
-  return result;
-}
-
-/**
- * @brief Return the spatiotemporal boxes of a temporal point split with
- * respect to a space grid
- * @param[in] temp Temporal point
- * @param[in] xsize,ysize,zsize Size of the corresponding dimension
- * @param[in] sorigin Origin for the space dimension
- * @param[in] bitmatrix True when using a bitmatrix to speed up the computation
- * @param[in] border_inc True when the box contains the upper border, otherwise
- * the upper border is assumed as outside of the box.
- * @param[out] count Number of elements in the output arrays
- */
-STBox *
-tpoint_space_boxes(const Temporal *temp, float xsize, float ysize, float zsize,
-  const GSERIALIZED *sorigin, bool bitmatrix, bool border_inc, int *count)
-{
-  return tpoint_space_time_boxes(temp, xsize, ysize, zsize, NULL, sorigin, 0,
-    bitmatrix, border_inc, count);
-}
-
-/*****************************************************************************/
-
-/**
- * @brief Compute the spatiotemporal boxes of a temporal point split with
- * respect to a spatial and possibly a temporal grid
- */
-static Datum
-Tpoint_space_time_boxes_ext(FunctionCallInfo fcinfo, bool timetile)
-{
-  Temporal *temp;
-  double xsize;
-  double ysize;
-  double zsize;
-  GSERIALIZED *sorigin;
-  Interval *duration = NULL;
-  TimestampTz torigin = 0;
-  int i = 4;
-  bool bitmatrix;
-  bool border_inc;
-  int count;
-  STBox *boxes;
-  ArrayType *result;
-
-  /* Get input parameters */
-  temp = PG_GETARG_TEMPORAL_P(0);
-  xsize = PG_GETARG_FLOAT8(1);
-  ysize = PG_GETARG_FLOAT8(2);
-  zsize = PG_GETARG_FLOAT8(3);
-  if (timetile)
-    duration = PG_GETARG_INTERVAL_P(i++);
-  sorigin = PG_GETARG_GSERIALIZED_P(i++);
-  if (timetile)
-    torigin = PG_GETARG_TIMESTAMPTZ(i++);
-  bitmatrix = PG_GETARG_BOOL(i++);
-  if (temporal_num_instants(temp) == 1)
-    bitmatrix = false;
-  border_inc = PG_GETARG_BOOL(i++);
-
-  /* Get the tiles */
-  boxes = tpoint_space_time_boxes(temp, xsize, ysize, zsize,
-      timetile ? duration : NULL, sorigin, torigin, bitmatrix, border_inc,
-      &count);
-  result = stboxarr_to_array(boxes, count);
-  pfree(boxes);
-  PG_FREE_IF_COPY(temp, 0);
-  PG_RETURN_ARRAYTYPE_P(result);
-}
-
-PGDLLEXPORT Datum Tpoint_space_boxes(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Tpoint_space_boxes);
-/**
- * @ingroup mobilitydb_temporal_analytics_tile
- * @brief Return the spatiotemporal boxes of a temporal point split with
- * respect to a spatial grid
- * @sqlfn spaceBoxes()
- */
-Datum
-Tpoint_space_boxes(PG_FUNCTION_ARGS)
-{
-  return Tpoint_space_time_boxes_ext(fcinfo, false);
-}
-
-PGDLLEXPORT Datum Tpoint_space_time_boxes(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Tpoint_space_time_boxes);
-/**
- * @ingroup mobilitydb_temporal_analytics_tile
- * @brief Return the spatiotemporal boxes of a temporal point split with
- * respect to a spatiotemporal grid
- * @sqlfn spaceTimeBoxes()
- */
-Datum
-Tpoint_space_time_boxes(PG_FUNCTION_ARGS)
-{
-  return Tpoint_space_time_boxes_ext(fcinfo, true);
 }
 
 /*****************************************************************************/
 
 PG_FUNCTION_INFO_V1(Tpoint_mest_tilesplit);
 /**
- * Multi-Entry GiST and SP-GiST extract methods for temporal points
+ * @brief Multi-Entry GiST and SP-GiST extract methods for temporal points
  */
 PGDLLEXPORT Datum
 Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
@@ -654,12 +273,12 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
     zsize = xsize;
   if (PG_HAS_OPCLASS_OPTIONS())
   {
-    MestTileOptions *options = (MestTileOptions *) PG_GET_OPCLASS_OPTIONS();
+    TPointTileOptions *options = (TPointTileOptions *) PG_GET_OPCLASS_OPTIONS();
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function1(interval_in, 
-        PointerGetDatum(duration)));
+      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
+        PointerGetDatum(duration), -1));
       if (! interv)
       {
         ereport(ERROR,
@@ -679,29 +298,6 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
   *nkeys = count;
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_tilesplit);
-/**
- * Multi-Entry GiST and SP-GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_tilesplit(PG_FUNCTION_ARGS)
-{
-  Temporal *temp = PG_GETARG_TEMPORAL_P(0);
-  double xsize = PG_GETARG_FLOAT8(1);
-  double ysize = PG_GETARG_FLOAT8(2);
-  double zsize = PG_GETARG_FLOAT8(3);
-  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
-
-  /* Get the tiles */
-  int32 nkeys;
-  STBox *boxes = tpoint_space_time_boxes(temp, xsize, ysize, zsize,
-      NULL, sorigin, 0, true, true, &nkeys);
-  ArrayType *result = stboxarr_to_array(boxes, nkeys);
-  pfree(boxes);
-  PG_FREE_IF_COPY(temp, 0);
-  PG_RETURN_ARRAYTYPE_P(result);
 }
 
 /******************************************************************************
@@ -779,114 +375,6 @@ Tpoint_mest_query_options(PG_FUNCTION_ARGS)
               offsetof(MestQueryOptions, qt));
 
   PG_RETURN_VOID();
-}
-
-/*****************************************************************************/
-
-/* Equisplit */
-
-static STBox *
-tpointseq_equisplit(const TSequence *seq, int32 count, int32 *nkeys)
-{
-  STBox *result;
-  int segs_per_box, segs_this_split, k;
-
-  /* Instantaneous sequence */
-  if (seq->count == 1)
-  {
-    *nkeys = 1;
-    return tpoint_to_stbox((const Temporal *) seq);
-  }
-
-  segs_per_box = ceil((double) (seq->count - 1) / (double) (count));
-  if (ceil((double) (seq->count - 1) / (double) segs_per_box) < count)
-    count = ceil((double) (seq->count - 1) / (double) segs_per_box);
-
-  k = 0;
-  result = palloc(sizeof(STBox) * count);
-  for (int i = 0; i < seq->count - 1; i += segs_per_box)
-  {
-    segs_this_split = segs_per_box;
-    if (seq->count - 1 - i < segs_per_box)
-      segs_this_split = seq->count - 1 - i;
-    tinstant_set_bbox(TSEQUENCE_INST_N(seq, i), &result[k]);
-    for (int j = 1; j < segs_this_split + 1; j++)
-    {
-      STBox box;
-      tinstant_set_bbox(TSEQUENCE_INST_N(seq, i + j), &box);
-      stbox_expand(&box, &result[k]);
-    }
-    k++;
-  }
-  *nkeys = count;
-  return result;
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_equisplit);
-/**
- * Multi-Entry GiST and SP-GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_equisplit(PG_FUNCTION_ARGS)
-{
-  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  int32 count = PG_GETARG_INT32(1);
-  int32 nkeys = 1;
-  STBox *boxes;
-  ArrayType *result;
-
-  assert(temptype_subtype(temp->subtype));
-  switch (temp->subtype)
-  {
-    case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
-      break;
-    case TSEQUENCE:
-      boxes = tpointseq_equisplit((TSequence *) temp, count, &nkeys);
-      break;
-    default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
-  }
-  result = stboxarr_to_array(boxes, nkeys);
-  pfree(boxes);
-  PG_FREE_IF_COPY(temp, 0);
-  PG_RETURN_POINTER(result);
-}
-
-PG_FUNCTION_INFO_V1(Tpoint_mest_equisplit);
-/**
- * Multi-Entry GiST and SP-GiST extract methods for temporal points
- */
-PGDLLEXPORT Datum
-Tpoint_mest_equisplit(PG_FUNCTION_ARGS)
-{
-  Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
-  int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
-  int32 count = MEST_TPOINT_GET_BOXES();
-  STBox *boxes;
-  Datum *keys;
-
-  assert(temptype_subtype(temp->subtype));
-  switch (temp->subtype)
-  {
-    case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
-      *nkeys = 1;
-      break;
-    case TSEQUENCE:
-      boxes = tpointseq_equisplit((TSequence *) temp, count, nkeys);
-      break;
-    default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
-      *nkeys = 1;
-  }
-  keys = palloc(sizeof(Datum) * (*nkeys));
-  assert(temp);
-  for (int i = 0; i < *nkeys; ++i)
-    keys[i] = PointerGetDatum(&boxes[i]);
-  PG_FREE_IF_COPY(temp, 0);
-  PG_RETURN_POINTER(keys);
 }
 
 /*****************************************************************************/

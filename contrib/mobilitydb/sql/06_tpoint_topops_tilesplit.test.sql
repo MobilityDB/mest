@@ -26,17 +26,19 @@
 -- PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 --
 -------------------------------------------------------------------------------
+
 -------------------------------------------------------------------------------
 -- The tilesplit method is currently not available for tgeogpoint
+
 DROP INDEX IF EXISTS tbl_tgeompoint_mrtree_idx;
-NOTICE:  index "tbl_tgeompoint_mrtree_idx" does not exist, skipping
+
 DROP INDEX IF EXISTS tbl_tgeompoint_mquadtree_idx;
-NOTICE:  index "tbl_tgeompoint_mquadtree_idx" does not exist, skipping
+
 DROP INDEX IF EXISTS tbl_tgeompoint_mkdtree_idx;
-NOTICE:  index "tbl_tgeompoint_mkdtree_idx" does not exist, skipping
+
 -------------------------------------------------------------------------------
+
 DROP TABLE IF EXISTS test_topops;
-NOTICE:  table "test_topops" does not exist, skipping
 CREATE TABLE test_topops(
   op CHAR(3),
   leftarg TEXT,
@@ -46,8 +48,10 @@ CREATE TABLE test_topops(
   mquadtree_idx BIGINT,
   mkdtree_idx BIGINT
 );
+
 -------------------------------------------------------------------------------
 -- <type> op tgeompoint
+
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tstzspan', 'tgeompoint', COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t && temp;
@@ -63,6 +67,7 @@ FROM tbl_tstzspan, tbl_tgeompoint WHERE t -|- temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '~=', 'tstzspan', 'tgeompoint', COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t ~= temp;
+
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'stbox', 'tgeompoint', COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b && temp;
@@ -78,8 +83,10 @@ FROM tbl_stbox, tbl_tgeompoint WHERE b -|- temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '~=', 'stbox', 'tgeompoint', COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b ~= temp;
+
 -------------------------------------------------------------------------------
 --  tgeompoint op <type>
+
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tgeompoint', 'tstzspan', COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp && t;
@@ -95,6 +102,7 @@ FROM tbl_tgeompoint, tbl_tstzspan WHERE temp -|- t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '~=', 'tgeompoint', 'tstzspan', COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp ~= t;
+
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tgeompoint', 'stbox', COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp && b;
@@ -110,6 +118,7 @@ FROM tbl_tgeompoint, tbl_stbox WHERE temp -|- b;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '~=', 'tgeompoint', 'stbox', COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp ~= b;
+
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tgeompoint', 'tgeompoint', COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp && t2.temp;
@@ -125,11 +134,16 @@ FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp -|- t2.temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '~=', 'tgeompoint', 'tgeompoint', COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp ~= t2.temp;
+
 -------------------------------------------------------------------------------
 -- The tilesplit method is currently not available for tgeogpoint
-CREATE INDEX tbl_tgeompoint_mrtree_idx ON tbl_tgeompoint USING MGIST(temp tgeompoint_mrtree_tilesplit_ops(xsize=10));
+
+CREATE INDEX tbl_tgeompoint_mrtree_idx ON tbl_tgeompoint
+  USING MGIST(temp tgeompoint_mrtree_tilesplit_ops(xsize=10));
+
 -------------------------------------------------------------------------------
 -- <type> op tgeompoint
+
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t && temp )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
@@ -145,6 +159,7 @@ WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t ~= temp )
 WHERE op = '~=' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
+
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b && temp )
 WHERE op = '&&' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
@@ -160,8 +175,10 @@ WHERE op = '-|-' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b ~= temp )
 WHERE op = '~=' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
 -- tgeompoint op <type>
+
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp && t )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
@@ -177,6 +194,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp ~= t )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
+
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp && b )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
@@ -192,6 +210,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp ~= b )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
+
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp && t2.temp )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
@@ -207,13 +226,20 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp ~= t2.temp )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
+
 DROP INDEX tbl_tgeompoint_mrtree_idx;
+
 -------------------------------------------------------------------------------
 -- The tilesplit method is currently not available for tgeogpoint
-CREATE INDEX tbl_tgeompoint_mquadtree_idx ON tbl_tgeompoint USING MSPGIST(temp tgeompoint_mquadtree_tilesplit_ops(xsize=10));
+
+CREATE INDEX tbl_tgeompoint_mquadtree_idx ON tbl_tgeompoint
+  USING MSPGIST(temp tgeompoint_mquadtree_tilesplit_ops(xsize=10));
+
 -------------------------------------------------------------------------------
 -- <type> op tgeompoint
+
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t && temp )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
@@ -229,6 +255,7 @@ WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t ~= temp )
 WHERE op = '~=' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
+
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b && temp )
 WHERE op = '&&' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
@@ -244,8 +271,10 @@ WHERE op = '-|-' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b ~= temp )
 WHERE op = '~=' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
 -- tgeompoint op <type>
+
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp && t )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
@@ -261,6 +290,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp ~= t )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
+
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp && b )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
@@ -276,6 +306,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp ~= b )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
+
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp && t2.temp )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
@@ -291,13 +322,20 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp ~= t2.temp )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
+
 DROP INDEX tbl_tgeompoint_mquadtree_idx;
+
 -------------------------------------------------------------------------------
 -- The tilesplit method is currently not available for tgeogpoint
-CREATE INDEX tbl_tgeompoint_mkdtree_idx ON tbl_tgeompoint USING MSPGIST(temp tgeompoint_mkdtree_tilesplit_ops(xsize=10));
+
+CREATE INDEX tbl_tgeompoint_mkdtree_idx ON tbl_tgeompoint
+  USING MSPGIST(temp tgeompoint_mkdtree_tilesplit_ops(xsize=10));
+
 -------------------------------------------------------------------------------
 -- <type> op tgeompoint
+
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t && temp )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
@@ -313,6 +351,7 @@ WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tgeompoint WHERE t ~= temp )
 WHERE op = '~=' AND leftarg = 'tstzspan' AND rightarg = 'tgeompoint';
+
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b && temp )
 WHERE op = '&&' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
@@ -328,8 +367,10 @@ WHERE op = '-|-' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_stbox, tbl_tgeompoint WHERE b ~= temp )
 WHERE op = '~=' AND leftarg = 'stbox' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
 -- tgeompoint op <type>
+
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp && t )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
@@ -345,6 +386,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_tstzspan WHERE temp ~= t )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tstzspan';
+
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp && b )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
@@ -360,6 +402,7 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint, tbl_stbox WHERE temp ~= b )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'stbox';
+
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp && t2.temp )
 WHERE op = '&&' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
@@ -375,16 +418,18 @@ WHERE op = '-|-' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tgeompoint t1, tbl_tgeompoint t2 WHERE t1.temp ~= t2.temp )
 WHERE op = '~=' AND leftarg = 'tgeompoint' AND rightarg = 'tgeompoint';
+
 -------------------------------------------------------------------------------
+
 DROP INDEX tbl_tgeompoint_mkdtree_idx;
+
 -------------------------------------------------------------------------------
+
 SELECT * FROM test_topops
 WHERE no_idx <> mrtree_idx OR no_idx <> mquadtree_idx OR no_idx <> mkdtree_idx OR
   no_idx IS NULL OR mrtree_idx IS NULL OR mquadtree_idx IS NULL OR mkdtree_idx IS NULL
 ORDER BY op, leftarg, rightarg;
- op | leftarg | rightarg | no_idx | mrtree_idx | mquadtree_idx | mkdtree_idx 
-----+---------+----------+--------+------------+---------------+-------------
-(0 rows)
 
 DROP TABLE test_topops;
+
 -------------------------------------------------------------------------------

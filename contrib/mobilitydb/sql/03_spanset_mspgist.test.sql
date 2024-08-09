@@ -1286,15 +1286,15 @@ DROP INDEX tbl_tstzspanset_mquadtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_intspanset_mquadtree_opts_idx ON tbl_intspanset
-  USING MSPGIST(i intspanset_mquadtree_ops(max_spans=3));
+  USING MSPGIST(i intspanset_mquadtree_ops(num_spans=3));
 CREATE INDEX tbl_bigintspanset_mquadtree_opts_idx ON tbl_bigintspanset
-  USING MSPGIST(b bigintspanset_mquadtree_ops(max_spans=3));
+  USING MSPGIST(b bigintspanset_mquadtree_ops(num_spans=3));
 CREATE INDEX tbl_floatspanset_mquadtree_opts_idx ON tbl_floatspanset
-  USING MSPGIST(f floatspanset_mquadtree_ops(max_spans=3));
+  USING MSPGIST(f floatspanset_mquadtree_ops(num_spans=3));
 CREATE INDEX tbl_datespanset_mquadtree_opts_idx ON tbl_datespanset
-  USING MSPGIST(d datespanset_mquadtree_ops(max_spans=3));
+  USING MSPGIST(d datespanset_mquadtree_ops(num_spans=3));
 CREATE INDEX tbl_tstzspanset_mquadtree_opts_idx ON tbl_tstzspanset
-  USING MSPGIST(t tstzspanset_mquadtree_ops(max_spans=3));
+  USING MSPGIST(t tstzspanset_mquadtree_ops(num_spans=3));
 
 -------------------------------------------------------------------------------
 
@@ -2538,15 +2538,15 @@ DROP INDEX tbl_tstzspanset_mkdtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_intspanset_mkdtree_opts_idx ON tbl_intspanset
-  USING MSPGIST(i intspanset_mkdtree_ops(max_spans=3));
+  USING MSPGIST(i intspanset_mkdtree_ops(num_spans=3));
 CREATE INDEX tbl_bigintspanset_mkdtree_opts_idx ON tbl_bigintspanset
-  USING MSPGIST(b bigintspanset_mkdtree_ops(max_spans=3));
+  USING MSPGIST(b bigintspanset_mkdtree_ops(num_spans=3));
 CREATE INDEX tbl_floatspanset_mkdtree_opts_idx ON tbl_floatspanset
-  USING MSPGIST(f floatspanset_mkdtree_ops(max_spans=3));
+  USING MSPGIST(f floatspanset_mkdtree_ops(num_spans=3));
 CREATE INDEX tbl_datespanset_mkdtree_opts_idx ON tbl_datespanset
-  USING MSPGIST(d datespanset_mkdtree_ops(max_spans=3));
+  USING MSPGIST(d datespanset_mkdtree_ops(num_spans=3));
 CREATE INDEX tbl_tstzspanset_mkdtree_opts_idx ON tbl_tstzspanset
-  USING MSPGIST(t tstzspanset_mkdtree_ops(max_spans=3));
+  USING MSPGIST(t tstzspanset_mkdtree_ops(num_spans=3));
 
 -------------------------------------------------------------------------------
 

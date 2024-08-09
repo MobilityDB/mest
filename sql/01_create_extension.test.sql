@@ -40,6 +40,10 @@ DROP TABLE IF EXISTS tbl_path;
 CREATE TABLE tbl_path(k integer PRIMARY KEY, p path);
 \copy tbl_path FROM 'data/tbl_path.data'
 
+DROP TABLE IF EXISTS tbl_tfloat;
+
+DROP TABLE IF EXISTS tbl_tint;
+
 DROP TABLE IF EXISTS tbl_timestamptz;
 CREATE TABLE tbl_timestamptz(k integer PRIMARY KEY, t timestamp with time zone);
 \copy tbl_timestamptz FROM 'data/tbl_timestamptz.data'

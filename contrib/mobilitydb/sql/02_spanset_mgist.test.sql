@@ -1278,15 +1278,15 @@ DROP INDEX tbl_tstzspanset_mrtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_intspanset_mrtree_opts_idx ON tbl_intspanset
-  USING MGIST(i intspanset_mrtree_ops(max_spans=3));
+  USING MGIST(i intspanset_mrtree_ops(num_spans=3));
 CREATE INDEX tbl_bigintspanset_mrtree_opts_idx ON tbl_bigintspanset
-  USING MGIST(b bigintspanset_mrtree_ops(max_spans=3));
+  USING MGIST(b bigintspanset_mrtree_ops(num_spans=3));
 CREATE INDEX tbl_floatspanset_mrtree_opts_idx ON tbl_floatspanset
-  USING MGIST(f floatspanset_mrtree_ops(max_spans=3));
+  USING MGIST(f floatspanset_mrtree_ops(num_spans=3));
 CREATE INDEX tbl_datespanset_mrtree_opts_idx ON tbl_datespanset
-  USING MGIST(d datespanset_mrtree_ops(max_spans=3));
+  USING MGIST(d datespanset_mrtree_ops(num_spans=3));
 CREATE INDEX tbl_tstzspanset_mrtree_opts_idx ON tbl_tstzspanset
-  USING MGIST(t tstzspanset_mrtree_ops(max_spans=3));
+  USING MGIST(t tstzspanset_mrtree_ops(num_spans=3));
 
 -------------------------------------------------------------------------------
 

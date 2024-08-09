@@ -25,6 +25,11 @@
 #define PG_GETARG_TEMPORAL_P(X)    ((Temporal *) PG_GETARG_VARLENA_P(X))
 #define PG_RETURN_TEMPORAL_P(X)      PG_RETURN_POINTER(X)
 
+#define DatumGetTboxP(X)    ((TBox *) DatumGetPointer(X))
+#define TboxPGetDatum(X)    PointerGetDatum(X)
+#define PG_GETARG_TBOX_P(X) DatumGetTboxP(PG_GETARG_DATUM(X))
+#define PG_RETURN_TBOX_P(X) return TboxPGetDatum(X)
+
 #define DatumGetSTboxP(X)    ((STBox *) DatumGetPointer(X))
 #define STboxPGetDatum(X)    PointerGetDatum(X)
 #define PG_GETARG_STBOX_P(X) DatumGetSTboxP(PG_GETARG_DATUM(X))
@@ -121,6 +126,7 @@ extern bool ensure_positive(int i);
 extern Oid type_oid(meosType t);
 extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 extern Datum call_function1(PGFunction func, Datum arg1);
+extern Datum call_function2(PGFunction func, Datum arg1, Datum arg2);
 extern Datum interval_in(PG_FUNCTION_ARGS);
 extern void spanset_span_slice(Datum d, Span *s);
 extern Temporal *temporal_slice(Datum tempdatum);
