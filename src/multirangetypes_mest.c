@@ -33,15 +33,15 @@
                        false, -1)))
 
 /* Maximum number of ranges for the extract function 
- * The default value -1 is used to extract all ranges from a multirange
+ * The default value 1 is used to extract all ranges from a multirange
  * The maximum value is used to restrict the range of large multiranges */
-#define MEST_MULTIRANGE_MAX_RANGES_DEFAULT    -1
+#define MEST_MULTIRANGE_MAX_RANGES_DEFAULT    1
 #define MEST_MULTIRANGE_MAX_RANGES_MAX        10000
 #define MEST_MULTIRANGE_MAX_RANGES()   (PG_HAS_OPCLASS_OPTIONS() ? \
           ((MestMultirangeOptions *) PG_GET_OPCLASS_OPTIONS())->max_ranges : \
           MEST_MULTIRANGE_MAX_RANGES_DEFAULT)
 
-/* mgist_multirange_ops opclass extract options */
+/* MEST_multirange_ops opclass extract options */
 typedef struct
 {
   int32   vl_len_;      /* varlena header (do not touch directly!) */
@@ -173,7 +173,7 @@ multirange_ranges(PG_FUNCTION_ARGS)
   /* Output the array of ranges of the multirange */
   typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
   result = construct_array((Datum *) ranges, range_count,
-    typcache->rngtype->type_id, -1, false, 
+    typcache->rngtype->type_id, 1, false, 
     typcache->rngtype->rngelemtype->typalign);
   pfree(ranges);
   PG_FREE_IF_COPY(mr, 0);
@@ -191,7 +191,7 @@ PG_FUNCTION_INFO_V1(multirange_mgist_compress);
 PGDLLEXPORT Datum
 multirange_mgist_compress(PG_FUNCTION_ARGS)
 {
-  GISTENTRY  *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
+  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
   PG_RETURN_POINTER(entry);
 }
 
