@@ -26,21 +26,22 @@
 -- PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 --
 -------------------------------------------------------------------------------
-
 -------------------------------------------------------------------------------
-
 DROP INDEX IF EXISTS tbl_tbool_mrtree_idx;
+NOTICE:  index "tbl_tbool_mrtree_idx" does not exist, skipping
 DROP INDEX IF EXISTS tbl_ttext_mrtree_idx;
-
+NOTICE:  index "tbl_ttext_mrtree_idx" does not exist, skipping
 DROP INDEX IF EXISTS tbl_tbool_mquadtree_idx;
+NOTICE:  index "tbl_tbool_mquadtree_idx" does not exist, skipping
 DROP INDEX IF EXISTS tbl_ttext_mquadtree_idx;
-
+NOTICE:  index "tbl_ttext_mquadtree_idx" does not exist, skipping
 DROP INDEX IF EXISTS tbl_tbool_mkdtree_idx;
+NOTICE:  index "tbl_tbool_mkdtree_idx" does not exist, skipping
 DROP INDEX IF EXISTS tbl_ttext_mkdtree_idx;
-
+NOTICE:  index "tbl_ttext_mkdtree_idx" does not exist, skipping
 -------------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS test_topops;
+NOTICE:  table "test_topops" does not exist, skipping
 CREATE TABLE test_topops(
   op CHAR(3),
   leftarg TEXT,
@@ -50,477 +51,390 @@ CREATE TABLE test_topops(
   mquadtree_idx BIGINT,
   mkdtree_idx BIGINT
 );
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t && temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t && getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t && temp;
-
+FROM tbl_tstzspan, tbl_ttext WHERE t && getTime(temp);
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tbool', 'tstzspan', COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) && t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tbool', 'tbool', COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) && getTime(t2.temp);
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'ttext', 'tstzspan', COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) && t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'ttext', 'ttext', COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp);
-
 -------------------------------------------------------------------------------
 -- Contains
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'tbool', COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t @> temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'ttext', COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t @> temp;
-
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tbool', 'tstzspan', COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) @> t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tbool', 'tbool', COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) @> getTime(t2.temp);
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'ttext', 'tstzspan', COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) @> t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'ttext', 'ttext', COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) @> getTime(t2.temp);
-
 -------------------------------------------------------------------------------
 -- Contained
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t <@ temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t <@ getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t <@ temp;
-
+FROM tbl_tstzspan, tbl_ttext WHERE t <@ getTime(temp);
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tbool', 'tstzspan', COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) <@ t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tbool', 'tbool', COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) <@ getTime(t2.temp);
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'ttext', 'tstzspan', COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) <@ t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'ttext', 'ttext', COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp);
-
 -------------------------------------------------------------------------------
 -- Adjacent
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'tbool', COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t -|- temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'ttext', COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t -|- temp;
-
 -------------------------------------------------------------------------------
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tbool', 'tstzspan', COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) -|- t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tbool', 'tbool', COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) -|- getTime(t2.temp);
-
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'ttext', 'tstzspan', COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) -|- t;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'ttext', 'ttext', COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp);
-
 -------------------------------------------------------------------------------
-
 CREATE INDEX tbl_tbool_mrtree_idx ON tbl_tbool
   USING MGIST(temp tbool_mrtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mrtree_idx ON tbl_ttext
   USING MGIST(temp ttext_mrtree_binsplit_ops(duration='10 min'));
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contains
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contained
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Adjacent
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mrtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 DROP INDEX tbl_tbool_mrtree_idx;
 DROP INDEX tbl_ttext_mrtree_idx;
-
 -------------------------------------------------------------------------------
-
 CREATE INDEX tbl_tbool_mquadtree_idx ON tbl_tbool
   USING MSPGIST(temp tbool_mquadtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mquadtree_idx ON tbl_ttext
   USING MSPGIST(temp ttext_mquadtree_binsplit_ops(duration='10 min'));
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contains
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contained
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mquadtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 DROP INDEX tbl_tbool_mquadtree_idx;
 DROP INDEX tbl_ttext_mquadtree_idx;
-
 -------------------------------------------------------------------------------
-
 CREATE INDEX tbl_tbool_mkdtree_idx ON tbl_tbool
   USING MSPGIST(temp tbool_mkdtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mkdtree_idx ON tbl_ttext
   USING MSPGIST(temp ttext_mkdtree_binsplit_ops(duration='10 min'));
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t && getTime(temp) )
 WHERE op = '&&' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) && t )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp) )
 WHERE op = '&&' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contains
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t @> getTime(temp) )
 WHERE op = '@>' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) @> t )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) @> getTime(t2.temp) )
 WHERE op = '@>' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Contained
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t <@ getTime(temp) )
 WHERE op = '<@' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) <@ t )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp) )
 WHERE op = '<@' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_tbool WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'tbool';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tstzspan, tbl_ttext WHERE t -|- getTime(temp) )
 WHERE op = '-|-' AND leftarg = 'tstzspan' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_tbool t1, tbl_tbool t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'tbool' AND rightarg = 'tbool';
-
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext, tbl_tstzspan WHERE getTime(temp) -|- t )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'ttext';
-
 -------------------------------------------------------------------------------
-
+DROP INDEX tbl_tbool_mkdtree_idx;
+DROP INDEX tbl_ttext_mkdtree_idx;
+-------------------------------------------------------------------------------
 SELECT * FROM test_topops
 WHERE no_idx <> mrtree_idx OR no_idx <> mquadtree_idx OR no_idx <> mkdtree_idx OR
   no_idx IS NULL OR mrtree_idx IS NULL OR mquadtree_idx IS NULL OR mkdtree_idx IS NULL
 ORDER BY op, leftarg, rightarg;
+ op | leftarg | rightarg | no_idx | mrtree_idx | mquadtree_idx | mkdtree_idx 
+----+---------+----------+--------+------------+---------------+-------------
+(0 rows)
 
 DROP TABLE test_topops;
-
 -------------------------------------------------------------------------------

@@ -57,10 +57,10 @@ CREATE TABLE test_topops(
 
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t && temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t && getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '&&', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t && temp;
+FROM tbl_tstzspan, tbl_ttext WHERE t && getTime(temp);
 
 -------------------------------------------------------------------------------
 
@@ -84,10 +84,10 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp);
 
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t @> temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t @> getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t @> temp;
+FROM tbl_tstzspan, tbl_ttext WHERE t @> getTime(temp);
 
 -------------------------------------------------------------------------------
 
@@ -111,10 +111,10 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) @> getTime(t2.temp);
 
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t <@ temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t <@ getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '<@', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t <@ temp;
+FROM tbl_tstzspan, tbl_ttext WHERE t <@ getTime(temp);
 
 -------------------------------------------------------------------------------
 
@@ -138,10 +138,10 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp);
 
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t -|- temp;
+FROM tbl_tstzspan, tbl_tbool WHERE t -|- getTime(temp);
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t -|- temp;
+FROM tbl_tstzspan, tbl_ttext WHERE t -|- getTime(temp);
 
 -------------------------------------------------------------------------------
 
@@ -513,6 +513,11 @@ WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'tstzspan';
 UPDATE test_topops SET mkdtree_idx = ( SELECT COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp) )
 WHERE op = '-|-' AND leftarg = 'ttext' AND rightarg = 'ttext';
+
+-------------------------------------------------------------------------------
+
+DROP INDEX tbl_tbool_mkdtree_idx;
+DROP INDEX tbl_ttext_mkdtree_idx;
 
 -------------------------------------------------------------------------------
 

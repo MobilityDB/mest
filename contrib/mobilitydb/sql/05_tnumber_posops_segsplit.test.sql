@@ -378,9 +378,9 @@ FROM tbl_tfloat t1, tbl_tfloat t2 WHERE t1.temp #&> t2.temp;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tint_mrtree_idx ON tbl_tint
-  USING MGIST(temp tint_mrtree_segsplit_ops(segs_per_span=3));
+  USING MGIST(temp tint_mrtree_segsplit_ops(segs_per_box=3));
 CREATE INDEX tbl_tfloat_mrtree_idx ON tbl_tfloat
-  USING MGIST(temp tfloat_mrtree_segsplit_ops(segs_per_span=3));
+  USING MGIST(temp tfloat_mrtree_segsplit_ops(segs_per_box=3));
 
 -------------------------------------------------------------------------------
 -- Left
@@ -714,9 +714,9 @@ DROP INDEX tbl_tfloat_mrtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tint_mquadtree_idx ON tbl_tint
-  USING MSPGIST(temp tint_mquadtree_segsplit_ops(segs_per_span=3));
+  USING MSPGIST(temp tint_mquadtree_segsplit_ops(segs_per_box=3));
 CREATE INDEX tbl_tfloat_mquadtree_idx ON tbl_tfloat
-  USING MSPGIST(temp tfloat_mquadtree_segsplit_ops(segs_per_span=3));
+  USING MSPGIST(temp tfloat_mquadtree_segsplit_ops(segs_per_box=3));
 
 -------------------------------------------------------------------------------
 -- Left
@@ -1050,9 +1050,9 @@ DROP INDEX tbl_tfloat_mquadtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tint_mkdtree_idx ON tbl_tint
-  USING MSPGIST(temp tint_mkdtree_segsplit_ops(segs_per_span=3));
+  USING MSPGIST(temp tint_mkdtree_segsplit_ops(segs_per_box=3));
 CREATE INDEX tbl_tfloat_mkdtree_idx ON tbl_tfloat
-  USING MSPGIST(temp tfloat_mkdtree_segsplit_ops(segs_per_span=3));
+  USING MSPGIST(temp tfloat_mkdtree_segsplit_ops(segs_per_box=3));
 
 -------------------------------------------------------------------------------
 -- Left

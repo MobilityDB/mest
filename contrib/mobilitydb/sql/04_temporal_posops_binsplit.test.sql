@@ -162,9 +162,9 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) #&> getTime(t2.temp);
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tbool_mrtree_idx ON tbl_tbool
-  USING MGIST(temp tbool_mrtree_tilesplit_ops(duration='10 min'));
+  USING MGIST(temp tbool_mrtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mrtree_idx ON tbl_ttext
-  USING MGIST(temp ttext_mrtree_tilesplit_ops(duration='10 min'));
+  USING MGIST(temp ttext_mrtree_binsplit_ops(duration='10 min'));
 
 -------------------------------------------------------------------------------
 -- Before
@@ -282,9 +282,9 @@ DROP INDEX tbl_ttext_mrtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tbool_mquadtree_idx ON tbl_tbool
-  USING MSPGIST(temp tbool_mquadtree_tilesplit_ops(duration='10 min'));
+  USING MSPGIST(temp tbool_mquadtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mquadtree_idx ON tbl_ttext
-  USING MSPGIST(temp ttext_mquadtree_tilesplit_ops(duration='10 min'));
+  USING MSPGIST(temp ttext_mquadtree_binsplit_ops(duration='10 min'));
 
 -------------------------------------------------------------------------------
 -- Before
@@ -402,9 +402,9 @@ DROP INDEX tbl_ttext_mquadtree_idx;
 -------------------------------------------------------------------------------
 
 CREATE INDEX tbl_tbool_mkdtree_idx ON tbl_tbool
-  USING MSPGIST(temp tbool_mkdtree_tilesplit_ops(duration='10 min'));
+  USING MSPGIST(temp tbool_mkdtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mkdtree_idx ON tbl_ttext
-  USING MSPGIST(temp ttext_mkdtree_tilesplit_ops(duration='10 min'));
+  USING MSPGIST(temp ttext_mkdtree_binsplit_ops(duration='10 min'));
 
 -------------------------------------------------------------------------------
 -- Before
