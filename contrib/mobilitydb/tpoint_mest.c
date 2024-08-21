@@ -212,7 +212,6 @@ Tpoint_mest_equisplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int32 num_boxes = MEST_TPOINT_GET_BOXES();
   STBox *boxes = tpoint_split_n_stboxes(temp, num_boxes, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
@@ -231,7 +230,6 @@ Tpoint_mest_segsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int segs_per_box = MEST_TPOINT_GET_SEGS();
   STBox *boxes = tpoint_split_each_n_stboxes(temp, segs_per_box, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
@@ -253,7 +251,6 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   double xsize, ysize, zsize;
   char *duration;
   Interval *interv = NULL;
@@ -667,7 +664,6 @@ Tpoint_mest_mergesplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int32 max_count = MEST_TPOINT_GET_BOXES();
   STBox *boxes;
   Datum *keys;
@@ -907,7 +903,6 @@ Tpoint_mest_linearsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   double qx = MEST_TPOINT_GET_QX(),
          qy = MEST_TPOINT_GET_QY(),
          qt = MEST_TPOINT_GET_QT();  
@@ -1076,7 +1071,6 @@ Tpoint_mest_adaptsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp  = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int32 segs_per_box = MEST_TPOINT_GET_BOXES();
   STBox *boxes;
   Datum *keys;

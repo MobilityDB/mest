@@ -79,45 +79,6 @@ SELECT '#&>', 'tgeompoint3D', 'tstzspan', COUNT(*)
 FROM  tbl_tgeompoint3D, tbl_tstzspan WHERE temp #&> t;
 
 INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '<<', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp << t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '>>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp >> t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '&<', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &< t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '&>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &> t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-
-SELECT '<<|', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<| t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '|>>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |>> t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '&<|', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &<| t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '|&>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |&> t2.temp;
-
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '<</', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <</ t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '/>>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp />> t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '&</', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &</ t2.temp;
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
-SELECT '/&>', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp /&> t2.temp;
-
-INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
 SELECT '<<#', 'tgeompoint3D', 'tgeompoint3D', COUNT(*)
 FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<# t2.temp;
 INSERT INTO test_posops3d(op, leftarg, rightarg, no_idx)
@@ -164,45 +125,6 @@ WHERE op = '&<#' AND leftarg = 'tgeompoint3D' AND rightarg = 'tstzspan';
 UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
 FROM  tbl_tgeompoint3D, tbl_tstzspan WHERE temp #&> t )
 WHERE op = '#&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tstzspan';
-
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp << t2.temp )
-WHERE op = '<<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp >> t2.temp )
-WHERE op = '>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &< t2.temp )
-WHERE op = '&<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &> t2.temp )
-WHERE op = '&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<| t2.temp )
-WHERE op = '<<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |>> t2.temp )
-WHERE op = '|>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &<| t2.temp )
-WHERE op = '&<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |&> t2.temp )
-WHERE op = '|&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <</ t2.temp )
-WHERE op = '<</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp />> t2.temp )
-WHERE op = '/>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &</ t2.temp )
-WHERE op = '&</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp /&> t2.temp )
-WHERE op = '/&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
 
 UPDATE test_posops3d SET mrtree_idx = ( SELECT COUNT(*)
 FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<# t2.temp )
@@ -257,45 +179,6 @@ FROM  tbl_tgeompoint3D, tbl_tstzspan WHERE temp #&> t )
 WHERE op = '#&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tstzspan';
 
 UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp << t2.temp )
-WHERE op = '<<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp >> t2.temp )
-WHERE op = '>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &< t2.temp )
-WHERE op = '&<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &> t2.temp )
-WHERE op = '&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<| t2.temp )
-WHERE op = '<<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |>> t2.temp )
-WHERE op = '|>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &<| t2.temp )
-WHERE op = '&<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |&> t2.temp )
-WHERE op = '|&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <</ t2.temp )
-WHERE op = '<</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp />> t2.temp )
-WHERE op = '/>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &</ t2.temp )
-WHERE op = '&</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp /&> t2.temp )
-WHERE op = '/&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
 FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<# t2.temp )
 WHERE op = '<<#' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
 UPDATE test_posops3d SET mquadtree_idx = ( SELECT COUNT(*)
@@ -346,45 +229,6 @@ WHERE op = '&<#' AND leftarg = 'tgeompoint3D' AND rightarg = 'tstzspan';
 UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
 FROM  tbl_tgeompoint3D, tbl_tstzspan WHERE temp #&> t )
 WHERE op = '#&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tstzspan';
-
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp << t2.temp )
-WHERE op = '<<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp >> t2.temp )
-WHERE op = '>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &< t2.temp )
-WHERE op = '&<' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &> t2.temp )
-WHERE op = '&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<| t2.temp )
-WHERE op = '<<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |>> t2.temp )
-WHERE op = '|>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &<| t2.temp )
-WHERE op = '&<|' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp |&> t2.temp )
-WHERE op = '|&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <</ t2.temp )
-WHERE op = '<</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp />> t2.temp )
-WHERE op = '/>>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp &</ t2.temp )
-WHERE op = '&</' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
-UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
-FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp /&> t2.temp )
-WHERE op = '/&>' AND leftarg = 'tgeompoint3D' AND rightarg = 'tgeompoint3D';
 
 UPDATE test_posops3d SET mkdtree_idx = ( SELECT COUNT(*)
 FROM  tbl_tgeompoint3D t1, tbl_tgeompoint3D t2 WHERE t1.temp <<# t2.temp )

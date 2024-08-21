@@ -252,7 +252,6 @@ Tnumber_mest_segsplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int segs_per_box = MEST_TNUMBER_GET_SEGS();
   TBox *boxes = tnumber_split_each_n_tboxes(temp, segs_per_box, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
@@ -274,7 +273,6 @@ Tint_mest_tilesplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int vsize, vorigin = 0;
   char *duration;
   Interval *interv = NULL;
@@ -323,7 +321,6 @@ Tfloat_mest_tilesplit(PG_FUNCTION_ARGS)
 {
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
-  // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   double vsize, vorigin = 0.0;
   char *duration;
   Interval *interv = NULL;

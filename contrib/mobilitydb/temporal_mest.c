@@ -32,14 +32,14 @@
 #define MEST_TEMPORAL_SPANS_DEFAULT    1
 #define MEST_TEMPORAL_SPANS_MAX        1000
 #define MEST_TEMPORAL_GET_SPANS()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestSpansOptions *) PG_GET_OPCLASS_OPTIONS())->num_spans : \
+          ((TemporalSpansOptions *) PG_GET_OPCLASS_OPTIONS())->num_spans : \
           MEST_TEMPORAL_SPANS_DEFAULT)
 
 typedef struct
 {
   int32 vl_len_;        /* varlena header (do not touch directly!) */
   int num_spans;        /* number of spans */
-} MestSpansOptions;
+} TemporalSpansOptions;
  
 /*****************************************************************************/
 
@@ -47,14 +47,14 @@ typedef struct
 #define MEST_TEMPORAL_SEGS_DEFAULT     1
 #define MEST_TEMPORAL_SEGS_MAX         1000
 #define MEST_TEMPORAL_GET_SEGS()   (PG_HAS_OPCLASS_OPTIONS() ? \
-          ((MestSegsSpanOptions *) PG_GET_OPCLASS_OPTIONS())->segs_per_span : \
+          ((TemporalSegsOptions *) PG_GET_OPCLASS_OPTIONS())->segs_per_span : \
           MEST_TEMPORAL_SEGS_DEFAULT)
 
 typedef struct
 {
   int32 vl_len_;        /* varlena header (do not touch directly!) */
   int segs_per_span;    /* number of segments per span */
-} MestSegsSpanOptions;
+} TemporalSegsOptions;
 
 /*****************************************************************************/
 
@@ -66,7 +66,7 @@ typedef struct
   int32 vl_len_;      /* varlena header (do not touch directly!) */
   int duration;       /* bin size in the T dimension, which is an interval 
                          represented as a string */
-} MestBinOptions;
+} TemporalBinOptions;
 
 /*****************************************************************************
  * Multi-Entry GiST and SP-GiST compress methods for temporal types
@@ -107,11 +107,11 @@ Temporal_mest_span_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MestSpansOptions));
+  init_local_reloptions(relopts, sizeof(TemporalSpansOptions));
   add_local_int_reloption(relopts, "num_spans",
               "number of spans for the extract method",
               MEST_TEMPORAL_SPANS_DEFAULT, 1, MEST_TEMPORAL_SPANS_MAX,
-              offsetof(MestSpansOptions, num_spans));
+              offsetof(TemporalSpansOptions, num_spans));
 
   PG_RETURN_VOID();
 }
@@ -125,11 +125,11 @@ Temporal_mest_seg_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MestSegsSpanOptions));
+  init_local_reloptions(relopts, sizeof(TemporalSegsOptions));
   add_local_int_reloption(relopts, "segs_per_span",
               "number of segments per span for the extract method",
               MEST_TEMPORAL_SEGS_DEFAULT, 1, MEST_TEMPORAL_SEGS_MAX,
-              offsetof(MestSegsSpanOptions, segs_per_span));
+              offsetof(TemporalSegsOptions, segs_per_span));
 
   PG_RETURN_VOID();
 }
@@ -155,13 +155,13 @@ Temporal_mest_bin_options(PG_FUNCTION_ARGS)
 {
   local_relopts *relopts = (local_relopts *) PG_GETARG_POINTER(0);
 
-  init_local_reloptions(relopts, sizeof(MestBinOptions));
+  init_local_reloptions(relopts, sizeof(TemporalBinOptions));
   add_local_string_reloption(relopts, "duration",
               "Bin size in the T dimension (a time interval)",
               MEST_TEMPORAL_DURATION_DEFAULT,
               NULL,
               &fill_duration_relopt,
-              offsetof(MestBinOptions, duration));
+              offsetof(TemporalBinOptions, duration));
 
   PG_RETURN_VOID();
 }
@@ -231,7 +231,7 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
   /* Index parameters */
   if (PG_HAS_OPCLASS_OPTIONS())
   {
-    MestBinOptions *options = (MestBinOptions *) PG_GET_OPCLASS_OPTIONS();
+    TemporalBinOptions *options = (TemporalBinOptions *) PG_GET_OPCLASS_OPTIONS();
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {

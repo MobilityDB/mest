@@ -78,10 +78,10 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) && getTime(t2.temp);
 -------------------------------------------------------------------------------
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t @> getTime(temp);
+FROM tbl_tstzspan, tbl_tbool WHERE t @> temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t @> getTime(temp);
+FROM tbl_tstzspan, tbl_ttext WHERE t @> temp;
 -------------------------------------------------------------------------------
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '@>', 'tbool', 'tstzspan', COUNT(*)
@@ -122,10 +122,10 @@ FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) <@ getTime(t2.temp);
 -------------------------------------------------------------------------------
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'tbool', COUNT(*)
-FROM tbl_tstzspan, tbl_tbool WHERE t -|- getTime(temp);
+FROM tbl_tstzspan, tbl_tbool WHERE t -|- temp;
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tstzspan', 'ttext', COUNT(*)
-FROM tbl_tstzspan, tbl_ttext WHERE t -|- getTime(temp);
+FROM tbl_tstzspan, tbl_ttext WHERE t -|- temp;
 -------------------------------------------------------------------------------
 INSERT INTO test_topops(op, leftarg, rightarg, no_idx)
 SELECT '-|-', 'tbool', 'tstzspan', COUNT(*)
@@ -141,9 +141,9 @@ SELECT '-|-', 'ttext', 'ttext', COUNT(*)
 FROM tbl_ttext t1, tbl_ttext t2 WHERE getTime(t1.temp) -|- getTime(t2.temp);
 -------------------------------------------------------------------------------
 CREATE INDEX tbl_tbool_mrtree_idx ON tbl_tbool
-  USING MGIST(temp tbool_mrtree_equisplit_ops(num_spans=3));
+  USING MGIST(temp tbool_mrtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mrtree_idx ON tbl_ttext
-  USING MGIST(temp ttext_mrtree_equisplit_ops(num_spans=3));
+  USING MGIST(temp ttext_mrtree_binsplit_ops(duration='10 min'));
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
@@ -237,9 +237,9 @@ DROP INDEX tbl_tbool_mrtree_idx;
 DROP INDEX tbl_ttext_mrtree_idx;
 -------------------------------------------------------------------------------
 CREATE INDEX tbl_tbool_mquadtree_idx ON tbl_tbool
-  USING MSPGIST(temp tbool_mquadtree_equisplit_ops(num_spans=3));
+  USING MSPGIST(temp tbool_mquadtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mquadtree_idx ON tbl_ttext
-  USING MSPGIST(temp ttext_mquadtree_equisplit_ops(num_spans=3));
+  USING MSPGIST(temp ttext_mquadtree_binsplit_ops(duration='10 min'));
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
@@ -333,9 +333,9 @@ DROP INDEX tbl_tbool_mquadtree_idx;
 DROP INDEX tbl_ttext_mquadtree_idx;
 -------------------------------------------------------------------------------
 CREATE INDEX tbl_tbool_mkdtree_idx ON tbl_tbool
-  USING MSPGIST(temp tbool_mkdtree_equisplit_ops(num_spans=3));
+  USING MSPGIST(temp tbool_mkdtree_binsplit_ops(duration='10 min'));
 CREATE INDEX tbl_ttext_mkdtree_idx ON tbl_ttext
-  USING MSPGIST(temp ttext_mkdtree_equisplit_ops(num_spans=3));
+  USING MSPGIST(temp ttext_mkdtree_binsplit_ops(duration='10 min'));
 -------------------------------------------------------------------------------
 -- Overlaps
 -------------------------------------------------------------------------------
