@@ -676,7 +676,7 @@ CREATE INDEX tbl_bigintspanset_mrtree_idx ON tbl_bigintspanset
 CREATE INDEX tbl_floatspanset_mrtree_idx ON tbl_floatspanset
   USING MGIST(f floatspanset_mrtree_binsplit_ops(binsize=3));
 CREATE INDEX tbl_datespanset_mrtree_idx ON tbl_datespanset
-  USING MGIST(d datespanset_mrtree_binsplit_ops(duration='10 min'));
+  USING MGIST(d datespanset_mrtree_binsplit_ops(duration='2 days'));
 CREATE INDEX tbl_tstzspanset_mrtree_idx ON tbl_tstzspanset
   USING MGIST(t tstzspanset_mrtree_binsplit_ops(duration='10 min'));
 
@@ -1302,7 +1302,7 @@ CREATE INDEX tbl_bigintspanset_mquadtree_idx ON tbl_bigintspanset
 CREATE INDEX tbl_floatspanset_mquadtree_idx ON tbl_floatspanset
   USING MSPGIST(f floatspanset_mquadtree_binsplit_ops(binsize=3));
 CREATE INDEX tbl_datespanset_mquadtree_idx ON tbl_datespanset
-  USING MSPGIST(d datespanset_mquadtree_binsplit_ops(duration='10 min'));
+  USING MSPGIST(d datespanset_mquadtree_binsplit_ops(duration='2 days'));
 CREATE INDEX tbl_tstzspanset_mquadtree_idx ON tbl_tstzspanset
   USING MSPGIST(t tstzspanset_mquadtree_binsplit_ops(duration='10 min'));
 
@@ -1928,7 +1928,7 @@ CREATE INDEX tbl_bigintspanset_mkdtree_idx ON tbl_bigintspanset
 CREATE INDEX tbl_floatspanset_mkdtree_idx ON tbl_floatspanset
   USING MSPGIST(f floatspanset_mkdtree_binsplit_ops(binsize=3));
 CREATE INDEX tbl_datespanset_mkdtree_idx ON tbl_datespanset
-  USING MSPGIST(d datespanset_mkdtree_binsplit_ops(duration='10 min'));
+  USING MSPGIST(d datespanset_mkdtree_binsplit_ops(duration='2 days'));
 CREATE INDEX tbl_tstzspanset_mkdtree_idx ON tbl_tstzspanset
   USING MSPGIST(t tstzspanset_mkdtree_binsplit_ops(duration='10 min'));
 
