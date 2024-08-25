@@ -1,0 +1,26 @@
+name: mest-check
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [16]
+    name: PostgreSQL ${{ matrix.pg }}
+    runs-on: ubuntu-latest
+    steps:
+      # Install PostgreSQL
+      - uses: adjust/pg-ext-actions/pg-setup@master
+        with:
+          version: ${{ matrix.pg }}
+          install-contrib: 'false'
+
+      # Clone and build extension, run tests
+      - uses: actions/checkout@v2
+      - uses: adjust/pg-ext-actions/build-check@master
