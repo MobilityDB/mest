@@ -10,8 +10,6 @@ OBJS          = $(patsubst %.c,%.o,$(wildcard src/*.c src/**/*.c)) # object file
 TESTS         = $(wildcard sql/*.sql) # use sql/*.sql as testfiles
 REGRESS       = $(sort $(patsubst sql/%.sql,%,$(TESTS))) # test names
 
-TAP_TESTS     = 1
-
 LDFLAGS_SL   += $(filter -lm, $(LIBS))
 
 PG_CONFIG = pg_config
