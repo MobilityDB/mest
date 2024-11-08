@@ -10,7 +10,7 @@ However, the PostGIS support functions are not yet implemented for MGiST indexes
 
 Dependencies
 ------------
-- [PostgreSQL 16](https://www.postgresql.org/)
+- [PostgreSQL 17](https://www.postgresql.org/)
 - [PostGIS 3.4](https://postgis.net/)
 - [mgist](../mgist)
 
