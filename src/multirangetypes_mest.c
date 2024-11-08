@@ -18,7 +18,7 @@
 #include "access/reloptions.h"
 #include "access/spgist.h"
 #include "access/stratnum.h"
-#include <utils/array.h>
+#include "utils/array.h"
 #include "utils/datum.h"
 #include "utils/fmgrprotos.h"
 #include "utils/multirangetypes.h"

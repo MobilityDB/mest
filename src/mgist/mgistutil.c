@@ -18,12 +18,11 @@
 #include "access/gist_private.h"
 #include "access/htup_details.h"
 #include "access/reloptions.h"
-#include "catalog/pg_opclass.h"
 #include "common/pg_prng.h"
 #include "storage/indexfsm.h"
-#include "storage/lmgr.h"
 #include "utils/float.h"
 #include "utils/lsyscache.h"
+#include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
@@ -575,7 +574,7 @@ mgistdentryinit(MGISTSTATE *mgiststate, int nkey, GISTENTRY *e,
 
 IndexTuple
 mgistFormTuple(MGISTSTATE *mgiststate, Relation r,
-				Datum *attdata, bool *isnull, bool isleaf)
+				const Datum *attdata, bool *isnull, bool isleaf)
 {
 	Datum		compatt[INDEX_MAX_KEYS];
 	IndexTuple	res;
@@ -596,7 +595,7 @@ mgistFormTuple(MGISTSTATE *mgiststate, Relation r,
 
 void
 mgistCompressValues(MGISTSTATE *mgiststate, Relation r,
-				   Datum *attdata, bool *isnull, bool isleaf, Datum *compatt)
+				   const Datum *attdata, bool *isnull, bool isleaf, Datum *compatt)
 {
 	int			i;
 

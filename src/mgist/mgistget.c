@@ -20,7 +20,6 @@
 #include "lib/pairingheap.h"
 #include "miscadmin.h"
 #include "pgstat.h"
-#include "storage/lmgr.h"
 #include "storage/predicate.h"
 #include "utils/float.h"
 #include "utils/memutils.h"
@@ -384,7 +383,6 @@ mgistScanPage(IndexScanDesc scan, GISTSearchItem *pageItem,
 	PredicateLockPage(r, BufferGetBlockNumber(buffer), scan->xs_snapshot);
 	gistcheckpage(scan->indexRelation, buffer);
 	page = BufferGetPage(buffer);
-	TestForOldSnapshot(scan->xs_snapshot, r, page);
 	opaque = GistPageGetOpaque(page);
 	/*
 	 * Check if we need to follow the rightlink. We need to follow it if the

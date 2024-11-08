@@ -21,9 +21,8 @@
 #include "commands/vacuum.h"
 #include "miscadmin.h"
 #include "nodes/execnodes.h"
-#include "storage/lmgr.h"
 #include "storage/predicate.h"
-#include "utils/builtins.h"
+#include "utils/fmgrprotos.h"
 #include "utils/index_selfuncs.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
@@ -48,7 +47,7 @@ static void gistprunepage(Relation rel, Page page, Buffer buffer,
 
 
 #define ROTATEDIST(d) do { \
-	SplitedPageLayout *tmp=(SplitedPageLayout*)palloc0(sizeof(SplitedPageLayout)); \
+	SplitPageLayout *tmp=(SplitPageLayout*)palloc0(sizeof(SplitPageLayout)); \
 	tmp->block.blkno = InvalidBlockNumber;	\
 	tmp->buffer = InvalidBuffer;	\
 	tmp->next = (d); \
@@ -81,6 +80,7 @@ mgisthandler(PG_FUNCTION_ARGS)
 	amroutine->amclusterable = true;
 	amroutine->ampredlocks = true;
 	amroutine->amcanparallel = false;
+	amroutine->amcanbuildparallel = false;
 	amroutine->amcaninclude = true;
 	amroutine->amusemaintenanceworkmem = false;
 	amroutine->amsummarizing = false;
@@ -91,6 +91,7 @@ mgisthandler(PG_FUNCTION_ARGS)
 	amroutine->ambuild = mgistbuild;
 	amroutine->ambuildempty = gistbuildempty;
 	amroutine->aminsert = mgistinsert;
+	amroutine->aminsertcleanup = NULL;
 	amroutine->ambulkdelete = gistbulkdelete;
 	amroutine->amvacuumcleanup = gistvacuumcleanup;
 	amroutine->amcanreturn = gistcanreturn;
@@ -290,11 +291,11 @@ mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststate,
 		/* no space for insertion */
 		IndexTuple *itvec;
 		int			tlen;
-		SplitedPageLayout *dist = NULL,
+		SplitPageLayout *dist = NULL,
 				   *ptr;
 		BlockNumber oldrlink = InvalidBlockNumber;
 		GistNSN		oldnsn = 0;
-		SplitedPageLayout rootpg;
+		SplitPageLayout rootpg;
 		bool		is_rootsplit;
 		int			npage;
 
@@ -1087,7 +1088,7 @@ gistFindCorrectParent(Relation r, GISTInsertStack *child, bool is_build)
 		{
 			/*
 			 * End of chain and still didn't find parent. It's a very-very
-			 * rare situation when root splitted.
+			 * rare situation when root was split.
 			 */
 			break;
 		}
@@ -1442,7 +1443,7 @@ mgistfinishsplit(GISTInsertState *state, GISTInsertStack *stack,
  * used for XLOG and real writes buffers. Function is recursive, ie
  * it will split page until keys will fit in every page.
  */
-SplitedPageLayout *
+SplitPageLayout *
 mgistSplit(Relation r,
 			Page page,
 			IndexTuple *itup,		/* contains compressed entry */
@@ -1453,7 +1454,7 @@ mgistSplit(Relation r,
 			   *rvectup;
 	GistSplitVector v;
 	int			i;
-	SplitedPageLayout *res = NULL;
+	SplitPageLayout *res = NULL;
 
 	/* this should never recurse very deeply, but better safe than sorry */
 	check_stack_depth();
@@ -1503,7 +1504,7 @@ mgistSplit(Relation r,
 
 	if (!gistfitpage(lvectup, v.splitVector.spl_nleft))
 	{
-		SplitedPageLayout *resptr,
+		SplitPageLayout *resptr,
 				   *subres;
 
 		resptr = subres = mgistSplit(r, page, lvectup, v.splitVector.spl_nleft, mgiststate);

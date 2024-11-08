@@ -5,7 +5,7 @@
  *
  * All the actual insertion logic is in spgdoinsert.c.
  *
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -18,14 +18,12 @@
 
 #include "access/genam.h"
 #include "access/spgist_private.h"
-#include "access/spgxlog.h"
 #include "access/tableam.h"
-#include "access/xlog.h"
 #include "access/xloginsert.h"
-#include "catalog/index.h"
 #include "miscadmin.h"
+#include "nodes/execnodes.h"
 #include "storage/bufmgr.h"
-#include "storage/smgr.h"
+#include "storage/bulk_write.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 

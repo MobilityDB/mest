@@ -22,7 +22,7 @@ For more information about each extension, please refer to their associated READ
 
 Dependencies
 ------------
-- [PostgreSQL 16](https://www.postgresql.org/)
+- [PostgreSQL 17](https://www.postgresql.org/)
 
 Installation
 ------------

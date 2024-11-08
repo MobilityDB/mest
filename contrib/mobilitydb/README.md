@@ -5,15 +5,15 @@ This directory contains an implementation of Multi-Entry Search Trees for Mobili
 
 Dependencies
 ------------
-- [PostgreSQL 16](https://www.postgresql.org/)
-- [MobilityDB 1.1 (latest version of the master branch)](https://github.com/MobilityDB/MobilityDB)
-- [MEOS (latest version of the master branch of MobilityDB)](https://www.libmeos.org/)
+- [PostgreSQL 17](https://www.postgresql.org/)
+- [MobilityDB 1.2](https://github.com/MobilityDB/MobilityDB)
+- [MEOS 1.2](https://www.libmeos.org/)
 - [mest](https://github.com/MobilityDB/mest)
 
-You should also set the following in postgresql.conf depending on the version of PostGIS and MobilityDB you have installed (below we use PostGIS 3, MobilityDB 1.1):
+You should also set the following in postgresql.conf depending on the version of PostGIS and MobilityDB you have installed (below we use PostGIS 3, MobilityDB 1.2):
 
 ```
-shared_preload_libraries = 'postgis-3,libMobilityDB-1.1'
+shared_preload_libraries = 'postgis-3,libMobilityDB-1.2'
 ```
 
 Installation
