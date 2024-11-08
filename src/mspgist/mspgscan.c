@@ -4,7 +4,7 @@
  *	  routines for scanning SP-GiST indexes
  *
  *
- * Portions Copyright (c) 1996-2022, PostgreSQL Global Development Group
+ * Portions Copyright (c) 1996-2024, PostgreSQL Global Development Group
  * Portions Copyright (c) 1994, Regents of the University of California
  *
  * IDENTIFICATION
@@ -850,7 +850,7 @@ enum SpGistSpecialOffsetNumbers
 {
 	SpGistBreakOffsetNumber = InvalidOffsetNumber,
 	SpGistRedirectOffsetNumber = MaxOffsetNumber + 1,
-	SpGistErrorOffsetNumber = MaxOffsetNumber + 2
+	SpGistErrorOffsetNumber = MaxOffsetNumber + 2,
 };
 
 static OffsetNumber
@@ -909,7 +909,7 @@ spgTestLeafTuple(MSpGistScanOpaque so,
  */
 static void
 mspgWalk(Relation index, MSpGistScanOpaque so, bool scanWholeIndex,
-		 storeRes_func storeRes, Snapshot snapshot)
+		 storeRes_func storeRes)
 {
 	Buffer		buffer = InvalidBuffer;
 	bool		reportedSome = false;
@@ -963,7 +963,6 @@ redirect:
 			/* else new pointer points to the same page, no work needed */
 
 			page = BufferGetPage(buffer);
-			TestForOldSnapshot(snapshot, index, page);
 
 			isnull = SpGistPageStoresNulls(page) ? true : false;
 
@@ -1051,7 +1050,7 @@ mspggetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
 	so->tbm = tbm;
 	so->ntids = 0;
 
-	mspgWalk(scan->indexRelation, so, true, storeBitmap, scan->xs_snapshot);
+	mspgWalk(scan->indexRelation, so, true, storeBitmap);
 
 	return so->ntids;
 }
@@ -1172,8 +1171,7 @@ mspggettuple(IndexScanDesc scan, ScanDirection dir)
 		}
 		so->iPtr = so->nPtrs = 0;
 
-		mspgWalk(scan->indexRelation, so, false, storeGettuple,
-				 scan->xs_snapshot);
+		mspgWalk(scan->indexRelation, so, false, storeGettuple);
 
 		if (so->nPtrs == 0)
 			break;				/* must have completed scan */

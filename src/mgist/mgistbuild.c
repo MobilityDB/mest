@@ -36,14 +36,13 @@
 
 #include "access/genam.h"
 #include "access/gist_private.h"
-#include "access/gistxlog.h"
 #include "access/tableam.h"
 #include "access/xloginsert.h"
-#include "catalog/index.h"
 #include "miscadmin.h"
+#include "nodes/execnodes.h"
 #include "optimizer/optimizer.h"
 #include "storage/bufmgr.h"
-#include "storage/smgr.h"
+#include "storage/bulk_write.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/tuplesort.h"
@@ -77,7 +76,7 @@ typedef enum
 	GIST_BUFFERING_STATS,		/* gathering statistics of index tuple size
 								 * before switching to the buffering build
 								 * mode */
-	GIST_BUFFERING_ACTIVE		/* in buffering build mode */
+	GIST_BUFFERING_ACTIVE,		/* in buffering build mode */
 } GistBuildMode;
 
 /* Working state for gistbuild and its callback */
@@ -108,11 +107,7 @@ typedef struct
 	Tuplesortstate *sortstate;	/* state data for tuplesort.c */
 
 	BlockNumber pages_allocated;
-	BlockNumber pages_written;
-
-	int			ready_num_pages;
-	BlockNumber ready_blknos[XLR_MAX_BLOCK_ID];
-	Page		ready_pages[XLR_MAX_BLOCK_ID];
+	BulkWriteState *bulkstate;
 } MGISTBuildState;
 
 #define GIST_SORTED_BUILD_PAGE_NUM 4
@@ -144,7 +139,6 @@ static void mgist_indexsortbuild_levelstate_add(MGISTBuildState *state,
 												 IndexTuple itup);
 static void mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 												   GistSortedBuildLevelState *levelstate);
-static void mgist_indexsortbuild_flush_ready_pages(MGISTBuildState *state);
 
 static void mgistInitBuffering(MGISTBuildState *buildstate);
 static int	mecalculatePagesPerBuffer(MGISTBuildState *buildstate, int levelStep);
@@ -407,27 +401,18 @@ mgist_indexsortbuild(MGISTBuildState *mebuildstate)
 {
 	IndexTuple	itup;
 	GistSortedBuildLevelState *levelstate;
-	Page		page;
+	BulkWriteBuffer rootbuf;
 
-	mebuildstate->pages_allocated = 0;
-	mebuildstate->pages_written = 0;
-	mebuildstate->ready_num_pages = 0;
+	/* Reserve block 0 for the root page */
+	mebuildstate->pages_allocated = 1;
 
-	/*
-	 * Write an empty page as a placeholder for the root page. It will be
-	 * replaced with the real root page at the end.
-	 */
-	page = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, MCXT_ALLOC_ZERO);
-	smgrextend(RelationGetSmgr(mebuildstate->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
-			   page, true);
-	mebuildstate->pages_allocated++;
-	mebuildstate->pages_written++;
+	mebuildstate->bulkstate = smgr_bulk_start_rel(mebuildstate->indexrel, MAIN_FORKNUM);
 
 	/* Allocate a temporary buffer for the first leaf page batch. */
 	levelstate = palloc0(sizeof(GistSortedBuildLevelState));
-	levelstate->pages[0] = page;
+	levelstate->pages[0] = palloc(BLCKSZ);;
 	levelstate->parent = NULL;
-	gistinitpage(page, F_LEAF);
+	gistinitpage(levelstate->pages[0], F_LEAF);
 
 	/*
 	 * Fill index pages with tuples in the sorted order.
@@ -457,31 +442,14 @@ mgist_indexsortbuild(MGISTBuildState *mebuildstate)
 		levelstate = parent;
 	}
 
-	mgist_indexsortbuild_flush_ready_pages(mebuildstate);
-
 	/* Write out the root */
-	PageSetLSN(levelstate->pages[0], GistBuildLSN);
-	PageSetChecksumInplace(levelstate->pages[0], GIST_ROOT_BLKNO);
-	smgrwrite(RelationGetSmgr(mebuildstate->indexrel), MAIN_FORKNUM, GIST_ROOT_BLKNO,
-			  levelstate->pages[0], true);
-	if (RelationNeedsWAL(mebuildstate->indexrel))
-		log_newpage(&mebuildstate->indexrel->rd_locator, MAIN_FORKNUM, GIST_ROOT_BLKNO,
-					levelstate->pages[0], true);
+	rootbuf = smgr_bulk_get_buf(mebuildstate->bulkstate);
+	memcpy(rootbuf, levelstate->pages[0], BLCKSZ);
+	smgr_bulk_write(mebuildstate->bulkstate, GIST_ROOT_BLKNO, rootbuf, true);
 
-	pfree(levelstate->pages[0]);
 	pfree(levelstate);
 
-	/*
-	 * When we WAL-logged index pages, we must nonetheless fsync index files.
-	 * Since we're building outside shared buffers, a CHECKPOINT occurring
-	 * during the build has no way to flush the previously written data to
-	 * disk (indeed it won't know the index even exists).  A crash later on
-	 * would replay WAL from the checkpoint, therefore it wouldn't replay our
-	 * earlier WAL entries. If we do not fsync those pages here, they might
-	 * still not be on disk when the crash occurs.
-	 */
-	if (RelationNeedsWAL(mebuildstate->indexrel))
-		smgrimmedsync(RelationGetSmgr(mebuildstate->indexrel), MAIN_FORKNUM);
+	smgr_bulk_finish(mebuildstate->bulkstate);
 }
 
 /*
@@ -511,8 +479,7 @@ mgist_indexsortbuild_levelstate_add(MGISTBuildState *mebuildstate,
 			levelstate->current_page++;
 
 		if (levelstate->pages[levelstate->current_page] == NULL)
-			levelstate->pages[levelstate->current_page] =
-				palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
+			levelstate->pages[levelstate->current_page] = palloc0(BLCKSZ);
 
 		newPage = levelstate->pages[levelstate->current_page];
 		gistinitpage(newPage, old_page_flags);
@@ -529,7 +496,7 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 	BlockNumber blkno;
 	MemoryContext oldCtx;
 	IndexTuple	union_tuple;
-	SplitedPageLayout *dist;
+	SplitPageLayout *dist;
 	IndexTuple *itvec;
 	int			vect_len;
 	bool		isleaf = GistPageIsLeaf(levelstate->pages[0]);
@@ -557,8 +524,8 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 	}
 	else
 	{
-		/* Create splitted layout from single page */
-		dist = (SplitedPageLayout *) palloc0(sizeof(SplitedPageLayout));
+		/* Create split layout from single page */
+		dist = (SplitPageLayout *) palloc0(sizeof(SplitPageLayout));
 		union_tuple = mgistunion(state->indexrel, itvec, vect_len,
 								  state->mgiststate);
 		dist->itup = union_tuple;
@@ -575,6 +542,7 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 	for (; dist != NULL; dist = dist->next)
 	{
 		char	   *data;
+		BulkWriteBuffer buf;
 		Page		target;
 
 		/* check once per page */
@@ -582,7 +550,8 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 
 		/* Create page and copy data */
 		data = (char *) (dist->list);
-		target = palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, MCXT_ALLOC_ZERO);
+		buf = smgr_bulk_get_buf(state->bulkstate);
+		target = (Page) buf;
 		gistinitpage(target, isleaf ? F_LEAF : 0);
 		for (int i = 0; i < dist->block.num; i++)
 		{
@@ -594,20 +563,6 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 			data += IndexTupleSize(thistup);
 		}
 		union_tuple = dist->itup;
-
-		if (state->ready_num_pages == XLR_MAX_BLOCK_ID)
-			mgist_indexsortbuild_flush_ready_pages(state);
-
-		/*
-		 * The page is now complete. Assign a block number to it, and add it
-		 * to the list of finished pages. (We don't write it out immediately,
-		 * because we want to WAL-log the pages in batches.)
-		 */
-		blkno = state->pages_allocated++;
-		state->ready_blknos[state->ready_num_pages] = blkno;
-		state->ready_pages[state->ready_num_pages] = target;
-		state->ready_num_pages++;
-		ItemPointerSetBlockNumber(&(union_tuple->t_tid), blkno);
 
 		/*
 		 * Set the right link to point to the previous page. This is just for
@@ -623,6 +578,15 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 		 */
 		if (levelstate->last_blkno)
 			GistPageGetOpaque(target)->rightlink = levelstate->last_blkno;
+		
+		/*
+		 * The page is now complete. Assign a block number to it, and pass it
+		 * to the bulk writer.
+		 */
+		blkno = state->pages_allocated++;
+		PageSetLSN(target, GistBuildLSN);
+		smgr_bulk_write(state->bulkstate, blkno, buf, true);
+		ItemPointerSetBlockNumber(&(union_tuple->t_tid), blkno);
 		levelstate->last_blkno = blkno;
 
 		/*
@@ -633,7 +597,7 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 		if (parent == NULL)
 		{
 			parent = palloc0(sizeof(GistSortedBuildLevelState));
-			parent->pages[0] = (Page) palloc_aligned(BLCKSZ, PG_IO_ALIGN_SIZE, 0);
+			parent->pages[0] = palloc(BLCKSZ);
 			parent->parent = NULL;
 			gistinitpage(parent->pages[0], 0);
 
@@ -641,39 +605,6 @@ mgist_indexsortbuild_levelstate_flush(MGISTBuildState *state,
 		}
 		mgist_indexsortbuild_levelstate_add(state, parent, union_tuple);
 	}
-}
-
-static void
-mgist_indexsortbuild_flush_ready_pages(MGISTBuildState *state)
-{
-	if (state->ready_num_pages == 0)
-		return;
-
-	for (int i = 0; i < state->ready_num_pages; i++)
-	{
-		Page		page = state->ready_pages[i];
-		BlockNumber blkno = state->ready_blknos[i];
-
-		/* Currently, the blocks must be buffered in order. */
-		if (blkno != state->pages_written)
-			elog(ERROR, "unexpected block number to flush GiST sorting build");
-
-		PageSetLSN(page, GistBuildLSN);
-		PageSetChecksumInplace(page, blkno);
-		smgrextend(RelationGetSmgr(state->indexrel), MAIN_FORKNUM, blkno, page,
-				   true);
-
-		state->pages_written++;
-	}
-
-	if (RelationNeedsWAL(state->indexrel))
-		log_newpages(&state->indexrel->rd_locator, MAIN_FORKNUM, state->ready_num_pages,
-					 state->ready_blknos, state->ready_pages, true);
-
-	for (int i = 0; i < state->ready_num_pages; i++)
-		pfree(state->ready_pages[i]);
-
-	state->ready_num_pages = 0;
 }
 
 

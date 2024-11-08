@@ -165,7 +165,7 @@ extern bool mgistplacetopage(Relation rel, Size freespace, MGISTSTATE *mgiststat
                               Relation heapRel,
                               bool is_build);
 
-extern SplitedPageLayout *mgistSplit(Relation r, Page page, IndexTuple *itup,
+extern SplitPageLayout *mgistSplit(Relation r, Page page, IndexTuple *itup,
                                       int len, MGISTSTATE *mgiststate);
 
 /* mgistget.c */
@@ -188,9 +188,9 @@ extern IndexTuple mgistgetadjusted(Relation r,
                                     IndexTuple addtup,
                                     MGISTSTATE *mgiststate);
 extern IndexTuple mgistFormTuple(MGISTSTATE *mgiststate,
-                                  Relation r, Datum *attdata, bool *isnull, bool isleaf);
+                                  Relation r, const Datum *attdata, bool *isnull, bool isleaf);
 extern void mgistCompressValues(MGISTSTATE *mgiststate, Relation r,
-                                 Datum *attdata, bool *isnull, bool isleaf, Datum *compatt);
+                                 const Datum *attdata, bool *isnull, bool isleaf, Datum *compatt);
 extern OffsetNumber mgistchoose(Relation r, Page p,
                                  IndexTuple it,
                                  MGISTSTATE *mgiststate);
