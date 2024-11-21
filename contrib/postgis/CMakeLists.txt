@@ -33,6 +33,7 @@ set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "$<TARGET_OBJECTS:liblwgeom>")
 set(PROJECT_OBJECTS ${PROJECT_OBJECTS} "postgis_mest.c")
 
 add_library(postgis_mest MODULE ${PROJECT_OBJECTS})
+set_target_properties(postgis_mest PROPERTIES PREFIX "")
 
 install(
   FILES "${CMAKE_SOURCE_DIR}/postgis_mest.control" "${CMAKE_SOURCE_DIR}/postgis_mest--1.0.sql"
