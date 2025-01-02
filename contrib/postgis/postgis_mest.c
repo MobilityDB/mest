@@ -40,7 +40,7 @@ geometry_mest_extract(PG_FUNCTION_ARGS)
   if (! lwtype_is_collection(gstype))
   {
     *nkeys = 1;
-    PG_RETURN_POINTER(gs);
+    PG_RETURN_POINTER(&gs);
   }
 
   LWGEOM *lwgeom = lwgeom_from_gserialized(gs);
