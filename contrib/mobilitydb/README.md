@@ -23,7 +23,7 @@ Compiling and installing the extension
 make PG_CONFIG=path_to_postgresql_installation/bin/pg_config
 sudo make PG_CONFIG=path_to_postgresql_installation/bin/pg_config install
 ```
-You may omit the PG_CONFIG overrides if running type pg_config in your shell locates the correct PostgreSQL installation.
+You may omit the PG_CONFIG overrides if running `pg_config` in your shell locates the correct PostgreSQL installation.
 
 Enabling the `mobilitydb_mest` extension
 ```sql
