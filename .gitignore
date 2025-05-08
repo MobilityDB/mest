@@ -1,6 +1,7 @@
 *.o
 *.so
 .cache
+.deps
 build
 compile_commands.json
 results
