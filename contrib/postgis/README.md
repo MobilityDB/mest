@@ -23,7 +23,10 @@ shared_preload_libraries = 'postgis-3'
 Installation
 ------------
 Compiling and installing the extension
-```
+```bash
+mkdir build
+cd build
+cmake ..
 make
 sudo make install
 ```

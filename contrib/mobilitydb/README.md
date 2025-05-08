@@ -20,9 +20,10 @@ Installation
 ------------
 Compiling and installing the extension
 ```bash
-make
-sudo make install
+make PG_CONFIG=path_to_postgresql_installation/bin/pg_config
+sudo make PG_CONFIG=path_to_postgresql_installation/bin/pg_config install
 ```
+You may omit the PG_CONFIG overrides if running `pg_config` in your shell locates the correct PostgreSQL installation.
 
 Enabling the `mobilitydb_mest` extension
 ```sql
