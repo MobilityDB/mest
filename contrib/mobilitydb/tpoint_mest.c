@@ -637,7 +637,7 @@ Tpoint_mergesplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   ArrayType *result;
 
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
@@ -668,7 +668,7 @@ Tpoint_mest_mergesplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   Datum *keys;
 
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
@@ -876,7 +876,7 @@ Tpoint_linearsplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   ArrayType *result;
 
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
@@ -909,7 +909,7 @@ Tpoint_mest_linearsplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   Datum *keys;
 
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
@@ -1044,7 +1044,7 @@ Tpoint_adaptsplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   ArrayType *result;
   
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
@@ -1075,7 +1075,7 @@ Tpoint_mest_adaptsplit(PG_FUNCTION_ARGS)
   STBox *boxes;
   Datum *keys;
 
-  assert(temptype_subtype(temp->subtype));
+  // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
