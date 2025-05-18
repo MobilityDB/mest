@@ -20,12 +20,14 @@
 #include "utils/timestamp.h"
 
 #include <meos.h>
+#include <meos_geo.h>
 #include <meos_internal.h>
+#include <meos_internal_geo.h>
 #include <meos_catalog.h>
 #include "mobilitydb_mest.h"
 
 /*****************************************************************************
- * Definitions for the options methods for temporal point types 
+ * Definitions for the options methods for temporal point types
  *****************************************************************************/
 
 /* number boxes for extract function */
@@ -40,7 +42,7 @@ typedef struct
   int32 vl_len_;        /* varlena header (do not touch directly!) */
   int num_boxes;        /* number of boxes */
 } MestBoxesOptions;
- 
+
 /*****************************************************************************/
 
 /* number of instants or segments per box for extract function */
@@ -85,7 +87,7 @@ typedef struct
   double xsize;       /* tile size in the X dimension */
   double ysize;       /* tile size in the Y dimension */
   double zsize;       /* tile size in the Z dimension */
-  int duration;       /* tile size in the T dimension, which is an interval 
+  int duration;       /* tile size in the T dimension, which is an interval
                          represented as a string */
 } TPointTileOptions;
 
@@ -213,7 +215,7 @@ Tpoint_mest_equisplit(PG_FUNCTION_ARGS)
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   int32 num_boxes = MEST_TPOINT_GET_BOXES();
-  STBox *boxes = tpoint_split_n_stboxes(temp, num_boxes, nkeys);
+  STBox *boxes = tgeo_split_n_stboxes(temp, num_boxes, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
   for (int i = 0; i < *nkeys; ++i)
     keys[i] = PointerGetDatum(&boxes[i]);
@@ -231,7 +233,7 @@ Tpoint_mest_segsplit(PG_FUNCTION_ARGS)
   Temporal *temp = PG_GETARG_TEMPORAL_P(0);
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   int segs_per_box = MEST_TPOINT_GET_SEGS();
-  STBox *boxes = tpoint_split_each_n_stboxes(temp, segs_per_box, nkeys);
+  STBox *boxes = tgeo_split_each_n_stboxes(temp, segs_per_box, nkeys);
   Datum *keys = palloc(sizeof(Datum) * (*nkeys));
   for (int i = 0; i < *nkeys; ++i)
     keys[i] = PointerGetDatum(&boxes[i]);
@@ -254,7 +256,7 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
   double xsize, ysize, zsize;
   char *duration;
   Interval *interv = NULL;
-  GSERIALIZED *sorigin = pgis_geometry_in("Point(0 0 0)", -1);
+  GSERIALIZED *sorigin = geom_in("Point(0 0 0)", -1);
   TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
   int32 count;
   STBox *boxes;
@@ -274,7 +276,7 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
+      interv = (Interval *) DatumGetPointer(call_function2(interval_in,
         PointerGetDatum(duration), -1));
       if (! interv)
       {
@@ -286,7 +288,7 @@ Tpoint_mest_tilesplit(PG_FUNCTION_ARGS)
   }
 
   /* Get the tiles */
-  boxes = tpoint_space_time_boxes(temp, xsize, ysize, zsize, interv, sorigin, 
+  boxes = tgeo_space_time_boxes(temp, xsize, ysize, zsize, interv, sorigin,
     torigin, true, true, &count);
   keys = palloc(sizeof(Datum) * count);
   assert(temp);
@@ -447,7 +449,7 @@ heap_insert(min_heap *heap, min_heap_elem elem)
   heapify_up(heap, heap->size - 1);
 }
 
-static bool 
+static bool
 heap_delete_min(min_heap *heap, min_heap_elem *min_elem)
 {
   if (heap->size == 0)
@@ -482,10 +484,10 @@ stbox_size(const STBox *box)
    *
    * The less-than cases should not happen, but if they do, say "zero".
    */
-  if ((hasx && (FLOAT8_LE(box->xmax, box->xmin) 
-                || FLOAT8_LE(box->ymax, box->ymin) 
+  if ((hasx && (FLOAT8_LE(box->xmax, box->xmin)
+                || FLOAT8_LE(box->ymax, box->ymin)
                 || (hasz && FLOAT8_LE(box->zmax, box->zmin))))
-      || (hast && (DatumGetTimestampTz(box->period.upper) 
+      || (hast && (DatumGetTimestampTz(box->period.upper)
                     <= DatumGetTimestampTz(box->period.lower))))
     return 0.0;
 
@@ -508,7 +510,7 @@ stbox_size(const STBox *box)
   }
   if (hast)
     /* Expressed in seconds */
-    result_size *= (double) (DatumGetTimestampTz(box->period.upper) - 
+    result_size *= (double) (DatumGetTimestampTz(box->period.upper) -
       DatumGetTimestampTz(box->period.lower)) / USECS_PER_MINUTE;
   return result_size;
 }
@@ -524,7 +526,7 @@ stbox_penalty(const STBox *box1, const STBox *box2)
   memcpy(&unionbox, box1, sizeof(STBox));
   stbox_expand(box2, &unionbox);
   inter_stbox_stbox(box1, box2, &interbox);
-  return stbox_size(&unionbox) - stbox_size(box1) - 
+  return stbox_size(&unionbox) - stbox_size(box1) -
     stbox_size(box2) + stbox_size(&interbox);
 }
 
@@ -542,7 +544,7 @@ tpointseq_mergesplit(const TSequence *seq, int32 max_count, int32 *nkeys)
   if (seq->count == 1 || max_count == 1)
   {
     *nkeys = 1;
-    return tpoint_to_stbox((const Temporal *) seq);
+    return tspatial_to_stbox((const Temporal *) seq);
   }
 
   boxes = palloc(sizeof(STBox) * seq->count);
@@ -641,13 +643,13 @@ Tpoint_mergesplit(PG_FUNCTION_ARGS)
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       break;
     case TSEQUENCE:
       boxes = tpointseq_mergesplit((TSequence *) temp, max_count, &nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
   }
   result = stboxarr_to_array(boxes, nkeys);
   pfree(boxes);
@@ -672,14 +674,14 @@ Tpoint_mest_mergesplit(PG_FUNCTION_ARGS)
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
       break;
     case TSEQUENCE:
       boxes = tpointseq_mergesplit((TSequence *) temp, max_count, nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
   }
   keys = palloc(sizeof(Datum) * (*nkeys));
@@ -713,10 +715,10 @@ stbox_size_ext(const STBox *box, int qx, int qy, int qt)
    *
    * The less-than cases should not happen, but if they do, say "zero".
    */
-  if ((hasx && (FLOAT8_LE(qx + box->xmax, box->xmin) 
-                || FLOAT8_LE(qy + box->ymax, box->ymin) 
+  if ((hasx && (FLOAT8_LE(qx + box->xmax, box->xmin)
+                || FLOAT8_LE(qy + box->ymax, box->ymin)
                 || (hasz && FLOAT8_LE(box->zmax, box->zmin))))
-      || (hast && (DatumGetTimestampTz(box->period.upper) 
+      || (hast && (DatumGetTimestampTz(box->period.upper)
                     <= DatumGetTimestampTz(box->period.lower))))
     return 0.0;
 
@@ -739,7 +741,7 @@ stbox_size_ext(const STBox *box, int qx, int qy, int qt)
   }
   if (hast)
     /* Expressed in seconds */
-    result_size *= qt + ((double)(DatumGetTimestampTz(box->period.upper) - 
+    result_size *= qt + ((double)(DatumGetTimestampTz(box->period.upper) -
       DatumGetTimestampTz(box->period.lower)) / USECS_PER_MINUTE);
   return result_size;
 }
@@ -749,7 +751,7 @@ stbox_size_ext(const STBox *box, int qx, int qy, int qt)
  * the original STBox's volume.  The result can be +Infinity, but not NaN.
  */
 static double
-stbox_penalty_ext(const STBox *box1, const STBox *box2, 
+stbox_penalty_ext(const STBox *box1, const STBox *box2,
   int qx, int qy, int qt)
 {
   STBox unionbox;
@@ -763,7 +765,7 @@ stbox_penalty_ext(const STBox *box1, const STBox *box2,
 }
 
 static double
-solve_c(STBox *box, int num_segs, 
+solve_c(STBox *box, int num_segs,
   double qx, double qy, double qt)
 {
   double  bx, by, bt,
@@ -772,8 +774,8 @@ solve_c(STBox *box, int num_segs,
 
   bx = (box->xmax - box->xmin) / (double) num_segs;
   by = (box->ymax - box->ymin) / (double) num_segs;
-  bt = ((double)(DatumGetTimestampTz(box->period.upper) - 
-    DatumGetTimestampTz(box->period.lower))) 
+  bt = ((double)(DatumGetTimestampTz(box->period.upper) -
+    DatumGetTimestampTz(box->period.lower)))
     / (USECS_PER_MINUTE * num_segs);
 
   qbx = qx / bx;
@@ -814,7 +816,7 @@ tpointseq_linearsplit(const TSequence *seq, double qx, double qy, double qt,
   if (seq->count == 1)
   {
     *nkeys = 1;
-    return tpoint_to_stbox((const Temporal *) seq);
+    return tspatial_to_stbox((const Temporal *) seq);
   }
 
   boxes = palloc(sizeof(STBox)*(seq->count - 1));
@@ -880,13 +882,13 @@ Tpoint_linearsplit(PG_FUNCTION_ARGS)
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       break;
     case TSEQUENCE:
       boxes = tpointseq_linearsplit((TSequence *) temp, qx, qy, qt, &nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
   }
   result = stboxarr_to_array(boxes, nkeys);
   pfree(boxes);
@@ -905,7 +907,7 @@ Tpoint_mest_linearsplit(PG_FUNCTION_ARGS)
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   double qx = MEST_TPOINT_GET_QX(),
          qy = MEST_TPOINT_GET_QY(),
-         qt = MEST_TPOINT_GET_QT();  
+         qt = MEST_TPOINT_GET_QT();
   STBox *boxes;
   Datum *keys;
 
@@ -913,14 +915,14 @@ Tpoint_mest_linearsplit(PG_FUNCTION_ARGS)
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
       break;
     case TSEQUENCE:
       boxes = tpointseq_linearsplit((TSequence *) temp, qx, qy, qt, nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
   }
   keys = palloc(sizeof(Datum) * (*nkeys));
@@ -949,7 +951,7 @@ tpointseq_adaptsplit(const TSequence *seq, int32 segs_per_box, int32 *nkeys)
   if (max_count <= 1)
   {
     * nkeys = 1;
-    return tpoint_to_stbox((const Temporal *) seq);
+    return tspatial_to_stbox((const Temporal *) seq);
   }
 
   boxes = palloc(sizeof(STBox) * seq->count);
@@ -1043,18 +1045,18 @@ Tpoint_adaptsplit(PG_FUNCTION_ARGS)
   int32 nkeys = 1;
   STBox *boxes;
   ArrayType *result;
-  
+
   // assert(temptype_subtype(temp->subtype));
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       break;
     case TSEQUENCE:
       boxes = tpointseq_adaptsplit((TSequence *) temp, segs_per_box, &nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
   }
   result = stboxarr_to_array(boxes, nkeys);
   pfree(boxes);
@@ -1079,14 +1081,14 @@ Tpoint_mest_adaptsplit(PG_FUNCTION_ARGS)
   switch (temp->subtype)
   {
     case TINSTANT:
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
       break;
     case TSEQUENCE:
       boxes = tpointseq_adaptsplit((TSequence *) temp, segs_per_box, nkeys);
       break;
     default: /* TSEQUENCESET */
-      boxes = tpoint_to_stbox(temp);
+      boxes = tspatial_to_stbox(temp);
       *nkeys = 1;
   }
   keys = palloc(sizeof(Datum) * (*nkeys));

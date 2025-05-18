@@ -427,7 +427,11 @@ spg_text_inner_consistent(PG_FUNCTION_ARGS)
 {
 	spgInnerConsistentIn *in = (spgInnerConsistentIn *) PG_GETARG_POINTER(0);
 	spgInnerConsistentOut *out = (spgInnerConsistentOut *) PG_GETARG_POINTER(1);
+#if PG_VERSION_NUM >= 180000
+	bool		collate_is_c = pg_newlocale_from_collation(PG_GET_COLLATION())->collate_is_c;
+#else
 	bool		collate_is_c = lc_collate_is_c(PG_GET_COLLATION());
+#endif
 	text	   *reconstructedValue;
 	text	   *reconstrText;
 	int			maxReconstrLen;

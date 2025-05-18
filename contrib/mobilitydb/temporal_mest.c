@@ -247,7 +247,7 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
   }
 
   /* Get the spans */
-  spans = temporal_time_spans(temp, interv, torigin, &count);
+  spans = temporal_time_bins(temp, interv, torigin, &count);
   keys = palloc(sizeof(Datum) * count);
   assert(temp);
   for (int i = 0; i < count; ++i)
