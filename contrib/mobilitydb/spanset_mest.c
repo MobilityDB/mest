@@ -420,21 +420,21 @@ span_mest_leaf_consistent(const Span *key, const Span *query,
     case RTContainedByStrategyNumber:
     case RTEqualStrategyNumber:
     case RTSameStrategyNumber:
-      return over_span_span(key, query);
+      return overlaps_span_span(key, query);
     case RTAdjacentStrategyNumber:
-      return lf_span_span(key, query) || ri_span_span(key, query);
+      return left_span_span(key, query) || right_span_span(key, query);
     case RTLeftStrategyNumber:
     case RTBeforeStrategyNumber:
-      return lf_span_span(key, query);
+      return left_span_span(key, query);
     case RTOverLeftStrategyNumber:
     case RTOverBeforeStrategyNumber:
-      return ovlf_span_span(key, query);
+      return overleft_span_span(key, query);
     case RTRightStrategyNumber:
     case RTAfterStrategyNumber:
-      return ri_span_span(key, query);
+      return right_span_span(key, query);
     case RTOverRightStrategyNumber:
     case RTOverAfterStrategyNumber:
-      return ovri_span_span(key, query);
+      return overright_span_span(key, query);
     default:
       elog(ERROR, "unrecognized span strategy: %d", strategy);
       return false;    /* keep compiler quiet */
@@ -458,21 +458,21 @@ span_mgist_inner_consistent(const Span *key, const Span *query,
     case RTContainsStrategyNumber:
     case RTEqualStrategyNumber:
     case RTSameStrategyNumber:
-      return over_span_span(key, query);
+      return overlaps_span_span(key, query);
     case RTAdjacentStrategyNumber:
-      return adj_span_span(key, query) || overlaps_span_span(key, query);
+      return adjacent_span_span(key, query) || overlaps_span_span(key, query);
     case RTLeftStrategyNumber:
     case RTBeforeStrategyNumber:
-      return ! ovri_span_span(key, query);
+      return ! overright_span_span(key, query);
     case RTOverLeftStrategyNumber:
     case RTOverBeforeStrategyNumber:
-      return ! ri_span_span(key, query);
+      return ! right_span_span(key, query);
     case RTRightStrategyNumber:
     case RTAfterStrategyNumber:
-      return ! ovlf_span_span(key, query);
+      return ! overleft_span_span(key, query);
     case RTOverRightStrategyNumber:
     case RTOverAfterStrategyNumber:
-      return ! lf_span_span(key, query);
+      return ! left_span_span(key, query);
     default:
       elog(ERROR, "unrecognized span strategy: %d", strategy);
       return false;    /* keep compiler quiet */
@@ -787,7 +787,7 @@ Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
     {
       /* Convert the order by argument to a span and perform the test */
       span_spgist_get_span(&in->orderbys[i], &span);
-      distances[i] = dist_span_span(&span, key);
+      distances[i] = distance_span_span(&span, key);
     }
   }
 
