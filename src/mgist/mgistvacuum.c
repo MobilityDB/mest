@@ -283,7 +283,11 @@ restart:
 	recurse_to = InvalidBlockNumber;
 
 	/* call vacuum_delay_point while not holding any buffer lock */
+#if PG_VERSION_NUM >= 180000
+	vacuum_delay_point(false);
+#else
 	vacuum_delay_point();
+#endif
 
 	buffer = ReadBufferExtended(rel, MAIN_FORKNUM, blkno, RBM_NORMAL,
 								info->strategy);
