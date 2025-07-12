@@ -273,7 +273,7 @@ mgistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		/* Scan the table, adding all tuples to the tuplesort */
 		reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
 										   mgistSortedBuildCallback,
-										   (void *) &mebuildstate, NULL);
+										   &mebuildstate, NULL);
 
 		/*
 		 * Perform the sort and build index pages.
@@ -312,7 +312,7 @@ mgistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		/* Scan the table, inserting all the tuples to the index. */
 		reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
 										   mgistBuildCallback,
-										   (void *) &mebuildstate, NULL);
+										   &mebuildstate, NULL);
 
 		/*
 		 * If buffering was used, flush out all the tuples that are still in
@@ -656,10 +656,12 @@ mgistInitBuffering(MGISTBuildState *mebuildstate)
 	itupMinSize = (Size) MAXALIGN(sizeof(IndexTupleData));
 	for (i = 0; i < index->rd_att->natts; i++)
 	{
-		if (TupleDescAttr(index->rd_att, i)->attlen < 0)
+		CompactAttribute *attr = TupleDescCompactAttr(index->rd_att, i);
+
+		if (attr->attlen < 0)
 			itupMinSize += VARHDRSZ;
 		else
-			itupMinSize += TupleDescAttr(index->rd_att, i)->attlen;
+			itupMinSize += attr->attlen;
 	}
 
 	/* Calculate average and maximal number of index tuples which fit to page */

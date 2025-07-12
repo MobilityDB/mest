@@ -751,6 +751,8 @@ mgistgettuple(IndexScanDesc scan, ScanDirection dir)
 		so->tidisttable = gtidisttable_create(so->queueCxt, 128, so);
 
 		pgstat_count_index_scan(scan->indexRelation);
+		if (scan->instrument)
+			scan->instrument->nsearches++;
 
 		so->firstCall = false;
 		so->curPageData = so->nPageData = 0;
@@ -876,6 +878,8 @@ mgistgetbitmap(IndexScanDesc scan, TIDBitmap *tbm)
 		return 0;
 
 	pgstat_count_index_scan(scan->indexRelation);
+	if (scan->instrument)
+		scan->instrument->nsearches++;
 
 	/* Begin the scan by processing the root page */
 	so->curPageData = so->nPageData = 0;

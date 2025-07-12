@@ -21,9 +21,9 @@
 /*
  * amproc indexes for Multi-Entry GiST indexes.
  */
-#define MGIST_EXTRACTVALUE_PROC     12
-#define MGIST_EXTRACTQUERY_PROC     13
-#define MGISTNProcs                 13
+#define MGIST_EXTRACTVALUE_PROC     13
+#define MGIST_EXTRACTQUERY_PROC     14
+#define MGISTNProcs                 14
 
 /*
  * GISTSTATE: information needed for any GiST index operation
