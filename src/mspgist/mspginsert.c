@@ -167,7 +167,7 @@ mspgbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 											  ALLOCSET_DEFAULT_SIZES);
 
 	reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
-									   mspgistBuildCallback, (void *) &buildstate,
+									   mspgistBuildCallback, &buildstate,
 									   NULL);
 
 	MemoryContextDelete(buildstate.tmpCtx);

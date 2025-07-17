@@ -95,7 +95,7 @@ DEFAULT FOR TYPE anymultirange USING mgist AS
     FUNCTION    6   range_gist_picksplit(internal, internal),
     FUNCTION    7   range_gist_same(anyrange, anyrange, internal),
     FUNCTION    10  multirange_mest_options(internal),
-    FUNCTION    12  multirange_mest_extract(internal, internal, internal);
+    FUNCTION    13  multirange_mest_extract(internal, internal, internal);
     -- FUNCTION    13  multirange_mgist_extract_query(internal, internal, internal);
 
 /******************************************************************************
@@ -327,7 +327,7 @@ DEFAULT FOR TYPE path USING mgist AS
     FUNCTION    6   gist_box_picksplit(internal, internal),
     FUNCTION    7   gist_box_same(box, box, internal),
     FUNCTION    10  mest_path_options(internal),
-    FUNCTION    12  mest_path_extract(internal, internal, internal);
+    FUNCTION    13  mest_path_extract(internal, internal, internal);
 
 /******************************************************************************
  * Multi-Entry Quad-Tree for path types using MSPGiST

@@ -296,8 +296,8 @@ addLeafTuple(Relation index, SpGistState *state, SpGistLeafTuple leafTuple,
 		int			flags;
 
 		XLogBeginInsert();
-		XLogRegisterData((char *) &xlrec, sizeof(xlrec));
-		XLogRegisterData((char *) leafTuple, leafTuple->size);
+		XLogRegisterData(&xlrec, sizeof(xlrec));
+		XLogRegisterData(leafTuple, leafTuple->size);
 
 		flags = REGBUF_STANDARD;
 		if (xlrec.newPage)
@@ -533,12 +533,12 @@ moveLeafs(Relation index, SpGistState *state,
 		xlrec.nodeI = parent->node;
 
 		XLogBeginInsert();
-		XLogRegisterData((char *) &xlrec, SizeOfSpgxlogMoveLeafs);
-		XLogRegisterData((char *) toDelete,
+		XLogRegisterData(&xlrec, SizeOfSpgxlogMoveLeafs);
+		XLogRegisterData(toDelete,
 						 sizeof(OffsetNumber) * nDelete);
-		XLogRegisterData((char *) toInsert,
+		XLogRegisterData(toInsert,
 						 sizeof(OffsetNumber) * nInsert);
-		XLogRegisterData((char *) leafdata, leafptr - leafdata);
+		XLogRegisterData(leafdata, leafptr - leafdata);
 
 		XLogRegisterBuffer(0, current->buffer, REGBUF_STANDARD);
 		XLogRegisterBuffer(1, nbuf, REGBUF_STANDARD | (xlrec.newPage ? REGBUF_WILL_INIT : 0));
@@ -1366,15 +1366,15 @@ doPickSplit(Relation index, SpGistState *state,
 		XLogBeginInsert();
 
 		xlrec.nInsert = nToInsert;
-		XLogRegisterData((char *) &xlrec, SizeOfSpgxlogPickSplit);
+		XLogRegisterData(&xlrec, SizeOfSpgxlogPickSplit);
 
-		XLogRegisterData((char *) toDelete,
+		XLogRegisterData(toDelete,
 						 sizeof(OffsetNumber) * xlrec.nDelete);
-		XLogRegisterData((char *) toInsert,
+		XLogRegisterData(toInsert,
 						 sizeof(OffsetNumber) * xlrec.nInsert);
-		XLogRegisterData((char *) leafPageSelect,
+		XLogRegisterData(leafPageSelect,
 						 sizeof(uint8) * xlrec.nInsert);
-		XLogRegisterData((char *) innerTuple, innerTuple->size);
+		XLogRegisterData(innerTuple, innerTuple->size);
 		XLogRegisterData(leafdata, leafptr - leafdata);
 
 		/* Old leaf page */
@@ -1560,8 +1560,8 @@ spgAddNodeAction(Relation index, SpGistState *state,
 			XLogRecPtr	recptr;
 
 			XLogBeginInsert();
-			XLogRegisterData((char *) &xlrec, sizeof(xlrec));
-			XLogRegisterData((char *) newInnerTuple, newInnerTuple->size);
+			XLogRegisterData(&xlrec, sizeof(xlrec));
+			XLogRegisterData(newInnerTuple, newInnerTuple->size);
 
 			XLogRegisterBuffer(0, current->buffer, REGBUF_STANDARD);
 
@@ -1686,8 +1686,8 @@ spgAddNodeAction(Relation index, SpGistState *state,
 			if (xlrec.parentBlk == 2)
 				XLogRegisterBuffer(2, parent->buffer, REGBUF_STANDARD);
 
-			XLogRegisterData((char *) &xlrec, sizeof(xlrec));
-			XLogRegisterData((char *) newInnerTuple, newInnerTuple->size);
+			XLogRegisterData(&xlrec, sizeof(xlrec));
+			XLogRegisterData(newInnerTuple, newInnerTuple->size);
 
 			recptr = XLogInsert(RM_SPGIST_ID, XLOG_SPGIST_ADD_NODE);
 
@@ -1869,9 +1869,9 @@ spgSplitNodeAction(Relation index, SpGistState *state,
 		XLogRecPtr	recptr;
 
 		XLogBeginInsert();
-		XLogRegisterData((char *) &xlrec, sizeof(xlrec));
-		XLogRegisterData((char *) prefixTuple, prefixTuple->size);
-		XLogRegisterData((char *) postfixTuple, postfixTuple->size);
+		XLogRegisterData(&xlrec, sizeof(xlrec));
+		XLogRegisterData(prefixTuple, prefixTuple->size);
+		XLogRegisterData(postfixTuple, postfixTuple->size);
 
 		XLogRegisterBuffer(0, current->buffer, REGBUF_STANDARD);
 		if (newBuffer != InvalidBuffer)
@@ -1975,7 +1975,7 @@ mspgdoinsert(Relation index, SpGistState *state,
 	{
 		if (!isnulls[i])
 		{
-			if (TupleDescAttr(leafDescriptor, i)->attlen == -1)
+			if (TupleDescCompactAttr(leafDescriptor, i)->attlen == -1)
 				leafDatums[i] = PointerGetDatum(PG_DETOAST_DATUM(datums[i]));
 			else
 				leafDatums[i] = datums[i];
