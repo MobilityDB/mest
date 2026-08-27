@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include "postgres.h"
+#include "common/pg_prng.h"
 #include "fmgr.h"
 #include "access/gist.h"
 #include "access/spgist.h"
@@ -223,7 +224,7 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
   // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   char *duration;
   Interval *interv = NULL;
-  TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
+  TimestampTz torigin = mest_timestamptz_origin();
   int32 count;
   Span *spans;
   Datum *keys;
@@ -235,8 +236,9 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
-        PointerGetDatum(duration), -1));
+      interv = DatumGetIntervalP(DirectFunctionCall3(interval_in,
+        CStringGetDatum(duration), ObjectIdGetDatum(InvalidOid),
+        Int32GetDatum(-1)));
       if (! interv)
       {
         ereport(ERROR,
@@ -247,7 +249,7 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
   }
 
   /* Get the spans */
-  spans = temporal_time_spans(temp, interv, torigin, &count);
+  spans = temporal_time_bins(temp, interv, torigin, &count);
   keys = palloc(sizeof(Datum) * count);
   assert(temp);
   for (int i = 0; i < count; ++i)

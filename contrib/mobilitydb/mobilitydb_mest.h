@@ -59,6 +59,9 @@
 #define BORDER_INC       true
 #define BORDER_EXC       false
 
+/** Origin the time bins and the time dimension of the tiles are anchored at */
+#define MEST_TIME_ORIGIN  "2020-03-01"
+
 /*****************************************************************************/
 
 /** Enumeration for the types of SP-GiST indexes */
@@ -78,66 +81,30 @@ typedef struct
   Span right;
 } SpanNode;
 
-#define MAXDIMS 4
-
-/**
- * Structure for storing a bit matrix
- */
-typedef struct
-{
-  int ndims;             /**< Number of dimensions */
-  int count[MAXDIMS];    /**< Number of elements in each dimension */
-  uint8_t byte[1];       /**< beginning of variable-length data */
-} BitMatrix;
-
-/**
- * Struct for storing the state that persists across multiple calls generating
- * a multidimensional grid
- */
-typedef struct STboxGridState
-{
-  bool done;               /**< True when all tiles have been processed */
-  bool hasz;               /**< True when tiles have Z dimension */
-  bool hast;               /**< True when tiles have T dimension */
-  int i;                   /**< Number of current tile */
-  double xsize;            /**< Size of the x dimension */
-  double ysize;            /**< Size of the y dimension */
-  double zsize;            /**< Size of the z dimension, 0 for 2D */
-  int64 tunits;            /**< Size of the time dimension, 0 for spatial only */
-  STBox box;               /**< Bounding box of the grid */
-  const Temporal *temp;    /**< Optional temporal point to be split */
-  BitMatrix *bm;           /**< Optional bit matrix for speeding up the
-                              computation of the split functions */
-  double x;                /**< Minimum x value of the current tile */
-  double y;                /**< Minimum y value of the current tile */
-  double z;                /**< Minimum z value of the current tile, if any */
-  TimestampTz t;           /**< Minimum t value of the current tile, if any */
-  int ntiles;              /**< Total number of tiles */
-  int max_coords[MAXDIMS]; /**< Maximum coordinates of the tiles */
-  int coords[MAXDIMS];     /**< Coordinates of the current tile */
-} STboxGridState;
-
 /*****************************************************************************
  * External functions from MobilityDB
  *****************************************************************************/
 
 extern bool ensure_not_null(const void *ptr);
 extern bool ensure_positive(int i);
-extern Oid type_oid(meosType t);
+extern Oid meostype_oid(MeosType type);
 extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
-extern Datum call_function1(PGFunction func, Datum arg1);
-extern Datum call_function2(PGFunction func, Datum arg1, Datum arg2);
+extern Datum date_in(PG_FUNCTION_ARGS);
 extern Datum interval_in(PG_FUNCTION_ARGS);
+extern Datum timestamptz_in(PG_FUNCTION_ARGS);
 extern void spanset_span_slice(Datum d, Span *s);
 extern Temporal *temporal_slice(Datum tempdatum);
-extern meosType oid_type(Oid typid);
-extern void spannode_init(SpanNode *nodebox, meosType spantype,
-  meosType basetype);
+extern MeosType oid_meostype(Oid typid);
+extern void spannode_init(SpanNode *nodebox, MeosType spantype,
+  MeosType basetype);
 extern bool span_gist_get_span(FunctionCallInfo fcinfo, Span *result,
   Oid typid);
-extern bool span_spgist_get_span(const ScanKeyData *scankey, Span *result);
+extern bool span_spgist_get_span(Datum value, MeosType type,
+  Span *result);
 extern SpanNode *spannode_copy(const SpanNode *orig);
-extern double distance_span_nodespan(Span *query, SpanNode *nodebox);
+extern double distance_span_nodespan(const Span *query,
+  const SpanNode *nodebox);
+extern double distance_double(Datum dist, MeosType type);
 extern void spannode_quadtree_next(const SpanNode *nodebox, 
   const Span *centroid, uint8 quadrant, SpanNode *next_nodespan);
 extern void spannode_kdtree_next(const SpanNode *nodebox, const Span *centroid,
@@ -149,11 +116,30 @@ extern bool overLeft2D(const SpanNode *nodebox, const Span *query);
 extern bool right2D(const SpanNode *nodebox, const Span *query);
 extern bool overRight2D(const SpanNode *nodebox, const Span *query);
 extern bool adjacent2D(const SpanNode *nodebox, const Span *query);
-extern void stbox_tile_state_next(STboxGridState *state);
-extern bool stbox_tile_state_get(STboxGridState *state, STBox *box);
-extern STboxGridState *tpoint_space_time_tile_init(const Temporal *temp,
-  float xsize, float ysize, float zsize, const Interval *duration,
-  const GSERIALIZED *sorigin, TimestampTz torigin, bool bitmatrix,
-  bool border_inc, int *ntiles);
+
+/*****************************************************************************
+ * Origin of the time bins and of the time dimension of the tiles
+ *****************************************************************************/
+
+/**
+ * @brief Return the origin of the time dimension as a date
+ */
+static inline DateADT
+mest_date_origin(void)
+{
+  return DatumGetDateADT(DirectFunctionCall1(date_in,
+    CStringGetDatum(MEST_TIME_ORIGIN)));
+}
+
+/**
+ * @brief Return the origin of the time dimension as a timestamptz
+ */
+static inline TimestampTz
+mest_timestamptz_origin(void)
+{
+  return DatumGetTimestampTz(DirectFunctionCall3(timestamptz_in,
+    CStringGetDatum(MEST_TIME_ORIGIN), ObjectIdGetDatum(InvalidOid),
+    Int32GetDatum(-1)));
+}
 
 /*****************************************************************************/
