@@ -95,6 +95,27 @@ typedef struct
                          represented as a string */
 } TFloatTileOptions;
 
+/**
+ * @brief Return the keys of a multi-entry index for the entries given in the
+ * second argument together with the bounding box of the value
+ * @note The topological and the position operators of MobilityDB answer on the
+ * bounding box of a temporal value. The entries of a value cover the value but
+ * not its bounding box, so a query that meets the box where no entry lies has
+ * no entry that can find it and the box is itself a key of the value
+ */
+static Datum *
+mest_tbox_keys(const Temporal *temp, TBox *boxes, int32 *nkeys)
+{
+  Datum *result = palloc(sizeof(Datum) * (*nkeys + 1));
+  TBox *box = palloc(sizeof(TBox));
+  tnumber_set_tbox(temp, box);
+  result[0] = PointerGetDatum(box);
+  for (int i = 0; i < *nkeys; ++i)
+    result[i + 1] = PointerGetDatum(&boxes[i]);
+  (*nkeys)++;
+  return result;
+}
+
 /*****************************************************************************
  * Multi-Entry GiST and SP-GiST compress methods for temporal numbers
  *****************************************************************************/
@@ -237,9 +258,7 @@ Tnumber_mest_equisplit(PG_FUNCTION_ARGS)
   // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int32 num_boxes = MEST_TNUMBER_GET_BOXES();
   TBox *boxes = tnumber_split_n_tboxes(temp, num_boxes, nkeys);
-  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
-  for (int i = 0; i < *nkeys; ++i)
-    keys[i] = PointerGetDatum(&boxes[i]);
+  Datum *keys = mest_tbox_keys(temp, boxes, nkeys);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
 }
@@ -255,9 +274,7 @@ Tnumber_mest_segsplit(PG_FUNCTION_ARGS)
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   int segs_per_box = MEST_TNUMBER_GET_SEGS();
   TBox *boxes = tnumber_split_each_n_tboxes(temp, segs_per_box, nkeys);
-  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
-  for (int i = 0; i < *nkeys; ++i)
-    keys[i] = PointerGetDatum(&boxes[i]);
+  Datum *keys = mest_tbox_keys(temp, boxes, nkeys);
   /* We cannot pfree boxes */
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
@@ -305,11 +322,8 @@ Tint_mest_tilesplit(PG_FUNCTION_ARGS)
   /* Get the tiles */
   boxes = tnumber_value_time_boxes(temp, Int32GetDatum(vsize), interv,
     Int32GetDatum(vorigin), torigin, &count);
-  keys = palloc(sizeof(Datum) * count);
-  assert(temp);
-  for (int i = 0; i < count; ++i)
-    keys[i] = PointerGetDatum(&boxes[i]);
   *nkeys = count;
+  keys = mest_tbox_keys(temp, boxes, nkeys);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
 }
@@ -354,11 +368,8 @@ Tfloat_mest_tilesplit(PG_FUNCTION_ARGS)
   /* Get the tiles */
   boxes = tnumber_value_time_boxes(temp, Float8GetDatum(vsize), interv,
     Float8GetDatum(vorigin), torigin, &count);
-  keys = palloc(sizeof(Datum) * count);
-  assert(temp);
-  for (int i = 0; i < count; ++i)
-    keys[i] = PointerGetDatum(&boxes[i]);
   *nkeys = count;
+  keys = mest_tbox_keys(temp, boxes, nkeys);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
 }

@@ -11,6 +11,77 @@ CREATE FUNCTION stbox_collect(stbox[])
   LANGUAGE SQL;
 
 /******************************************************************************
+ * Multi-Entry consistent methods
+ *
+ * A key covers one entry of the indexed value, so a strategy that asks the key
+ * to hold the query is answered with overlaps and every strategy is rechecked
+ ******************************************************************************/
+
+CREATE FUNCTION tbool_mgist_consistent(internal, tbool, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Temporal_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION ttext_mgist_consistent(internal, ttext, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Temporal_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tint_mgist_consistent(internal, tint, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Tnumber_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tfloat_mgist_consistent(internal, tfloat, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Tnumber_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Tpoint_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tgeogpoint_mgist_consistent(internal, tgeogpoint, smallint, oid, internal)
+  RETURNS boolean
+  AS 'MODULE_PATHNAME', 'Tpoint_mgist_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION span_mquadtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Span_mquadtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION span_mkdtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Span_mkdtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION span_mspgist_leaf_consistent(internal, internal)
+  RETURNS bool
+  AS 'MODULE_PATHNAME', 'Span_mspgist_leaf_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION tbox_mquadtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Tbox_mquadtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tbox_mkdtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Tbox_mkdtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION tbox_mspgist_leaf_consistent(internal, internal)
+  RETURNS bool
+  AS 'MODULE_PATHNAME', 'Tbox_mspgist_leaf_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+CREATE FUNCTION stbox_mquadtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Stbox_mquadtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION stbox_mkdtree_inner_consistent(internal, internal)
+  RETURNS void
+  AS 'MODULE_PATHNAME', 'Stbox_mkdtree_inner_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+CREATE FUNCTION stbox_mspgist_leaf_consistent(internal, internal)
+  RETURNS bool
+  AS 'MODULE_PATHNAME', 'Stbox_mspgist_leaf_consistent'
+  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+/******************************************************************************
  * Multi-Entry Search Trees common methods for spanset types 
  ******************************************************************************/
 
@@ -2455,7 +2526,7 @@ CREATE OPERATOR CLASS tbool_mrtree_equisplit_ops
   OPERATOR  31    #&> (tbool, tstzspan),
   OPERATOR  31    #&> (tbool, tbool),
   -- functions
-  FUNCTION  1  tbool_gist_consistent(internal, tbool, smallint, oid, internal),
+  FUNCTION  1  tbool_mgist_consistent(internal, tbool, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -2493,8 +2564,8 @@ CREATE OPERATOR CLASS tbool_mquadtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_span_options(internal),
   FUNCTION  8  temporal_mest_equisplit(internal, internal, internal);
@@ -2527,8 +2598,8 @@ CREATE OPERATOR CLASS tbool_mkdtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_span_options(internal),
   FUNCTION  8  temporal_mest_equisplit(internal, internal, internal);
@@ -2560,7 +2631,7 @@ CREATE OPERATOR CLASS ttext_mrtree_equisplit_ops
   OPERATOR  31    #&> (ttext, tstzspan),
   OPERATOR  31    #&> (ttext, ttext),
   -- functions
-  FUNCTION  1  ttext_gist_consistent(internal, ttext, smallint, oid, internal),
+  FUNCTION  1  ttext_mgist_consistent(internal, ttext, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -2598,8 +2669,8 @@ CREATE OPERATOR CLASS ttext_mquadtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_span_options(internal),
   FUNCTION  8  temporal_mest_equisplit(internal, internal, internal);
@@ -2632,8 +2703,8 @@ CREATE OPERATOR CLASS ttext_mkdtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_span_options(internal),
   FUNCTION  8  temporal_mest_equisplit(internal, internal, internal);
@@ -2672,7 +2743,7 @@ CREATE OPERATOR CLASS tbool_mrtree_segsplit_ops
   OPERATOR  31    #&> (tbool, tstzspan),
   OPERATOR  31    #&> (tbool, tbool),
   -- functions
-  FUNCTION  1  tbool_gist_consistent(internal, tbool, smallint, oid, internal),
+  FUNCTION  1  tbool_mgist_consistent(internal, tbool, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -2710,8 +2781,8 @@ CREATE OPERATOR CLASS tbool_mquadtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_seg_options(internal),
   FUNCTION  8  temporal_mest_segsplit(internal, internal, internal);
@@ -2744,8 +2815,8 @@ CREATE OPERATOR CLASS tbool_mkdtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_seg_options(internal),
   FUNCTION  8  temporal_mest_segsplit(internal, internal, internal);
@@ -2777,7 +2848,7 @@ CREATE OPERATOR CLASS ttext_mrtree_segsplit_ops
   OPERATOR  31    #&> (ttext, tstzspan),
   OPERATOR  31    #&> (ttext, ttext),
   -- functions
-  FUNCTION  1  ttext_gist_consistent(internal, ttext, smallint, oid, internal),
+  FUNCTION  1  ttext_mgist_consistent(internal, ttext, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -2815,8 +2886,8 @@ CREATE OPERATOR CLASS ttext_mquadtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_seg_options(internal),
   FUNCTION  8  temporal_mest_segsplit(internal, internal, internal);
@@ -2849,8 +2920,8 @@ CREATE OPERATOR CLASS ttext_mkdtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_seg_options(internal),
   FUNCTION  8  temporal_mest_segsplit(internal, internal, internal);
@@ -2889,7 +2960,7 @@ CREATE OPERATOR CLASS tbool_mrtree_binsplit_ops
   OPERATOR  31    #&> (tbool, tstzspan),
   OPERATOR  31    #&> (tbool, tbool),
   -- functions
-  FUNCTION  1  tbool_gist_consistent(internal, tbool, smallint, oid, internal),
+  FUNCTION  1  tbool_mgist_consistent(internal, tbool, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -2927,8 +2998,8 @@ CREATE OPERATOR CLASS tbool_mquadtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_bin_options(internal),
   FUNCTION  8  temporal_mest_binsplit(internal, internal, internal);
@@ -2961,8 +3032,8 @@ CREATE OPERATOR CLASS tbool_mkdtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_bin_options(internal),
   FUNCTION  8  temporal_mest_binsplit(internal, internal, internal);
@@ -2994,7 +3065,7 @@ CREATE OPERATOR CLASS ttext_mrtree_binsplit_ops
   OPERATOR  31    #&> (ttext, tstzspan),
   OPERATOR  31    #&> (ttext, ttext),
   -- functions
-  FUNCTION  1  ttext_gist_consistent(internal, ttext, smallint, oid, internal),
+  FUNCTION  1  ttext_mgist_consistent(internal, ttext, smallint, oid, internal),
   FUNCTION  2  span_gist_union(internal, internal),
   FUNCTION  3  temporal_mgist_compress(internal),
   FUNCTION  5  span_gist_penalty(internal, internal, internal),
@@ -3032,8 +3103,8 @@ CREATE OPERATOR CLASS ttext_mquadtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  span_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_bin_options(internal),
   FUNCTION  8  temporal_mest_binsplit(internal, internal, internal);
@@ -3072,8 +3143,8 @@ CREATE OPERATOR CLASS ttext_mkdtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  span_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  span_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  temporal_mspgist_compress(internal),
   FUNCTION  7  temporal_mest_bin_options(internal),
   FUNCTION  8  temporal_mest_binsplit(internal, internal, internal);
@@ -3156,7 +3227,7 @@ CREATE OPERATOR CLASS tint_mrtree_equisplit_ops
   OPERATOR  31    #&> (tint, tbox),
   OPERATOR  31    #&> (tint, tint),
   -- functions
-  FUNCTION  1  tint_gist_consistent(internal, tint, smallint, oid, internal),
+  FUNCTION  1  tint_mgist_consistent(internal, tint, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3204,8 +3275,8 @@ CREATE OPERATOR CLASS tint_mquadtree_equisplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_box_options(internal),
   FUNCTION  8  tnumber_mest_equisplit(internal, internal, internal);
@@ -3248,8 +3319,8 @@ CREATE OPERATOR CLASS tint_mkdtree_equisplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_box_options(internal),
   FUNCTION  8  tnumber_mest_equisplit(internal, internal, internal);
@@ -3291,7 +3362,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_equisplit_ops
   OPERATOR  31    #&> (tfloat, tbox),
   OPERATOR  31    #&> (tfloat, tfloat),
   -- functions
-  FUNCTION  1  tfloat_gist_consistent(internal, tfloat, smallint, oid, internal),
+  FUNCTION  1  tfloat_mgist_consistent(internal, tfloat, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3339,8 +3410,8 @@ CREATE OPERATOR CLASS tfloat_mquadtree_equisplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_box_options(internal),
   FUNCTION  8  tnumber_mest_equisplit(internal, internal, internal);
@@ -3383,8 +3454,8 @@ CREATE OPERATOR CLASS tfloat_mkdtree_equisplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_box_options(internal),
   FUNCTION  8  tnumber_mest_equisplit(internal, internal, internal);
@@ -3433,7 +3504,7 @@ CREATE OPERATOR CLASS tint_mrtree_segsplit_ops
   OPERATOR  31    #&> (tint, tbox),
   OPERATOR  31    #&> (tint, tint),
   -- functions
-  FUNCTION  1  tint_gist_consistent(internal, tint, smallint, oid, internal),
+  FUNCTION  1  tint_mgist_consistent(internal, tint, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3481,8 +3552,8 @@ CREATE OPERATOR CLASS tint_mquadtree_segsplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_seg_options(internal),
   FUNCTION  8  tnumber_mest_segsplit(internal, internal, internal);
@@ -3525,8 +3596,8 @@ CREATE OPERATOR CLASS tint_mkdtree_segsplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_seg_options(internal),
   FUNCTION  8  tnumber_mest_segsplit(internal, internal, internal);
@@ -3568,7 +3639,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_segsplit_ops
   OPERATOR  31    #&> (tfloat, tbox),
   OPERATOR  31    #&> (tfloat, tfloat),
   -- functions
-  FUNCTION  1  tfloat_gist_consistent(internal, tfloat, smallint, oid, internal),
+  FUNCTION  1  tfloat_mgist_consistent(internal, tfloat, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3616,8 +3687,8 @@ CREATE OPERATOR CLASS tfloat_mquadtree_segsplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_seg_options(internal),
   FUNCTION  8  tnumber_mest_segsplit(internal, internal, internal);
@@ -3660,8 +3731,8 @@ CREATE OPERATOR CLASS tfloat_mkdtree_segsplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tnumber_mest_seg_options(internal),
   FUNCTION  8  tnumber_mest_segsplit(internal, internal, internal);
@@ -3717,7 +3788,7 @@ CREATE OPERATOR CLASS tint_mrtree_tilesplit_ops
   OPERATOR  31    #&> (tint, tbox),
   OPERATOR  31    #&> (tint, tint),
   -- functions
-  FUNCTION  1  tint_gist_consistent(internal, tint, smallint, oid, internal),
+  FUNCTION  1  tint_mgist_consistent(internal, tint, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3765,8 +3836,8 @@ CREATE OPERATOR CLASS tint_mquadtree_tilesplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tint_mest_tile_options(internal),
   FUNCTION  8  tint_mest_tilesplit(internal, internal, internal);
@@ -3809,8 +3880,8 @@ CREATE OPERATOR CLASS tint_mkdtree_tilesplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tint_mest_tile_options(internal),
   FUNCTION  8  tint_mest_tilesplit(internal, internal, internal);
@@ -3854,7 +3925,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_tilesplit_ops
   OPERATOR  31    #&> (tfloat, tbox),
   OPERATOR  31    #&> (tfloat, tfloat),
   -- functions
-  FUNCTION  1  tfloat_gist_consistent(internal, tfloat, smallint, oid, internal),
+  FUNCTION  1  tfloat_mgist_consistent(internal, tfloat, smallint, oid, internal),
   FUNCTION  2  tbox_gist_union(internal, internal),
   FUNCTION  3  tnumber_mgist_compress(internal),
   FUNCTION  5  tbox_gist_penalty(internal, internal, internal),
@@ -3902,8 +3973,8 @@ CREATE OPERATOR CLASS tfloat_mquadtree_tilesplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_quadtree_choose(internal, internal),
   FUNCTION  3  tbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tfloat_mest_tile_options(internal),
   FUNCTION  8  tfloat_mest_tilesplit(internal, internal, internal);
@@ -3946,8 +4017,8 @@ CREATE OPERATOR CLASS tfloat_mkdtree_tilesplit_ops
   FUNCTION  1  tbox_spgist_config(internal, internal),
   FUNCTION  2  tbox_kdtree_choose(internal, internal),
   FUNCTION  3  tbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  tbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  tbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  tbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  tbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tnumber_mspgist_compress(internal),
   FUNCTION  7  tfloat_mest_tile_options(internal),
   FUNCTION  8  tfloat_mest_tilesplit(internal, internal, internal);
@@ -4027,7 +4098,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_equisplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4075,8 +4146,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_equisplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_equisplit(internal, internal, internal);
@@ -4119,8 +4190,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_equisplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_equisplit(internal, internal, internal);
@@ -4166,7 +4237,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_equisplit_ops
   OPERATOR  31    #&> (tgeogpoint, stbox),
   OPERATOR  31    #&> (tgeogpoint, tgeogpoint),
   -- functions
-  FUNCTION  1  tgeogpoint_gist_consistent(internal, tgeogpoint, smallint, oid, internal),
+  FUNCTION  1  tgeogpoint_mgist_consistent(internal, tgeogpoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4222,8 +4293,8 @@ CREATE OPERATOR CLASS tgeogpoint_mquadtree_equisplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_equisplit(internal, internal, internal);
@@ -4274,8 +4345,8 @@ CREATE OPERATOR CLASS tgeogpoint_mkdtree_equisplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_equisplit(internal, internal, internal);
@@ -4324,7 +4395,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_segsplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4375,8 +4446,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_segsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_seg_options(internal),
   FUNCTION  8  tpoint_mest_segsplit(internal, internal, internal);
@@ -4419,8 +4490,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_segsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_seg_options(internal),
   FUNCTION  8  tpoint_mest_segsplit(internal, internal, internal);
@@ -4470,7 +4541,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_segsplit_ops
   OPERATOR  31    #&> (tgeogpoint, stbox),
   OPERATOR  31    #&> (tgeogpoint, tgeogpoint),
   -- functions
-  FUNCTION  1  tgeogpoint_gist_consistent(internal, tgeogpoint, smallint, oid, internal),
+  FUNCTION  1  tgeogpoint_mgist_consistent(internal, tgeogpoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4526,8 +4597,8 @@ CREATE OPERATOR CLASS tgeogpoint_mquadtree_segsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_seg_options(internal),
   FUNCTION  8  tpoint_mest_segsplit(internal, internal, internal);
@@ -4578,8 +4649,8 @@ CREATE OPERATOR CLASS tgeogpoint_mkdtree_segsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_seg_options(internal),
   FUNCTION  8  tpoint_mest_segsplit(internal, internal, internal);
@@ -4630,7 +4701,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_tilesplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4678,8 +4749,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_tilesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_tile_options(internal),
   FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
@@ -4722,8 +4793,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_tilesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_tile_options(internal),
   FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
@@ -4775,7 +4846,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_tilesplit_ops
   OPERATOR  31    #&> (tgeogpoint, stbox),
   OPERATOR  31    #&> (tgeogpoint, tgeogpoint),
   -- functions
-  FUNCTION  1  tgeogpoint_gist_consistent(internal, tgeogpoint, smallint, oid, internal),
+  FUNCTION  1  tgeogpoint_mgist_consistent(internal, tgeogpoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -4831,8 +4902,8 @@ CREATE OPERATOR CLASS tgeogpoint_mquadtree_tilesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_tile_options(internal),
   FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
@@ -4883,8 +4954,8 @@ CREATE OPERATOR CLASS tgeogpoint_mkdtree_tilesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_tile_options(internal),
   FUNCTION  8  tpoint_mest_tilesplit(internal, internal, internal);
@@ -4956,7 +5027,7 @@ CREATE OPERATOR CLASS tgeompoint_mgist_mergesplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -5004,8 +5075,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_mergesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_mergesplit(internal, internal, internal);
@@ -5048,8 +5119,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_mergesplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_mergesplit(internal, internal, internal);
@@ -5109,7 +5180,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_linearsplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -5157,8 +5228,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_linearsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_query_options(internal),
   FUNCTION  8  tpoint_mest_linearsplit(internal, internal, internal);
@@ -5201,8 +5272,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_linearsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_query_options(internal),
   FUNCTION  8  tpoint_mest_linearsplit(internal, internal, internal);
@@ -5262,7 +5333,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_adaptsplit_ops
   OPERATOR  31    #&> (tgeompoint, stbox),
   OPERATOR  31    #&> (tgeompoint, tgeompoint),
   -- functions
-  FUNCTION  1  tgeompoint_gist_consistent(internal, tgeompoint, smallint, oid, internal),
+  FUNCTION  1  tgeompoint_mgist_consistent(internal, tgeompoint, smallint, oid, internal),
   FUNCTION  2  stbox_gist_union(internal, internal),
   FUNCTION  3  tpoint_mgist_compress(internal),
   FUNCTION  5  stbox_gist_penalty(internal, internal, internal),
@@ -5310,8 +5381,8 @@ CREATE OPERATOR CLASS tgeompoint_mquadtree_adaptsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_quadtree_choose(internal, internal),
   FUNCTION  3  stbox_quadtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_quadtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_adaptsplit(internal, internal, internal);
@@ -5354,8 +5425,8 @@ CREATE OPERATOR CLASS tgeompoint_mkdtree_adaptsplit_ops
   FUNCTION  1  stbox_spgist_config(internal, internal),
   FUNCTION  2  stbox_kdtree_choose(internal, internal),
   FUNCTION  3  stbox_kdtree_picksplit(internal, internal),
-  FUNCTION  4  stbox_kdtree_inner_consistent(internal, internal),
-  FUNCTION  5  stbox_spgist_leaf_consistent(internal, internal),
+  FUNCTION  4  stbox_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  stbox_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  tpoint_mspgist_compress(internal),
   FUNCTION  7  tpoint_mest_box_options(internal),
   FUNCTION  8  tpoint_mest_adaptsplit(internal, internal, internal);
