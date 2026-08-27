@@ -139,7 +139,7 @@ mgistvalidate(Oid opclassoid)
 				ok = check_amproc_signature(procform->amproc, VOIDOID, true,
 											1, 1, INTERNALOID);
 				break;
-			case GIST_STRATNUM_PROC:
+			case GIST_TRANSLATE_CMPTYPE_PROC:
 				ok = check_amproc_signature(procform->amproc, INT2OID, true,
 											1, 1, INT4OID) &&
 					procform->amproclefttype == ANYOID &&
@@ -271,7 +271,7 @@ mgistvalidate(Oid opclassoid)
 		if (i == GIST_DISTANCE_PROC || i == GIST_FETCH_PROC ||
 			i == GIST_COMPRESS_PROC || i == GIST_DECOMPRESS_PROC ||
 			i == GIST_OPTIONS_PROC || i == GIST_SORTSUPPORT_PROC ||
-			i == GIST_STRATNUM_PROC)
+			i == GIST_TRANSLATE_CMPTYPE_PROC)
 			continue;			/* optional methods */
 		ereport(INFO,
 				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
@@ -343,7 +343,7 @@ mgistadjustmembers(Oid opfamilyoid,
 			case GIST_FETCH_PROC:
 			case GIST_OPTIONS_PROC:
 			case GIST_SORTSUPPORT_PROC:
-			case GIST_STRATNUM_PROC:
+			case GIST_TRANSLATE_CMPTYPE_PROC:
 				/* Optional, so force it to be a soft family dependency */
 				op->ref_is_hard = false;
 				op->ref_is_family = true;
