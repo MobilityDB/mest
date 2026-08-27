@@ -5,15 +5,19 @@ This directory contains an implementation of Multi-Entry Search Trees for Mobili
 
 Dependencies
 ------------
-- [PostgreSQL 17](https://www.postgresql.org/)
-- [MobilityDB 1.2](https://github.com/MobilityDB/MobilityDB)
-- [MEOS 1.2](https://www.libmeos.org/)
-- [mest](https://github.com/MobilityDB/mest)
+- [PostgreSQL 17 or 18](https://www.postgresql.org/)
+- [MobilityDB 1.4](https://github.com/MobilityDB/MobilityDB)
+- [MEOS 1.4](https://www.libmeos.org/)
+- [MEST](https://github.com/MobilityDB/mest)
 
-You should also set the following in postgresql.conf depending on the version of PostGIS and MobilityDB you have installed (below we use PostGIS 3, MobilityDB 1.2):
+The extension compiles against the MEOS headers that a MobilityDB installation provides, and
+those headers include `<json-c/json.h>`, so the json-c development files must be on the
+include path as well.
+
+The following setting in postgresql.conf names the installed PostGIS and MobilityDB libraries, here PostGIS 3 and MobilityDB 1.4:
 
 ```
-shared_preload_libraries = 'postgis-3,libMobilityDB-1.2'
+shared_preload_libraries = 'postgis-3,libMobilityDB-1.4'
 ```
 
 Installation
@@ -30,9 +34,9 @@ Enabling the `mobilitydb_mest` extension
 CREATE EXTENSION mobilitydb_mest CASCADE;
 ```
 
-Create a Multi-Entry R-Tree on the `tstzspan` column from the table `tbl_tstzspan(id int, t tstzspan)`
+Create a Multi-Entry R-Tree on the `tstzspanset` column from the table `tbl_tstzspanset(id int, t tstzspanset)`
 ```sql
-CREATE INDEX tbl_tstzspan_mrtree_idx ON trips USING MGIST(t);
+CREATE INDEX tbl_tstzspanset_mrtree_idx ON tbl_tstzspanset USING MGIST(t);
 ```
 
 Create a Multi-Entry Quadtree on the `tgeompoint` column `trip` from the table `trips(id int, trip tgeompoint)`
@@ -40,20 +44,19 @@ Create a Multi-Entry Quadtree on the `tgeompoint` column `trip` from the table `
 CREATE INDEX trips_trip_mquadtree_idx ON trips USING MSPGIST(trip);
 ```
 
-The access methods have an optional parameter that sets the maximum number of &ldquo;boxes&rdquo; stored in the index. This parameter is typically used to control the size of the resulting index.
+The operator classes have optional parameters that set the maximum number of &ldquo;boxes&rdquo; stored in the index. These parameters control the size of the resulting index.
 
-Create a Multi-Entry R-Tree on the `tstzspan` column from the table `tbl_tstzspan(id int, t tstzspan)` specifying a maximum number of spans per row.
+Create a Multi-Entry R-Tree on the `tstzspanset` column from the table `tbl_tstzspanset(id int, t tstzspanset)` specifying a maximum number of spans per row.
 ```sql
-CREATE INDEX tbl_tstzspanset_mrtree_opts_idx ON tbl_tstzspan 
-  USING MGIST(p tstzspanset_mrtree_ops (max_ranges = 3));
+CREATE INDEX tbl_tstzspanset_mrtree_opts_idx ON tbl_tstzspanset 
+  USING MGIST(t tstzspanset_mrtree_equisplit_ops (num_spans = 3));
 ```
 
-Create a Multi-Entry Quad-Tree on the `tgeompoint` column from the table `tbl_tstzmultirange(id int, t tgeompoint)` specifying a maximum number of boxes per row.
+Create a Multi-Entry Quadtree on the `tgeompoint` column from the table `tbl_tgeompoint(id int, temp tgeompoint)` specifying a maximum number of boxes per row.
 ```sql
 CREATE INDEX tbl_tgeompoint_mquadtree_opts_idx ON tbl_tgeompoint
-  USING MSPGIST(t multirange_mquadtree_ops (max_boxes = 3));
+  USING MSPGIST(temp tgeompoint_mquadtree_equisplit_ops (num_boxes = 3));
 ```
-
 
 Contact:
   Maxime Schoemans  <maxime.schoemans@ulb.be>

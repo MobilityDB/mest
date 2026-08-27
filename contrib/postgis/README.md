@@ -10,11 +10,11 @@ However, the PostGIS support functions are not yet implemented for MGiST indexes
 
 Dependencies
 ------------
-- [PostgreSQL 17](https://www.postgresql.org/)
-- [PostGIS 3.4](https://postgis.net/)
-- [mgist](../mgist)
+- [PostgreSQL 17 or 18](https://www.postgresql.org/)
+- [PostGIS 3](https://postgis.net/)
+- [MEST](https://github.com/MobilityDB/mest)
 
-You should also set the following in postgresql.conf depending on the version of PostGIS you have installed (below we use PostGIS 3):
+The following setting in postgresql.conf names the installed PostGIS library, here PostGIS 3:
 
 ```
 shared_preload_libraries = 'postgis-3'
@@ -31,10 +31,10 @@ make
 sudo make install
 ```
 
-Using the extension to create a Multi-Entry R-Tree on the geometry column `trip` from the table `trips(id, trip)`
+Using the extension to create a Multi-Entry R-Tree on the geometry column `geom` from the table `regions(id int, geom geometry)`
 ```sql
-CREATE EXTENSION mgist_mobilitydb CASCADE;
-CREATE INDEX trips_mgist_trip on trips using mgist(trip);
+CREATE EXTENSION postgis_mest CASCADE;
+CREATE INDEX regions_mgist_geom ON regions USING MGIST(geom);
 ```
 
 Contact:

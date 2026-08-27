@@ -5,34 +5,29 @@ This directory contains an implementation of the Multi-Entry SP-GiST access meth
 It is a variation of the SP-GiST index that allows for more efficient indexing of
 complex and composite data types.
 
-The extension on its own only adds the access method handler, but no index implementations.\
-For uses of the Multi-Entry SP-GiST index, see the example use-cases below.
+The access method is shipped by the `mest` extension, which also provides a Multi-Entry
+Quadtree for the PostgreSQL `path` and `multirange` types.\
+For more uses of the Multi-Entry SP-GiST index, see the example use-cases below.
 
 Dependencies
 ------------
-- [PostgreSQL 15](https://www.postgresql.org/)
+- [PostgreSQL 17 or 18](https://www.postgresql.org/)
 
 Installation
 ------------
-Compiling and installing the extension
-```
-make
-sudo make install
-```
+Please refer to the top directory for instructions to compile and install the `mest` extension.
 
 Creating the extension in a PostgreSQL database
 ```sql
-CREATE EXTENSION mspgist;
+CREATE EXTENSION mest;
 ```
 
 Example use-cases
 -----------------
 
-Below are some extension using the Multi-Entry SP-GiST index to index complex data types.
+Below are the extensions using the Multi-Entry SP-GiST index to index complex data types.
 
-  * PostGIS GeometryCollections and LineString: TODO
-  * MobilityDB Trajectories: [mspgist-mobilitydb](../mspgist-mobilitydb)
-  * JSON Data: TODO
+  * MobilityDB trajectories: [MobilityDB MEST](../../contrib/mobilitydb)
 
 
 Contact:
