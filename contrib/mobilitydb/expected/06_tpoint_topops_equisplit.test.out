@@ -472,8 +472,8 @@ SELECT * FROM test_topops
 WHERE no_idx <> mrtree_idx OR no_idx <> mquadtree_idx OR no_idx <> mkdtree_idx OR
   no_idx IS NULL OR mrtree_idx IS NULL OR mquadtree_idx IS NULL OR mkdtree_idx IS NULL
 ORDER BY op, leftarg, rightarg;
- op  | leftarg | rightarg | no_idx | mrtree_idx | mquadtree_idx | mkdtree_idx 
------+---------+----------+--------+------------+---------------+-------------
+ op | leftarg | rightarg | no_idx | mrtree_idx | mquadtree_idx | mkdtree_idx 
+----+---------+----------+--------+------------+---------------+-------------
 (0 rows)
 
 DROP TABLE test_topops;

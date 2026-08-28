@@ -69,6 +69,27 @@ typedef struct
                          represented as a string */
 } TemporalBinOptions;
 
+/**
+ * @brief Return the keys of a multi-entry index for the entries given in the
+ * second argument together with the bounding box of the value
+ * @note The topological and the position operators of MobilityDB answer on the
+ * bounding box of a temporal value. The entries of a value cover the value but
+ * not its bounding box, so a query that meets the box where no entry lies has
+ * no entry that can find it and the box is itself a key of the value
+ */
+static Datum *
+mest_span_keys(const Temporal *temp, Span *spans, int32 *nkeys)
+{
+  Datum *result = palloc(sizeof(Datum) * (*nkeys + 1));
+  Span *box = palloc(sizeof(Span));
+  temporal_set_tstzspan(temp, box);
+  result[0] = PointerGetDatum(box);
+  for (int i = 0; i < *nkeys; ++i)
+    result[i + 1] = PointerGetDatum(&spans[i]);
+  (*nkeys)++;
+  return result;
+}
+
 /*****************************************************************************
  * Multi-Entry GiST and SP-GiST compress methods for temporal types
  *****************************************************************************/
@@ -183,9 +204,7 @@ Temporal_mest_equisplit(PG_FUNCTION_ARGS)
   // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int32 num_spans = MEST_TEMPORAL_GET_SPANS();
   Span *spans = temporal_split_n_spans(temp, num_spans, nkeys);
-  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
-  for (int i = 0; i < *nkeys; ++i)
-    keys[i] = PointerGetDatum(&spans[i]);
+  Datum *keys = mest_span_keys(temp, spans, nkeys);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
 }
@@ -202,9 +221,7 @@ Temporal_mest_segsplit(PG_FUNCTION_ARGS)
   // bool **nullFlags = (bool **) PG_GETARG_POINTER(2);
   int segs_per_span = MEST_TEMPORAL_GET_SEGS();
   Span *spans = temporal_split_each_n_spans(temp, segs_per_span, nkeys);
-  Datum *keys = palloc(sizeof(Datum) * (*nkeys));
-  for (int i = 0; i < *nkeys; ++i)
-    keys[i] = PointerGetDatum(&spans[i]);
+  Datum *keys = mest_span_keys(temp, spans, nkeys);
   /* We cannot pfree spans */
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
@@ -250,11 +267,8 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
 
   /* Get the spans */
   spans = temporal_time_bins(temp, interv, torigin, &count);
-  keys = palloc(sizeof(Datum) * count);
-  assert(temp);
-  for (int i = 0; i < count; ++i)
-    keys[i] = PointerGetDatum(&spans[i]);
   *nkeys = count;
+  keys = mest_span_keys(temp, spans, nkeys);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(keys);
 }
