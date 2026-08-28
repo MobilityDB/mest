@@ -1060,11 +1060,11 @@ gistGetFakeLSN(Relation rel)
 }
 
 /*
- * This is a stratnum support function for GiST opclasses that use the
+ * This is a translate_cmptype support function for GiST opclasses that use the
  * RT*StrategyNumber constants.
  */
 Datum
-gist_stratnum_common(PG_FUNCTION_ARGS)
+gist_translate_cmptype_common(PG_FUNCTION_ARGS)
 {
 	CompareType cmptype = PG_GETARG_INT32(0);
 
