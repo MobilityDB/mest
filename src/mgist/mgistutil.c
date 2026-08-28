@@ -1092,7 +1092,7 @@ gist_stratnum_common(PG_FUNCTION_ARGS)
 /*
  * Returns the opclass's private stratnum used for the given compare type.
  *
- * Calls the opclass's GIST_STRATNUM_PROC support function, if any,
+ * Calls the opclass's GIST_TRANSLATE_CMPTYPE_PROC support function, if any,
  * and returns the result.
  * Returns InvalidStrategy if the function is not defined.
  */
@@ -1103,7 +1103,7 @@ gisttranslatecmptype(CompareType cmptype, Oid opfamily)
 	Datum		result;
 
 	/* Check whether the function is provided. */
-	funcid = get_opfamily_proc(opfamily, ANYOID, ANYOID, GIST_STRATNUM_PROC);
+	funcid = get_opfamily_proc(opfamily, ANYOID, ANYOID, GIST_TRANSLATE_CMPTYPE_PROC);
 	if (!OidIsValid(funcid))
 		return InvalidStrategy;
 

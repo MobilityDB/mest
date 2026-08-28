@@ -124,7 +124,7 @@ CREATE OPERATOR CLASS intspanset_mrtree_equisplit_ops
   FUNCTION  7  span_gist_same(intspan, intspan, internal),
   FUNCTION  8  span_gist_distance(internal, intspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_span_options(internal),
-  FUNCTION  12 spanset_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_equisplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -175,7 +175,7 @@ CREATE OPERATOR CLASS bigintspanset_mrtree_equisplit_ops
   FUNCTION  7  span_gist_same(bigintspan, bigintspan, internal),
   FUNCTION  8  span_gist_distance(internal, bigintspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_span_options(internal),
-  FUNCTION  12 spanset_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_equisplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -226,7 +226,7 @@ CREATE OPERATOR CLASS floatspanset_mrtree_equisplit_ops
   FUNCTION  7  span_gist_same(floatspan, floatspan, internal),
   FUNCTION  8  span_gist_distance(internal, floatspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_span_options(internal),
-  FUNCTION  12 spanset_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_equisplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -276,7 +276,7 @@ CREATE OPERATOR CLASS datespanset_mrtree_equisplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(datespan, datespan, internal),
   FUNCTION  10 spanset_mest_span_options(internal),
-  FUNCTION  12 spanset_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_equisplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -326,7 +326,7 @@ CREATE OPERATOR CLASS tstzspanset_mrtree_equisplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  10 spanset_mest_span_options(internal),
-  FUNCTION  12 spanset_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_equisplit(internal, internal, internal);
 
 /******************************************************************************
  * Segment split
@@ -384,7 +384,7 @@ CREATE OPERATOR CLASS intspanset_mrtree_segsplit_ops
   FUNCTION  7  span_gist_same(intspan, intspan, internal),
   FUNCTION  8  span_gist_distance(internal, intspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_seg_options(internal),
-  FUNCTION  12 spanset_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_segsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -435,7 +435,7 @@ CREATE OPERATOR CLASS bigintspanset_mrtree_segsplit_ops
   FUNCTION  7  span_gist_same(bigintspan, bigintspan, internal),
   FUNCTION  8  span_gist_distance(internal, bigintspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_seg_options(internal),
-  FUNCTION  12 spanset_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_segsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -486,7 +486,7 @@ CREATE OPERATOR CLASS floatspanset_mrtree_segsplit_ops
   FUNCTION  7  span_gist_same(floatspan, floatspan, internal),
   FUNCTION  8  span_gist_distance(internal, floatspan, smallint, oid, internal),
   FUNCTION  10 spanset_mest_seg_options(internal),
-  FUNCTION  12 spanset_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_segsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -536,7 +536,7 @@ CREATE OPERATOR CLASS datespanset_mrtree_segsplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(datespan, datespan, internal),
   FUNCTION  10 spanset_mest_seg_options(internal),
-  FUNCTION  12 spanset_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_segsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -586,7 +586,7 @@ CREATE OPERATOR CLASS tstzspanset_mrtree_segsplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  10 spanset_mest_seg_options(internal),
-  FUNCTION  12 spanset_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 spanset_mest_segsplit(internal, internal, internal);
 
 /******************************************************************************
  * Binsplit
@@ -656,7 +656,7 @@ CREATE OPERATOR CLASS intspanset_mrtree_binsplit_ops
   FUNCTION  7  span_gist_same(intspan, intspan, internal),
   FUNCTION  8  span_gist_distance(internal, intspan, smallint, oid, internal),
   FUNCTION  10 intspanset_mest_bin_options(internal),
-  FUNCTION  12 intspanset_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 intspanset_mest_binsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -707,7 +707,7 @@ CREATE OPERATOR CLASS bigintspanset_mrtree_binsplit_ops
   FUNCTION  7  span_gist_same(bigintspan, bigintspan, internal),
   FUNCTION  8  span_gist_distance(internal, bigintspan, smallint, oid, internal),
   FUNCTION  10 intspanset_mest_bin_options(internal),
-  FUNCTION  12 bigintspanset_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 bigintspanset_mest_binsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -758,7 +758,7 @@ CREATE OPERATOR CLASS floatspanset_mrtree_binsplit_ops
   FUNCTION  7  span_gist_same(floatspan, floatspan, internal),
   FUNCTION  8  span_gist_distance(internal, floatspan, smallint, oid, internal),
   FUNCTION  10 floatspanset_mest_bin_options(internal),
-  FUNCTION  12 floatspanset_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 floatspanset_mest_binsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -808,7 +808,7 @@ CREATE OPERATOR CLASS datespanset_mrtree_binsplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(datespan, datespan, internal),
   FUNCTION  10 timespanset_mest_bin_options(internal),
-  FUNCTION  12 timespanset_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 timespanset_mest_binsplit(internal, internal, internal);
 
 /******************************************************************************/
 
@@ -858,7 +858,7 @@ CREATE OPERATOR CLASS tstzspanset_mrtree_binsplit_ops
   FUNCTION  6  span_gist_picksplit(internal, internal),
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  10 timespanset_mest_bin_options(internal),
-  FUNCTION  12 timespanset_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 timespanset_mest_binsplit(internal, internal, internal);
 
 /******************************************************************************
  * Multi-Entry Quad-tree and Kd-tree SP-GiST indexes
@@ -2463,7 +2463,7 @@ CREATE OPERATOR CLASS tbool_mrtree_equisplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
 --  FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_span_options(internal),
-  FUNCTION  12 temporal_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tbool_mquadtree_equisplit_ops
   DEFAULT FOR TYPE tbool USING mspgist AS
@@ -2568,7 +2568,7 @@ CREATE OPERATOR CLASS ttext_mrtree_equisplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_span_options(internal),
-  FUNCTION  12 temporal_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS ttext_mquadtree_equisplit_ops
   DEFAULT FOR TYPE ttext USING mspgist AS
@@ -2680,7 +2680,7 @@ CREATE OPERATOR CLASS tbool_mrtree_segsplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_seg_options(internal),
-  FUNCTION  12 temporal_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tbool_mquadtree_segsplit_ops
   FOR TYPE tbool USING mspgist AS
@@ -2785,7 +2785,7 @@ CREATE OPERATOR CLASS ttext_mrtree_segsplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_seg_options(internal),
-  FUNCTION  12 temporal_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS ttext_mquadtree_segsplit_ops
   FOR TYPE ttext USING mspgist AS
@@ -2897,7 +2897,7 @@ CREATE OPERATOR CLASS tbool_mrtree_binsplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_bin_options(internal),
-  FUNCTION  12 temporal_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_binsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tbool_mquadtree_binsplit_ops
   FOR TYPE tbool USING mspgist AS
@@ -3002,7 +3002,7 @@ CREATE OPERATOR CLASS ttext_mrtree_binsplit_ops
   FUNCTION  7  span_gist_same(tstzspan, tstzspan, internal),
   FUNCTION  8  span_gist_distance(internal, tstzspan, smallint, oid, internal),
   FUNCTION  10 temporal_mest_bin_options(internal),
-  FUNCTION  12 temporal_mest_binsplit(internal, internal, internal);
+  FUNCTION  13 temporal_mest_binsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS ttext_mquadtree_binsplit_ops
   FOR TYPE ttext USING mspgist AS
@@ -3164,7 +3164,7 @@ CREATE OPERATOR CLASS tint_mrtree_equisplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tnumber_mest_box_options(internal),
-  FUNCTION  12 tnumber_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 tnumber_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tint_mquadtree_equisplit_ops
   DEFAULT FOR TYPE tint USING mspgist AS
@@ -3299,7 +3299,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_equisplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tnumber_mest_box_options(internal),
-  FUNCTION  12 tnumber_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 tnumber_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tfloat_mquadtree_equisplit_ops
   DEFAULT FOR TYPE tfloat USING mspgist AS
@@ -3441,7 +3441,7 @@ CREATE OPERATOR CLASS tint_mrtree_segsplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tnumber_mest_seg_options(internal),
-  FUNCTION  12 tnumber_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 tnumber_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tint_mquadtree_segsplit_ops
   FOR TYPE tint USING mspgist AS
@@ -3576,7 +3576,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_segsplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tnumber_mest_seg_options(internal),
-  FUNCTION  12 tnumber_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 tnumber_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tfloat_mquadtree_segsplit_ops
   FOR TYPE tfloat USING mspgist AS
@@ -3725,7 +3725,7 @@ CREATE OPERATOR CLASS tint_mrtree_tilesplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tint_mest_tile_options(internal),
-  FUNCTION  12 tint_mest_tilesplit(internal, internal, internal);
+  FUNCTION  13 tint_mest_tilesplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tint_mquadtree_tilesplit_ops
   FOR TYPE tint USING mspgist AS
@@ -3862,7 +3862,7 @@ CREATE OPERATOR CLASS tfloat_mrtree_tilesplit_ops
   FUNCTION  7  tbox_gist_same(tbox, tbox, internal),
   FUNCTION  8  tbox_gist_distance(internal, tbox, smallint, oid, internal),
   FUNCTION  10 tfloat_mest_tile_options(internal),
-  FUNCTION  12 tfloat_mest_tilesplit(internal, internal, internal);
+  FUNCTION  13 tfloat_mest_tilesplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tfloat_mquadtree_tilesplit_ops
   FOR TYPE tfloat USING mspgist AS
@@ -4035,7 +4035,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_equisplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_box_options(internal),
-  FUNCTION  12 tpoint_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_equisplit_ops
   DEFAULT FOR TYPE tgeompoint USING mspgist AS
@@ -4174,7 +4174,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_equisplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_box_options(internal),
-  FUNCTION  12 tpoint_mest_equisplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_equisplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeogpoint_mquadtree_equisplit_ops
   DEFAULT FOR TYPE tgeogpoint USING mspgist AS
@@ -4332,7 +4332,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_segsplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_seg_options(internal),
-  FUNCTION  12 tpoint_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_segsplit_ops
   FOR TYPE tgeompoint USING mspgist AS
@@ -4478,7 +4478,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_segsplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_seg_options(internal),
-  FUNCTION  12 tpoint_mest_segsplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_segsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeogpoint_mquadtree_segsplit_ops
   FOR TYPE tgeogpoint USING mspgist AS
@@ -4638,7 +4638,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_tilesplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_tile_options(internal),
-  FUNCTION  12 tpoint_mest_tilesplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_tilesplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_tilesplit_ops
   FOR TYPE tgeompoint USING mspgist AS
@@ -4783,7 +4783,7 @@ CREATE OPERATOR CLASS tgeogpoint_mrtree_tilesplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_tile_options(internal),
-  FUNCTION  12 tpoint_mest_tilesplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_tilesplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeogpoint_mquadtree_tilesplit_ops
   FOR TYPE tgeogpoint USING mspgist AS
@@ -4964,7 +4964,7 @@ CREATE OPERATOR CLASS tgeompoint_mgist_mergesplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_box_options(internal),
-  FUNCTION  12 tpoint_mest_mergesplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_mergesplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_mergesplit_ops
   FOR TYPE tgeompoint USING mspgist AS
@@ -5117,7 +5117,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_linearsplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_query_options(internal),
-  FUNCTION  12 tpoint_mest_linearsplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_linearsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_linearsplit_ops
   FOR TYPE tgeompoint USING mspgist AS
@@ -5270,7 +5270,7 @@ CREATE OPERATOR CLASS tgeompoint_mrtree_adaptsplit_ops
   FUNCTION  7  stbox_gist_same(stbox, stbox, internal),
   FUNCTION  8  stbox_gist_distance(internal, stbox, smallint, oid, internal),
   FUNCTION  10 tpoint_mest_box_options(internal),
-  FUNCTION  12 tpoint_mest_adaptsplit(internal, internal, internal);
+  FUNCTION  13 tpoint_mest_adaptsplit(internal, internal, internal);
 
 CREATE OPERATOR CLASS tgeompoint_mquadtree_adaptsplit_ops
   FOR TYPE tgeompoint USING mspgist AS

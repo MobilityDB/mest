@@ -26,6 +26,6 @@ CREATE OPERATOR CLASS geometry_mgist_ops_2d
   FUNCTION  5  geometry_gist_penalty_2d (internal, internal, internal),
   FUNCTION  6  geometry_gist_picksplit_2d (internal, internal),
   FUNCTION  7  geometry_gist_same_2d (geom1 geometry, geom2 geometry, internal),
-  FUNCTION  12 geometry_mest_extract(internal, internal, internal);
+  FUNCTION  13 geometry_mest_extract(internal, internal, internal);
 
 /******************************************************************************/
