@@ -3,7 +3,7 @@ Multi-Entry GiST Indexing for PostGIS
 
 This directory contains an implementation of Multi-Entry GiST indexes for the PostGIS geometry type.
 
-Contrary to the traditional GiST index for PostGIS, MGiST will index collection types with one bounding box per element in the collection. This index will thus mainly benefit datasets containing collections such as multi-points or multi-polygons that are spread out over a large area. Tuples containing single geometries will be indexed using a single bounding box as usual.
+Contrary to the traditional GiST index for PostGIS, MGiST will index collection types with one bounding box per element in the collection, together with the bounding box of the whole geometry. The operators the operator class carries are answered on that whole box, so it is itself one of the entries, and every element of a collection is an entry whatever its dimension. This index will thus mainly benefit datasets containing collections such as multi-points or multi-polygons that are spread out over a large area. Tuples containing single geometries will be indexed using a single bounding box as usual.
 
 The MGiST index for geometries currently provides speedups for overlaps `&&` and distance `<->` operators.
 However, the PostGIS support functions are not yet implemented for MGiST indexes, so the index will not be used for queries using the `ST_Intersects` or `ST_Contains` functions. To provide speedup for these functions, you will need to add an explicit overlaps test to the query.

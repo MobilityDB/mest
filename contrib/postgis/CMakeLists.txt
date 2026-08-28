@@ -39,3 +39,33 @@ install(
   FILES "${CMAKE_SOURCE_DIR}/postgis_mest.control" "${CMAKE_SOURCE_DIR}/postgis_mest--1.0.sql"
   DESTINATION "${POSTGRESQL_SHARE_DIR}/extension")
 install(TARGETS postgis_mest DESTINATION "${POSTGRESQL_DYNLIB_DIR}")
+
+#-------------------------------------
+# Regression tests
+#-------------------------------------
+
+execute_process(
+  COMMAND ${POSTGRESQL_PG_CONFIG} --pgxs
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  OUTPUT_VARIABLE POSTGRESQL_PGXS)
+get_filename_component(POSTGRESQL_PGXS_DIR "${POSTGRESQL_PGXS}" DIRECTORY)
+find_program(PG_REGRESS NAMES pg_regress
+  HINTS "${POSTGRESQL_PGXS_DIR}/../test/regress")
+
+file(GLOB TEST_FILES "${CMAKE_SOURCE_DIR}/sql/*.test.sql")
+set(TEST_NAMES "")
+foreach(TEST_FILE ${TEST_FILES})
+  get_filename_component(TEST_NAME "${TEST_FILE}" NAME)
+  string(REGEX REPLACE "\\.sql$" "" TEST_NAME "${TEST_NAME}")
+  list(APPEND TEST_NAMES "${TEST_NAME}")
+endforeach()
+list(SORT TEST_NAMES)
+
+# Runs the tests against a server already holding the installed extension,
+# taking PGHOST, PGPORT and PGUSER from the environment
+add_custom_target(installcheck
+  COMMAND ${PG_REGRESS} --inputdir=${CMAKE_SOURCE_DIR}
+    --outputdir=${CMAKE_CURRENT_BINARY_DIR}
+    --bindir=${POSTGRESQL_BIN_DIR}
+    --dbname=contrib_regression ${TEST_NAMES}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

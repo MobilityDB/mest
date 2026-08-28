@@ -1,0 +1,62 @@
+-------------------------------------------------------------------------------
+--
+-- 01_create_extension.test.sql
+--
+-- Multi-Entry Search Trees for PostGIS
+--
+-------------------------------------------------------------------------------
+
+CREATE EXTENSION IF NOT EXISTS postgis_mest CASCADE;
+
+-------------------------------------------------------------------------------
+-- The geometries every test reads. The multi-part rows leave a wide gap between
+-- their members, which is where a key covering only a member stops witnessing
+-- an operator the bounding box answers.
+-------------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS tbl_geometry;
+CREATE TABLE tbl_geometry(k integer PRIMARY KEY, g geometry);
+
+-- two-part multipolygons, the parts twenty units apart
+INSERT INTO tbl_geometry
+SELECT i, ST_Collect(ST_MakeEnvelope(i, i, i + 1, i + 1),
+  ST_MakeEnvelope(i + 20, i + 20, i + 21, i + 21))
+FROM generate_series(1, 60) i;
+
+-- collections holding members of different dimensions
+INSERT INTO tbl_geometry
+SELECT 100 + i, ST_Collect(ST_Point(i + 7.5, i + 7.5),
+  ST_MakeEnvelope(i, i, i + 1, i + 1))
+FROM generate_series(1, 60) i;
+
+-- single-part geometries
+INSERT INTO tbl_geometry
+SELECT 200 + i, ST_MakeEnvelope(i, i, i + 2, i + 2) FROM generate_series(1, 40) i;
+INSERT INTO tbl_geometry
+SELECT 300 + i, ST_MakePoint(i, i) FROM generate_series(1, 40) i;
+
+-- multipoints and multilinestrings with separated members
+INSERT INTO tbl_geometry
+SELECT 400 + i, ST_Collect(ST_Point(i, i), ST_Point(i + 15, i + 15))
+FROM generate_series(1, 40) i;
+INSERT INTO tbl_geometry
+SELECT 500 + i, ST_Collect(
+  ST_MakeLine(ST_Point(i, i), ST_Point(i + 1, i + 1)),
+  ST_MakeLine(ST_Point(i + 25, i + 25), ST_Point(i + 26, i + 26)))
+FROM generate_series(1, 40) i;
+
+-------------------------------------------------------------------------------
+-- The query geometries.
+-------------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS tbl_geomquery;
+CREATE TABLE tbl_geomquery(k integer PRIMARY KEY, g geometry);
+INSERT INTO tbl_geomquery
+SELECT i, ST_MakeEnvelope(x, y, x + 3, y + 3)
+FROM (SELECT i, (i * 7 % 80)::float8 AS x, (i * 13 % 80)::float8 AS y
+  FROM generate_series(1, 200) i) s;
+
+ANALYZE tbl_geometry;
+ANALYZE tbl_geomquery;
+
+-------------------------------------------------------------------------------
