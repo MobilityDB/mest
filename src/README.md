@@ -23,7 +23,7 @@ Create a Multi-Entry Quad-Tree on the `tstzmultirange` column from the table `tb
 CREATE INDEX tbl_tstzmultirange_mquadtree_idx on tbl_tstzmultirange USING mspgist(t);
 ```
 
-The access methods have an optional parameter that sets the maximum number of &ldquo;boxes&rdquo; stored in the index. This parameter is typically used to control the size of the resulting index.
+The access methods have an optional parameter that sets the maximum number of &ldquo;boxes&rdquo; stored in the index. This parameter controls the size of the resulting index.
 
 Create a Multi-Entry R-Tree on the `path` column from the table `tbl_path(id int, p path)` specifying a maximum number of boxes per row.
 ```sql

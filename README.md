@@ -1,28 +1,29 @@
 Multi-Entry Search Trees for PostgreSQL
 =====================================================
 
-This repository contains implementations for the Multi-Entry GiST and SP-GiST access methods.
-These access methods are variations of the GiST and SP-GiST indices, allowing for more efficient
-indexing of complex and composite data types.
+This repository contains implementations for the Multi-Entry GiST (MGiST) and the
+Multi-Entry SP-GiST (MSP-GiST) access methods. These access methods are variations of the
+GiST and SP-GiST indices, allowing for more efficient indexing of complex and composite
+data types.
 
 Contents
 --------
 
 The repository contains 3 PostgreSQL extensions split into 3 separate folders:
 
-- [mest](./): 
+- [MEST](./): 
     - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL `multirange` and `path` types.
     - contains the Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree for the PostgreSQL `multirange` and `path` types.
-- [postgis-mest](contrib/postgis-mest): 
-    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the PostGIS `geometry` and `geography` types.
-- [mobilitydb-mest](contrib/mobilitydb): 
-    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB `spanset` and `tgeompoint` types.
+- [PostGIS MEST](contrib/postgis): 
+    - contains the implementation of a multi-entry R-tree for the PostGIS `geometry` type.
+- [MobilityDB MEST](contrib/mobilitydb): 
+    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB `spanset`, temporal, and `tgeompoint` types.
     
 For more information about each extension, please refer to their associated README file.
 
 Dependencies
 ------------
-- [PostgreSQL 17](https://www.postgresql.org/)
+- [PostgreSQL 17 or 18](https://www.postgresql.org/)
 
 Installation
 ------------
@@ -38,6 +39,8 @@ Enabling the `mest` extension
 ```sql
 CREATE EXTENSION mest CASCADE;
 ```
+
+The `mest` extension provides both the `mgist` and the `mspgist` access methods.
 
 Contact:
   Maxime Schoemans  <maxime.schoemans@ulb.be>
