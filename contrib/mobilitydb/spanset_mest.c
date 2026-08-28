@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include "postgres.h"
+#include "common/pg_prng.h"
 #include "fmgr.h"
 #include "access/gist.h"
 #include "access/spgist.h"
@@ -282,7 +283,7 @@ Intspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int32 vsize = MEST_INTSPANSET_GET_BINSIZE();
   int32 vorigin = 0;
   int32 count;
-  Span *spans= spanset_value_spans(ss, Int32GetDatum(vsize), 
+  Span *spans = spanset_bins(ss, Int32GetDatum(vsize),
     Int32GetDatum(vorigin), &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
@@ -304,7 +305,7 @@ Bigintspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int64 vsize = (int64) MEST_INTSPANSET_GET_BINSIZE();
   int64 vorigin = 0;
   int32 count;
-  Span *spans= spanset_value_spans(ss, Int64GetDatum(vsize), 
+  Span *spans = spanset_bins(ss, Int64GetDatum(vsize),
     Int64GetDatum(vorigin), &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
@@ -326,7 +327,7 @@ Floatspanset_mest_binsplit(PG_FUNCTION_ARGS)
   double vsize = MEST_FLOATSPANSET_GET_BINSIZE();
   double vorigin = 0;
   int32 count;
-  Span *spans= spanset_value_spans(ss, Float8GetDatum(vsize), 
+  Span *spans = spanset_bins(ss, Float8GetDatum(vsize),
     Float8GetDatum(vorigin), &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
@@ -349,11 +350,16 @@ Timespanset_mest_binsplit(PG_FUNCTION_ARGS)
   int32 *nkeys = (int32 *) PG_GETARG_POINTER(1);
   char *duration;
   Interval *interv = NULL;
-  TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
+  Datum torigin;
   int32 count;
   Span *spanarr;
   Span **spans;
-  
+
+  /* The origin is a value of the base type of the span set */
+  torigin = (ss->basetype == T_DATE) ?
+    DateADTGetDatum(mest_date_origin()) :
+    TimestampTzGetDatum(mest_timestamptz_origin());
+
   /* Index parameters */
   if (PG_HAS_OPCLASS_OPTIONS())
   {
@@ -361,8 +367,9 @@ Timespanset_mest_binsplit(PG_FUNCTION_ARGS)
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
-        PointerGetDatum(duration), -1));
+      interv = DatumGetIntervalP(DirectFunctionCall3(interval_in,
+        CStringGetDatum(duration), ObjectIdGetDatum(InvalidOid),
+        Int32GetDatum(-1)));
       if (! interv)
       {
         ereport(ERROR,
@@ -371,9 +378,13 @@ Timespanset_mest_binsplit(PG_FUNCTION_ARGS)
       }
     }
   }
+  if (! interv)
+    ereport(ERROR,
+      (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+       errmsg("the operator class requires a duration parameter")));
 
   /* Get the spans */
-  spanarr = spanset_time_spans(ss, interv, torigin, &count);
+  spanarr = spanset_bins(ss, PointerGetDatum(interv), torigin, &count);
   spans = palloc(sizeof(Span *) * count);
   for (int i = 0; i < count; i++)
     spans[i] = &spanarr[i];
@@ -420,21 +431,24 @@ span_mest_leaf_consistent(const Span *key, const Span *query,
     case RTContainedByStrategyNumber:
     case RTEqualStrategyNumber:
     case RTSameStrategyNumber:
-      return over_span_span(key, query);
+      return overlaps_span_span(key, query);
     case RTAdjacentStrategyNumber:
-      return lf_span_span(key, query) || ri_span_span(key, query);
+      /* Two spans sharing a boundary value are adjacent whatever their bound
+       * inclusivity, so an adjacent pair may also overlap and a single entry
+       * of a multi-entry key is neither strictly left nor strictly right */
+      return adjacent_span_span(key, query) || overlaps_span_span(key, query);
     case RTLeftStrategyNumber:
     case RTBeforeStrategyNumber:
-      return lf_span_span(key, query);
+      return left_span_span(key, query);
     case RTOverLeftStrategyNumber:
     case RTOverBeforeStrategyNumber:
-      return ovlf_span_span(key, query);
+      return overleft_span_span(key, query);
     case RTRightStrategyNumber:
     case RTAfterStrategyNumber:
-      return ri_span_span(key, query);
+      return right_span_span(key, query);
     case RTOverRightStrategyNumber:
     case RTOverAfterStrategyNumber:
-      return ovri_span_span(key, query);
+      return overright_span_span(key, query);
     default:
       elog(ERROR, "unrecognized span strategy: %d", strategy);
       return false;    /* keep compiler quiet */
@@ -458,21 +472,21 @@ span_mgist_inner_consistent(const Span *key, const Span *query,
     case RTContainsStrategyNumber:
     case RTEqualStrategyNumber:
     case RTSameStrategyNumber:
-      return over_span_span(key, query);
+      return overlaps_span_span(key, query);
     case RTAdjacentStrategyNumber:
-      return adj_span_span(key, query) || overlaps_span_span(key, query);
+      return adjacent_span_span(key, query) || overlaps_span_span(key, query);
     case RTLeftStrategyNumber:
     case RTBeforeStrategyNumber:
-      return ! ovri_span_span(key, query);
+      return ! overright_span_span(key, query);
     case RTOverLeftStrategyNumber:
     case RTOverBeforeStrategyNumber:
-      return ! ri_span_span(key, query);
+      return ! right_span_span(key, query);
     case RTRightStrategyNumber:
     case RTAfterStrategyNumber:
-      return ! ovlf_span_span(key, query);
+      return ! overleft_span_span(key, query);
     case RTOverRightStrategyNumber:
     case RTOverAfterStrategyNumber:
-      return ! lf_span_span(key, query);
+      return ! left_span_span(key, query);
     default:
       elog(ERROR, "unrecognized span strategy: %d", strategy);
       return false;    /* keep compiler quiet */
@@ -575,7 +589,11 @@ Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
   {
     orderbys = palloc0(sizeof(Span) * in->norderbys);
     for (i = 0; i < in->norderbys; i++)
-      span_spgist_get_span(&in->orderbys[i], &orderbys[i]);
+    {
+      const ScanKeyData *scankey = &in->orderbys[i];
+      span_spgist_get_span(scankey->sk_argument,
+        oid_meostype(scankey->sk_subtype), &orderbys[i]);
+    }
   }
 
   if (in->allTheSame)
@@ -617,7 +635,11 @@ Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
   {
     queries = palloc0(sizeof(Span) * in->nkeys);
     for (i = 0; i < in->nkeys; i++)
-      span_spgist_get_span(&in->scankeys[i], &queries[i]);
+    {
+      const ScanKeyData *scankey = &in->scankeys[i];
+      span_spgist_get_span(scankey->sk_argument,
+        oid_meostype(scankey->sk_subtype), &queries[i]);
+    }
   }
 
   /* Allocate enough memory for nodes */
@@ -763,13 +785,15 @@ Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
   /* Perform the required comparison(s) */
   for (i = 0; i < in->nkeys; i++)
   {
-    StrategyNumber strategy = in->scankeys[i].sk_strategy;
+    const ScanKeyData *scankey = &in->scankeys[i];
+    StrategyNumber strategy = scankey->sk_strategy;
 
     /* Update the recheck flag according to the strategy */
     out->recheck = true;
 
     /* Convert the query to a span and perform the test */
-    span_spgist_get_span(&in->scankeys[i], &span);
+    span_spgist_get_span(scankey->sk_argument,
+      oid_meostype(scankey->sk_subtype), &span);
     result = span_mest_leaf_consistent(key, &span, strategy);
 
     /* If any check is failed, we have found our answer. */
@@ -786,8 +810,11 @@ Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
     for (i = 0; i < in->norderbys; i++)
     {
       /* Convert the order by argument to a span and perform the test */
-      span_spgist_get_span(&in->orderbys[i], &span);
-      distances[i] = dist_span_span(&span, key);
+      const ScanKeyData *scankey = &in->orderbys[i];
+      span_spgist_get_span(scankey->sk_argument,
+        oid_meostype(scankey->sk_subtype), &span);
+      distances[i] = distance_double(distance_span_span(&span, key),
+        key->basetype);
     }
   }
 

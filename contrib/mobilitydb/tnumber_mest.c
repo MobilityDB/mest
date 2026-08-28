@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include "postgres.h"
+#include "common/pg_prng.h"
 #include "fmgr.h"
 #include "access/gist.h"
 #include "access/spgist.h"
@@ -276,7 +277,7 @@ Tint_mest_tilesplit(PG_FUNCTION_ARGS)
   int vsize, vorigin = 0;
   char *duration;
   Interval *interv = NULL;
-  TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
+  TimestampTz torigin = mest_timestamptz_origin();
   int32 count;
   TBox *boxes;
   Datum *keys;
@@ -289,8 +290,9 @@ Tint_mest_tilesplit(PG_FUNCTION_ARGS)
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
-        PointerGetDatum(duration), -1));
+      interv = DatumGetIntervalP(DirectFunctionCall3(interval_in,
+        CStringGetDatum(duration), ObjectIdGetDatum(InvalidOid),
+        Int32GetDatum(-1)));
       if (! interv)
       {
         ereport(ERROR,
@@ -324,7 +326,7 @@ Tfloat_mest_tilesplit(PG_FUNCTION_ARGS)
   double vsize, vorigin = 0.0;
   char *duration;
   Interval *interv = NULL;
-  TimestampTz torigin = pg_timestamptz_in("2020-03-01", -1);
+  TimestampTz torigin = mest_timestamptz_origin();
   int32 count;
   TBox *boxes;
   Datum *keys;
@@ -337,8 +339,9 @@ Tfloat_mest_tilesplit(PG_FUNCTION_ARGS)
     duration = GET_STRING_RELOPTION(options, duration);
     if (strlen(duration) > 0)
     {
-      interv = (Interval *) DatumGetPointer(call_function2(interval_in, 
-        PointerGetDatum(duration), -1));
+      interv = DatumGetIntervalP(DirectFunctionCall3(interval_in,
+        CStringGetDatum(duration), ObjectIdGetDatum(InvalidOid),
+        Int32GetDatum(-1)));
       if (! interv)
       {
         ereport(ERROR,
