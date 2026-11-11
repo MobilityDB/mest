@@ -13,7 +13,7 @@ jobs:
       matrix:
         pg: [18]
     name: PostgreSQL ${{ matrix.pg }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Install PostgreSQL
       - uses: adjust/pg-ext-actions/pg-setup@master
