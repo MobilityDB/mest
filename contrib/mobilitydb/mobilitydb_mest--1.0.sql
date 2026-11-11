@@ -939,18 +939,6 @@ CREATE FUNCTION spanset_mspgist_compress(internal)
   RETURNS internal
   AS 'MODULE_PATHNAME', 'Spanset_mspgist_compress'
   LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-CREATE FUNCTION spanset_mquadtree_inner_consistent(internal, internal)
-  RETURNS internal
-  AS 'MODULE_PATHNAME', 'Spanset_mquadtree_inner_consistent'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-CREATE FUNCTION spanset_mkdtree_inner_consistent(internal, internal)
-  RETURNS internal
-  AS 'MODULE_PATHNAME', 'Spanset_mkdtree_inner_consistent'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-CREATE FUNCTION spanset_mspgist_leaf_consistent(internal, internal)
-  RETURNS internal
-  AS 'MODULE_PATHNAME', 'Spanset_mspgist_leaf_consistent'
-  LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 /******************************************************************************
  * Equisplit
@@ -998,8 +986,8 @@ CREATE OPERATOR CLASS intspanset_mquadtree_equisplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1048,8 +1036,8 @@ CREATE OPERATOR CLASS bigintspanset_mquadtree_equisplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1098,8 +1086,8 @@ CREATE OPERATOR CLASS floatspanset_mquadtree_equisplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1148,8 +1136,8 @@ CREATE OPERATOR CLASS datespanset_mquadtree_equisplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1198,8 +1186,8 @@ CREATE OPERATOR CLASS tstzspanset_mquadtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1249,8 +1237,8 @@ CREATE OPERATOR CLASS intspanset_mkdtree_equisplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1299,8 +1287,8 @@ CREATE OPERATOR CLASS bigintspanset_mkdtree_equisplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1349,8 +1337,8 @@ CREATE OPERATOR CLASS floatspanset_mkdtree_equisplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1399,8 +1387,8 @@ CREATE OPERATOR CLASS datespanset_mkdtree_equisplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1449,8 +1437,8 @@ CREATE OPERATOR CLASS tstzspanset_mkdtree_equisplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_span_options(internal),
   FUNCTION  8  spanset_mest_equisplit(internal, internal, internal);
@@ -1501,8 +1489,8 @@ CREATE OPERATOR CLASS intspanset_mquadtree_segsplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1551,8 +1539,8 @@ CREATE OPERATOR CLASS bigintspanset_mquadtree_segsplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1601,8 +1589,8 @@ CREATE OPERATOR CLASS floatspanset_mquadtree_segsplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1651,8 +1639,8 @@ CREATE OPERATOR CLASS datespanset_mquadtree_segsplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1701,8 +1689,8 @@ CREATE OPERATOR CLASS tstzspanset_mquadtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1752,8 +1740,8 @@ CREATE OPERATOR CLASS intspanset_mkdtree_segsplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1802,8 +1790,8 @@ CREATE OPERATOR CLASS bigintspanset_mkdtree_segsplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1852,8 +1840,8 @@ CREATE OPERATOR CLASS floatspanset_mkdtree_segsplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1902,8 +1890,8 @@ CREATE OPERATOR CLASS datespanset_mkdtree_segsplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -1952,8 +1940,8 @@ CREATE OPERATOR CLASS tstzspanset_mkdtree_segsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  spanset_mest_seg_options(internal),
   FUNCTION  8  spanset_mest_segsplit(internal, internal, internal);
@@ -2004,8 +1992,8 @@ CREATE OPERATOR CLASS intspanset_mquadtree_binsplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  intspanset_mest_bin_options(internal),
   FUNCTION  8  intspanset_mest_binsplit(internal, internal, internal);
@@ -2054,8 +2042,8 @@ CREATE OPERATOR CLASS bigintspanset_mquadtree_binsplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  intspanset_mest_bin_options(internal),
   FUNCTION  8  bigintspanset_mest_binsplit(internal, internal, internal);
@@ -2104,8 +2092,8 @@ CREATE OPERATOR CLASS floatspanset_mquadtree_binsplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  floatspanset_mest_bin_options(internal),
   FUNCTION  8  floatspanset_mest_binsplit(internal, internal, internal);
@@ -2154,8 +2142,8 @@ CREATE OPERATOR CLASS datespanset_mquadtree_binsplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  timespanset_mest_bin_options(internal),
   FUNCTION  8  timespanset_mest_binsplit(internal, internal, internal);
@@ -2204,8 +2192,8 @@ CREATE OPERATOR CLASS tstzspanset_mquadtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_quadtree_choose(internal, internal),
   FUNCTION  3  span_quadtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mquadtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mquadtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  timespanset_mest_bin_options(internal),
   FUNCTION  8  timespanset_mest_binsplit(internal, internal, internal);
@@ -2255,8 +2243,8 @@ CREATE OPERATOR CLASS intspanset_mkdtree_binsplit_ops
   FUNCTION  1  intspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  intspanset_mest_bin_options(internal),
   FUNCTION  8  intspanset_mest_binsplit(internal, internal, internal);
@@ -2305,8 +2293,8 @@ CREATE OPERATOR CLASS bigintspanset_mkdtree_binsplit_ops
   FUNCTION  1  bigintspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  intspanset_mest_bin_options(internal),
   FUNCTION  8  bigintspanset_mest_binsplit(internal, internal, internal);
@@ -2355,8 +2343,8 @@ CREATE OPERATOR CLASS floatspanset_mkdtree_binsplit_ops
   FUNCTION  1  floatspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  floatspanset_mest_bin_options(internal),
   FUNCTION  8  floatspanset_mest_binsplit(internal, internal, internal);
@@ -2405,8 +2393,8 @@ CREATE OPERATOR CLASS datespanset_mkdtree_binsplit_ops
   FUNCTION  1  datespan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  timespanset_mest_bin_options(internal),
   FUNCTION  8  timespanset_mest_binsplit(internal, internal, internal);
@@ -2455,8 +2443,8 @@ CREATE OPERATOR CLASS tstzspanset_mkdtree_binsplit_ops
   FUNCTION  1  tstzspan_spgist_config(internal, internal),
   FUNCTION  2  span_kdtree_choose(internal, internal),
   FUNCTION  3  span_kdtree_picksplit(internal, internal),
-  FUNCTION  4  spanset_mkdtree_inner_consistent(internal, internal),
-  FUNCTION  5  spanset_mspgist_leaf_consistent(internal, internal),
+  FUNCTION  4  span_mkdtree_inner_consistent(internal, internal),
+  FUNCTION  5  span_mspgist_leaf_consistent(internal, internal),
   FUNCTION  6  spanset_mspgist_compress(internal),
   FUNCTION  7  timespanset_mest_bin_options(internal),
   FUNCTION  8  timespanset_mest_binsplit(internal, internal, internal);

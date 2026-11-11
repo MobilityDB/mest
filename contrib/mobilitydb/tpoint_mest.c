@@ -18,6 +18,7 @@
 #include "utils/array.h"
 #include "utils/date.h"
 #include "utils/float.h"
+#include "utils/lsyscache.h"
 #include "utils/timestamp.h"
 
 #include <meos.h>
@@ -26,6 +27,28 @@
 #include <meos_internal_geo.h>
 #include <meos_catalog.h>
 #include "mobilitydb_mest.h"
+
+/*****************************************************************************
+ * The array of spatiotemporal boxes a split function returns
+ *****************************************************************************/
+
+/**
+ * @brief Return the boxes of a split as the array of spatiotemporal boxes
+ * the function returns, its element type read from its declared result
+ */
+static ArrayType *
+mest_stbox_array(FunctionCallInfo fcinfo, STBox *boxarr, int count)
+{
+  Oid elemtype = get_element_type(get_fn_expr_rettype(fcinfo->flinfo));
+  STBox **boxes = palloc(sizeof(STBox *) * count);
+  ArrayType *result;
+  for (int i = 0; i < count; i++)
+    boxes[i] = &boxarr[i];
+  result = construct_array((Datum *) boxes, count, elemtype, sizeof(STBox),
+    false, TYPALIGN_DOUBLE);
+  pfree(boxes);
+  return result;
+}
 
 /*****************************************************************************
  * Definitions for the options methods for temporal point types 
@@ -667,7 +690,7 @@ Tpoint_mergesplit(PG_FUNCTION_ARGS)
     default: /* TSEQUENCESET */
       boxes = tspatial_to_stbox(temp);
   }
-  result = stboxarr_to_array(boxes, nkeys);
+  result = mest_stbox_array(fcinfo, boxes, nkeys);
   pfree(boxes);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(result);
@@ -904,7 +927,7 @@ Tpoint_linearsplit(PG_FUNCTION_ARGS)
     default: /* TSEQUENCESET */
       boxes = tspatial_to_stbox(temp);
   }
-  result = stboxarr_to_array(boxes, nkeys);
+  result = mest_stbox_array(fcinfo, boxes, nkeys);
   pfree(boxes);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(result);
@@ -1070,7 +1093,7 @@ Tpoint_adaptsplit(PG_FUNCTION_ARGS)
     default: /* TSEQUENCESET */
       boxes = tspatial_to_stbox(temp);
   }
-  result = stboxarr_to_array(boxes, nkeys);
+  result = mest_stbox_array(fcinfo, boxes, nkeys);
   pfree(boxes);
   PG_FREE_IF_COPY(temp, 0);
   PG_RETURN_POINTER(result);

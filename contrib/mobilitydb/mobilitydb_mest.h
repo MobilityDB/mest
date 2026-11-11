@@ -62,60 +62,13 @@
 /** Origin the time bins and the time dimension of the tiles are anchored at */
 #define MEST_TIME_ORIGIN  "2020-03-01"
 
-/*****************************************************************************/
-
-/** Enumeration for the types of SP-GiST indexes */
-typedef enum
-{
-  SPGIST_QUADTREE,
-  SPGIST_KDTREE,
-} SPGistIndexType;
-
-/**
- * @brief Structure to represent the bounding box of an inner node containing a
- * set of spans
- */
-typedef struct
-{
-  Span left;
-  Span right;
-} SpanNode;
-
 /*****************************************************************************
- * External functions from MobilityDB
+ * Input functions of PostgreSQL
  *****************************************************************************/
 
-extern bool ensure_not_null(const void *ptr);
-extern bool ensure_positive(int i);
-extern Oid meostype_oid(MeosType type);
-extern ArrayType *stboxarr_to_array(STBox *boxes, int count);
 extern Datum date_in(PG_FUNCTION_ARGS);
 extern Datum interval_in(PG_FUNCTION_ARGS);
 extern Datum timestamptz_in(PG_FUNCTION_ARGS);
-extern void spanset_span_slice(Datum d, Span *s);
-extern Temporal *temporal_slice(Datum tempdatum);
-extern MeosType oid_meostype(Oid typid);
-extern void spannode_init(SpanNode *nodebox, MeosType spantype,
-  MeosType basetype);
-extern bool span_gist_get_span(FunctionCallInfo fcinfo, Span *result,
-  Oid typid);
-extern bool span_spgist_get_span(Datum value, MeosType type,
-  Span *result);
-extern SpanNode *spannode_copy(const SpanNode *orig);
-extern double distance_span_nodespan(const Span *query,
-  const SpanNode *nodebox);
-extern double distance_double(Datum dist, MeosType type);
-extern void spannode_quadtree_next(const SpanNode *nodebox, 
-  const Span *centroid, uint8 quadrant, SpanNode *next_nodespan);
-extern void spannode_kdtree_next(const SpanNode *nodebox, const Span *centroid,
-  uint8 node, int level, SpanNode *next_nodespan);
-extern bool overlap2D(const SpanNode *nodebox, const Span *query);
-extern bool contain2D(const SpanNode *nodebox, const Span *query);
-extern bool left2D(const SpanNode *nodebox, const Span *query);
-extern bool overLeft2D(const SpanNode *nodebox, const Span *query);
-extern bool right2D(const SpanNode *nodebox, const Span *query);
-extern bool overRight2D(const SpanNode *nodebox, const Span *query);
-extern bool adjacent2D(const SpanNode *nodebox, const Span *query);
 
 /*****************************************************************************
  * Origin of the time bins and of the time dimension of the tiles
