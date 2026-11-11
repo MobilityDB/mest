@@ -284,7 +284,7 @@ Intspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int32 vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Int32GetDatum(vsize),
-    Int32GetDatum(vorigin), &count);
+    Int32GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -306,7 +306,7 @@ Bigintspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int64 vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Int64GetDatum(vsize),
-    Int64GetDatum(vorigin), &count);
+    Int64GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -328,7 +328,7 @@ Floatspanset_mest_binsplit(PG_FUNCTION_ARGS)
   double vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Float8GetDatum(vsize),
-    Float8GetDatum(vorigin), &count);
+    Float8GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -384,7 +384,7 @@ Timespanset_mest_binsplit(PG_FUNCTION_ARGS)
        errmsg("the operator class requires a duration parameter")));
 
   /* Get the spans */
-  spanarr = spanset_bins(ss, PointerGetDatum(interv), torigin, &count);
+  spanarr = spanset_bins(ss, PointerGetDatum(interv), torigin, true, &count);
   spans = palloc(sizeof(Span *) * count);
   for (int i = 0; i < count; i++)
     spans[i] = &spanarr[i];
