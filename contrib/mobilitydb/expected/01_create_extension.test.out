@@ -1,7 +1,7 @@
+-- The extensions CASCADE installs depend on the families of the MobilityDB build
+SET client_min_messages = warning;
 CREATE EXTENSION IF NOT EXISTS mobilitydb_mest CASCADE;
-NOTICE:  installing required extension "mobilitydb"
-NOTICE:  installing required extension "postgis"
-NOTICE:  installing required extension "mest"
+RESET client_min_messages;
 DROP TABLE IF EXISTS public.tbl_bigint;
 NOTICE:  table "tbl_bigint" does not exist, skipping
 CREATE TABLE public.tbl_bigint(k integer PRIMARY KEY, b bigint);
