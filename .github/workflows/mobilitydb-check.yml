@@ -1,0 +1,105 @@
+name: mobilitydb-check
+
+# Build the MobilityDB contrib against MobilityDB master and run its tests.
+# The contrib calls MEOS and the MobilityDB support functions, so it follows
+# MobilityDB: the weekly run reports a change of MobilityDB master that the
+# contrib does not follow, even when the contrib itself does not change. A
+# manual run can name another MobilityDB repository and branch, such as a
+# pull request the contrib depends on.
+
+on:
+  push:
+    branches: ['*']
+  pull_request:
+    branches: ['*']
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+    inputs:
+      mobilitydb_repository:
+        description: 'MobilityDB repository'
+        default: 'MobilityDB/MobilityDB'
+      mobilitydb_ref:
+        description: 'MobilityDB branch, tag or commit'
+        default: 'master'
+
+env:
+  PG: 18
+  MOBILITYDB_REPOSITORY: ${{ inputs.mobilitydb_repository || 'MobilityDB/MobilityDB' }}
+  MOBILITYDB_REF: ${{ inputs.mobilitydb_ref || 'master' }}
+
+jobs:
+  contrib:
+    name: MobilityDB contrib, PostgreSQL 18
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out MobilityDB
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.MOBILITYDB_REPOSITORY }}
+          ref: ${{ env.MOBILITYDB_REF }}
+          path: MobilityDB
+
+      - name: Install PostgreSQL, PostGIS and the MobilityDB dependencies
+        run: |
+          sudo service postgresql stop || true
+          sudo apt-get --purge remove 'postgresql*' -y || true
+          sudo rm -rf /var/lib/postgresql/ /etc/postgresql/
+          sudo apt-get install -y curl ca-certificates gnupg
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL --retry 5 --retry-all-errors --retry-delay 15 \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] http://apt.postgresql.org/pub/repos/apt/ \
+            $(lsb_release -cs)-pgdg main ${{ env.PG }}" > /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update
+          sudo apt-get install -y libproj-dev libgdal-dev libjson-c-dev \
+            postgresql-${{ env.PG }} postgresql-${{ env.PG }}-postgis-3 \
+            postgresql-server-dev-${{ env.PG }}
+
+      - name: Build and install MobilityDB
+        run: |
+          export PATH=/usr/lib/postgresql/${{ env.PG }}/bin:$PATH
+          cmake -S MobilityDB -B build-ext -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-ext -j 4
+          sudo cmake --install build-ext
+
+      - name: Build and install the MEOS headers the contrib includes
+        run: |
+          export PATH=/usr/lib/postgresql/${{ env.PG }}/bin:$PATH
+          cmake -S MobilityDB -B build-meos -DMEOS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-meos -j 4
+          sudo cmake --install build-meos
+
+      - name: Build and install mest and the MobilityDB contrib
+        run: |
+          PGC=/usr/lib/postgresql/${{ env.PG }}/bin/pg_config
+          make PG_CONFIG=$PGC
+          sudo make PG_CONFIG=$PGC install
+          make -C contrib/mobilitydb PG_CONFIG=$PGC \
+            PG_CPPFLAGS="-I/usr/local/include -I/usr/include/json-c"
+          sudo make -C contrib/mobilitydb PG_CONFIG=$PGC install
+
+      # Installing the server package starts its cluster, so the libraries
+      # preloaded by the configuration take effect only through a restart;
+      # a backend that loads the contrib before MobilityDB cannot resolve the
+      # MobilityDB functions the contrib calls
+      - name: Restart PostgreSQL with PostGIS and MobilityDB preloaded
+        run: |
+          CONF=/etc/postgresql/${{ env.PG }}/main/postgresql.conf
+          echo "shared_preload_libraries = 'postgis-3,libMobilityDB-1.4'" | sudo tee -a $CONF
+          echo "max_locks_per_transaction = 256" | sudo tee -a $CONF
+          sudo service postgresql restart
+          sudo -u postgres createuser -s "$USER"
+
+      - name: Test the MobilityDB contrib
+        run: |
+          make -C contrib/mobilitydb \
+            PG_CONFIG=/usr/lib/postgresql/${{ env.PG }}/bin/pg_config \
+            installcheck PGHOST=/var/run/postgresql
+
+      - name: Show the differences of the failing tests
+        if: failure()
+        run: cat contrib/mobilitydb/regression.diffs || true
