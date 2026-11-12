@@ -63,6 +63,9 @@ extern Datum Stbox_spgist_leaf_consistent(PG_FUNCTION_ARGS);
 /**
  * @brief Return the strategy that an entry of a multi-entry key answers for a
  * given strategy
+ * @details An entry covers a part of the value, so where the value contains
+ * the query or equals it, the entry overlaps the query; #mest_scankeys and
+ * #mest_gist_consistent apply this mapping before delegating
  */
 static StrategyNumber
 mest_strategy(StrategyNumber strategy)
@@ -71,6 +74,7 @@ mest_strategy(StrategyNumber strategy)
   {
     case RTContainsStrategyNumber:
     case RTSameStrategyNumber:
+    case RTEqualStrategyNumber:
       return RTOverlapStrategyNumber;
     default:
       return strategy;
@@ -173,6 +177,25 @@ mest_spgist_leaf_consistent(PGFunction func, FunctionCallInfo fcinfo)
    * strategy */
   out->recheck = true;
   return result;
+}
+
+/*****************************************************************************
+ * Multi-Entry consistent methods for span set types
+ *****************************************************************************/
+
+PGDLLEXPORT Datum Spanset_mgist_consistent(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(Spanset_mgist_consistent);
+/**
+ * @brief Multi-Entry GiST consistent method for span set types
+ * @note As #Temporal_mgist_consistent, it delegates to the span GiST
+ * consistent method; the SP-GiST span set classes use
+ * #Span_mquadtree_inner_consistent, #Span_mkdtree_inner_consistent and
+ * #Span_mspgist_leaf_consistent
+ */
+Datum
+Spanset_mgist_consistent(PG_FUNCTION_ARGS)
+{
+  return mest_gist_consistent(&Span_gist_consistent, fcinfo);
 }
 
 /*****************************************************************************

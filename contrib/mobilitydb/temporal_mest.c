@@ -266,7 +266,7 @@ Temporal_mest_binsplit(PG_FUNCTION_ARGS)
   }
 
   /* Get the spans */
-  spans = temporal_time_bins(temp, interv, torigin, &count);
+  spans = temporal_time_bins(temp, interv, torigin, true, &count);
   *nkeys = count;
   keys = mest_span_keys(temp, spans, nkeys);
   PG_FREE_IF_COPY(temp, 0);

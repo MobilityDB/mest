@@ -321,7 +321,7 @@ Tint_mest_tilesplit(PG_FUNCTION_ARGS)
 
   /* Get the tiles */
   boxes = tnumber_value_time_boxes(temp, Int32GetDatum(vsize), interv,
-    Int32GetDatum(vorigin), torigin, &count);
+    Int32GetDatum(vorigin), torigin, true, &count);
   *nkeys = count;
   keys = mest_tbox_keys(temp, boxes, nkeys);
   PG_FREE_IF_COPY(temp, 0);
@@ -367,7 +367,7 @@ Tfloat_mest_tilesplit(PG_FUNCTION_ARGS)
 
   /* Get the tiles */
   boxes = tnumber_value_time_boxes(temp, Float8GetDatum(vsize), interv,
-    Float8GetDatum(vorigin), torigin, &count);
+    Float8GetDatum(vorigin), torigin, true, &count);
   *nkeys = count;
   keys = mest_tbox_keys(temp, boxes, nkeys);
   PG_FREE_IF_COPY(temp, 0);

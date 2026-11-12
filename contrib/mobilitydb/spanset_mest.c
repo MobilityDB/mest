@@ -106,17 +106,6 @@ typedef struct
 } TimespansetBinOptions;
 
 /*****************************************************************************
- * Prototypes
- *****************************************************************************/
-
-static bool span_mest_leaf_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy);
-static bool span_mgist_inner_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy);
-static Datum Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
-  SPGistIndexType idxtype);
-
-/*****************************************************************************
  * Multi-Entry GiST and SP-GiST options method for spanset types
  *****************************************************************************/
 
@@ -284,7 +273,7 @@ Intspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int32 vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Int32GetDatum(vsize),
-    Int32GetDatum(vorigin), &count);
+    Int32GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -306,7 +295,7 @@ Bigintspanset_mest_binsplit(PG_FUNCTION_ARGS)
   int64 vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Int64GetDatum(vsize),
-    Int64GetDatum(vorigin), &count);
+    Int64GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -328,7 +317,7 @@ Floatspanset_mest_binsplit(PG_FUNCTION_ARGS)
   double vorigin = 0;
   int32 count;
   Span *spans = spanset_bins(ss, Float8GetDatum(vsize),
-    Float8GetDatum(vorigin), &count);
+    Float8GetDatum(vorigin), true, &count);
   Datum *keys = palloc(sizeof(Datum) * count);
   for (int i = 0; i < count; ++i)
     keys[i] = PointerGetDatum(&spans[i]);
@@ -384,7 +373,7 @@ Timespanset_mest_binsplit(PG_FUNCTION_ARGS)
        errmsg("the operator class requires a duration parameter")));
 
   /* Get the spans */
-  spanarr = spanset_bins(ss, PointerGetDatum(interv), torigin, &count);
+  spanarr = spanset_bins(ss, PointerGetDatum(interv), torigin, true, &count);
   spans = palloc(sizeof(Span *) * count);
   for (int i = 0; i < count; i++)
     spans[i] = &spanarr[i];
@@ -410,126 +399,6 @@ Spanset_mgist_compress(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- * Multi-Entry GiST consistent methods for spanset types
- *****************************************************************************/
-
-/**
- * @brief Multi-Entry GiST leaf consistent method for span types
- * @param[in] key Element in the index
- * @param[in] query Value being looked up in the index
- * @param[in] strategy Operator of the operator class being applied
- * @note This function is used for both GiST and SP-GiST indexes
- */
-static bool
-span_mest_leaf_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy)
-{
-  switch (strategy)
-  {
-    case RTOverlapStrategyNumber:
-    case RTContainsStrategyNumber:
-    case RTContainedByStrategyNumber:
-    case RTEqualStrategyNumber:
-    case RTSameStrategyNumber:
-      return overlaps_span_span(key, query);
-    case RTAdjacentStrategyNumber:
-      /* Two spans sharing a boundary value are adjacent whatever their bound
-       * inclusivity, so an adjacent pair may also overlap and a single entry
-       * of a multi-entry key is neither strictly left nor strictly right */
-      return adjacent_span_span(key, query) || overlaps_span_span(key, query);
-    case RTLeftStrategyNumber:
-    case RTBeforeStrategyNumber:
-      return left_span_span(key, query);
-    case RTOverLeftStrategyNumber:
-    case RTOverBeforeStrategyNumber:
-      return overleft_span_span(key, query);
-    case RTRightStrategyNumber:
-    case RTAfterStrategyNumber:
-      return right_span_span(key, query);
-    case RTOverRightStrategyNumber:
-    case RTOverAfterStrategyNumber:
-      return overright_span_span(key, query);
-    default:
-      elog(ERROR, "unrecognized span strategy: %d", strategy);
-      return false;    /* keep compiler quiet */
-  }
-}
-
-/**
- * @brief Multi-Entry GiST inner consistent method for span types
- * @param[in] key Element in the index
- * @param[in] query Value being looked up in the index
- * @param[in] strategy Operator of the operator class being applied
- */
-static bool
-span_mgist_inner_consistent(const Span *key, const Span *query,
-  StrategyNumber strategy)
-{
-  switch (strategy)
-  {
-    case RTOverlapStrategyNumber:
-    case RTContainedByStrategyNumber:
-    case RTContainsStrategyNumber:
-    case RTEqualStrategyNumber:
-    case RTSameStrategyNumber:
-      return overlaps_span_span(key, query);
-    case RTAdjacentStrategyNumber:
-      return adjacent_span_span(key, query) || overlaps_span_span(key, query);
-    case RTLeftStrategyNumber:
-    case RTBeforeStrategyNumber:
-      return ! overright_span_span(key, query);
-    case RTOverLeftStrategyNumber:
-    case RTOverBeforeStrategyNumber:
-      return ! right_span_span(key, query);
-    case RTRightStrategyNumber:
-    case RTAfterStrategyNumber:
-      return ! overleft_span_span(key, query);
-    case RTOverRightStrategyNumber:
-    case RTOverAfterStrategyNumber:
-      return ! left_span_span(key, query);
-    default:
-      elog(ERROR, "unrecognized span strategy: %d", strategy);
-      return false;    /* keep compiler quiet */
-  }
-}
-
-/*****************************************************************************/
-
-PGDLLEXPORT Datum Spanset_mgist_consistent(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mgist_consistent);
-/**
- * @brief Multi-Entry GiST consistent method for spanset types
- */
-Datum
-Spanset_mgist_consistent(PG_FUNCTION_ARGS)
-{
-  GISTENTRY *entry = (GISTENTRY *) PG_GETARG_POINTER(0);
-  StrategyNumber strategy = (StrategyNumber) PG_GETARG_UINT16(2);
-  Oid typid = PG_GETARG_OID(3);
-  bool *recheck = (bool *) PG_GETARG_POINTER(4);
-  bool result;
-  const Span *key = DatumGetSpanP(entry->key);
-  Span query;
-
-  /* Determine whether the operator is exact */
-  *recheck = true;
-
-  if (key == NULL)
-    PG_RETURN_BOOL(false);
-
-  /* Transform the query into a box */
-  if (! span_gist_get_span(fcinfo, &query, typid))
-    PG_RETURN_BOOL(false);
-
-  if (GIST_LEAF(entry))
-    result = span_mest_leaf_consistent(key, &query, strategy);
-  else
-    result = span_mgist_inner_consistent(key, &query, strategy);
-
-  PG_RETURN_BOOL(result);
-}
- 
-/*****************************************************************************
  * Multi-Entry SP-GiST compress method for spanset types
  *****************************************************************************/
 
@@ -543,282 +412,6 @@ Spanset_mspgist_compress(PG_FUNCTION_ARGS)
 {
   Span *s = PG_GETARG_SPAN_P(0);
   PG_RETURN_SPANSET_P(s);
-}
-
-/*****************************************************************************
- * Multi-Entry SP-GiST inner consistent methods
- *****************************************************************************/
-
-/**
- * @brief Multi-Entry SP-GiST inner consistent method for spanset types
- */
-static Datum
-Spanset_mspgist_inner_consistent(FunctionCallInfo fcinfo,
-  SPGistIndexType idxtype)
-{
-  spgInnerConsistentIn *in = (spgInnerConsistentIn *) PG_GETARG_POINTER(0);
-  spgInnerConsistentOut *out = (spgInnerConsistentOut *) PG_GETARG_POINTER(1);
-  int i;
-  MemoryContext old_ctx;
-  SpanNode *nodebox, infbox, next_nodespan;
-  Span *centroid, *queries = NULL, *orderbys = NULL; /* make compiler quiet */
-
-  /* Fetch the centroid of this node. */
-  assert(in->hasPrefix);
-  centroid = DatumGetSpanP(in->prefixDatum);
-
-  /*
-   * We are saving the traversal value or initialize it an unbounded one, if
-   * we have just begun to walk the tree.
-   */
-  if (in->traversalValue)
-    nodebox = in->traversalValue;
-  else
-  {
-    spannode_init(&infbox, centroid->spantype, centroid->basetype);
-    nodebox = &infbox;
-  }
-
-  /*
-   * Transform the orderbys into bounding boxes initializing the dimensions
-   * that must not be taken into account for the operators to infinity.
-   * This transformation is done here to avoid doing it for all quadrants
-   * in the loop below.
-   */
-  if (in->norderbys > 0)
-  {
-    orderbys = palloc0(sizeof(Span) * in->norderbys);
-    for (i = 0; i < in->norderbys; i++)
-    {
-      const ScanKeyData *scankey = &in->orderbys[i];
-      span_spgist_get_span(scankey->sk_argument,
-        oid_meostype(scankey->sk_subtype), &orderbys[i]);
-    }
-  }
-
-  if (in->allTheSame)
-  {
-    if (idxtype == SPGIST_QUADTREE)
-    {
-      double *distances;
-      /* Report that all nodes should be visited */
-      out->nNodes = in->nNodes;
-      out->nodeNumbers = palloc(sizeof(int) * in->nNodes);
-      for (i = 0; i < in->nNodes; i++)
-      {
-        out->nodeNumbers[i] = i;
-        if (in->norderbys > 0 && in->nNodes > 0)
-        {
-          /* Use parent quadrant nodebox as traversalValue */
-          old_ctx = MemoryContextSwitchTo(in->traversalMemoryContext);
-          out->traversalValues[i] = spannode_copy(nodebox);
-          MemoryContextSwitchTo(old_ctx);
-
-          /* Compute the distances */
-          distances = palloc(sizeof(double) * in->norderbys);
-          out->distances[i] = distances;
-          for (int j = 0; j < in->norderbys; j++)
-            distances[j] = distance_span_nodespan(&orderbys[j], nodebox);
-
-          pfree(orderbys);
-        }
-      }
-
-      PG_RETURN_VOID();
-    }
-    else
-      elog(ERROR, "allTheSame should not occur for k-d trees");
-  }
-
-  /* Transform the queries into spans */
-  if (in->nkeys > 0)
-  {
-    queries = palloc0(sizeof(Span) * in->nkeys);
-    for (i = 0; i < in->nkeys; i++)
-    {
-      const ScanKeyData *scankey = &in->scankeys[i];
-      span_spgist_get_span(scankey->sk_argument,
-        oid_meostype(scankey->sk_subtype), &queries[i]);
-    }
-  }
-
-  /* Allocate enough memory for nodes */
-  out->nNodes = 0;
-  out->nodeNumbers = palloc(sizeof(int) * in->nNodes);
-  out->levelAdds = palloc(sizeof(int) * in->nNodes);
-  out->traversalValues = palloc(sizeof(void *) * in->nNodes);
-  if (in->norderbys > 0)
-    out->distances = palloc(sizeof(double *) * in->nNodes);
-
-  /*
-   * Switch memory context to allocate memory for new traversal values
-   * (next_nodespan) and pass these pieces of memory to further calls of
-   * this function
-   */
-  old_ctx = MemoryContextSwitchTo(in->traversalMemoryContext);
-
-  /* Loop for each child */
-  for (uint8 node = 0; node < (uint8) in->nNodes; node++)
-  {
-    bool flag = true;
-    /* Compute the bounding box of the child */
-    if (idxtype == SPGIST_QUADTREE)
-      spannode_quadtree_next(nodebox, centroid, node, &next_nodespan);
-    else
-      spannode_kdtree_next(nodebox, centroid, node, in->level, &next_nodespan);
-    for (i = 0; i < in->nkeys; i++)
-    {
-      StrategyNumber strategy = in->scankeys[i].sk_strategy;
-      switch (strategy)
-      {
-        case RTOverlapStrategyNumber:
-        case RTContainedByStrategyNumber:
-        case RTContainsStrategyNumber:
-        case RTEqualStrategyNumber:
-        case RTSameStrategyNumber:
-          flag = overlap2D(&next_nodespan, &queries[i]);
-          break;
-        case RTAdjacentStrategyNumber:
-          flag = adjacent2D(&next_nodespan, &queries[i]) || 
-            overlap2D(&next_nodespan, &queries[i]);
-          break;
-        case RTLeftStrategyNumber:
-        case RTBeforeStrategyNumber:
-          flag = ! overRight2D(&next_nodespan, &queries[i]);
-          break;
-        case RTOverLeftStrategyNumber:
-        case RTOverBeforeStrategyNumber:
-          flag = ! right2D(&next_nodespan, &queries[i]);
-          break;
-        case RTRightStrategyNumber:
-        case RTAfterStrategyNumber:
-          flag = ! overLeft2D(&next_nodespan, &queries[i]);
-          break;
-        case RTOverRightStrategyNumber:
-        case RTOverAfterStrategyNumber:
-          flag = ! left2D(&next_nodespan, &queries[i]);
-          break;
-        default:
-          elog(ERROR, "unrecognized strategy: %d", strategy);
-      }
-      /* If any check is failed, we have found our answer. */
-      if (! flag)
-        break;
-    }
-
-    if (flag)
-    {
-      /* Pass traversalValue and node */
-      out->traversalValues[out->nNodes] = spannode_copy(&next_nodespan);
-      out->nodeNumbers[out->nNodes] = node;
-      /* Increase level */
-      out->levelAdds[out->nNodes] = 1;
-      /* Pass distances */
-      if (in->norderbys > 0)
-      {
-        double *distances = palloc(sizeof(double) * in->norderbys);
-        out->distances[out->nNodes] = distances;
-        for (i = 0; i < in->norderbys; i++)
-          distances[i] = distance_span_nodespan(&orderbys[i], &next_nodespan);
-      }
-      out->nNodes++;
-    }
-  } /* Loop for every child */
-
-  /* Switch back to initial memory context */
-  MemoryContextSwitchTo(old_ctx);
-
-  if (in->nkeys > 0)
-    pfree(queries);
-  if (in->norderbys > 0)
-    pfree(orderbys);
-
-  PG_RETURN_VOID();
-}
-
-PGDLLEXPORT Datum Spanset_mquadtree_inner_consistent(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mquadtree_inner_consistent);
-/**
- * @brief Multi-Entry Quad-tree inner consistent method for spanset types
- */
-Datum
-Spanset_mquadtree_inner_consistent(PG_FUNCTION_ARGS)
-{
-  return Spanset_mspgist_inner_consistent(fcinfo, SPGIST_QUADTREE);
-}
-
-PGDLLEXPORT Datum Spanset_mkdtree_inner_consistent(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mkdtree_inner_consistent);
-/**
- * @brief Multi-Entry K-d tree inner consistent method for spanset types
- */
-Datum
-Spanset_mkdtree_inner_consistent(PG_FUNCTION_ARGS)
-{
-  return Spanset_mspgist_inner_consistent(fcinfo, SPGIST_KDTREE);
-}
-
-/*****************************************************************************
- * Multi-Entry SP-GiST leaf consistent method
- *****************************************************************************/
-
-PGDLLEXPORT Datum Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS);
-PG_FUNCTION_INFO_V1(Spanset_mspgist_leaf_consistent);
-/**
- * @brief Multi-Entry SP-GiST leaf consistent method for spanset types
- */
-Datum
-Spanset_mspgist_leaf_consistent(PG_FUNCTION_ARGS)
-{
-  spgLeafConsistentIn *in = (spgLeafConsistentIn *) PG_GETARG_POINTER(0);
-  spgLeafConsistentOut *out = (spgLeafConsistentOut *) PG_GETARG_POINTER(1);
-  Span *key = DatumGetSpanP(in->leafDatum), span;
-  bool result = true;
-  int i;
-  
-  /* Initialize the value to do not recheck, will be updated below */
-  out->recheck = false;
-
-  /* leafDatum is what it is... */
-  out->leafValue = in->leafDatum;
-
-  /* Perform the required comparison(s) */
-  for (i = 0; i < in->nkeys; i++)
-  {
-    const ScanKeyData *scankey = &in->scankeys[i];
-    StrategyNumber strategy = scankey->sk_strategy;
-
-    /* Update the recheck flag according to the strategy */
-    out->recheck = true;
-
-    /* Convert the query to a span and perform the test */
-    span_spgist_get_span(scankey->sk_argument,
-      oid_meostype(scankey->sk_subtype), &span);
-    result = span_mest_leaf_consistent(key, &span, strategy);
-
-    /* If any check is failed, we have found our answer. */
-    if (! result)
-      break;
-  }
-
-  if (result && in->norderbys > 0)
-  {
-    double *distances = palloc(sizeof(double) * in->norderbys);
-    out->distances = distances;
-    /* Recheck is not necessary when computing distance for span types */
-    out->recheckDistances = false;
-    for (i = 0; i < in->norderbys; i++)
-    {
-      /* Convert the order by argument to a span and perform the test */
-      const ScanKeyData *scankey = &in->orderbys[i];
-      span_spgist_get_span(scankey->sk_argument,
-        oid_meostype(scankey->sk_subtype), &span);
-      distances[i] = distance_double(distance_span_span(&span, key),
-        key->basetype);
-    }
-  }
-
-  PG_RETURN_BOOL(result);
 }
 
 /*****************************************************************************/

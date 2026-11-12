@@ -1,4 +1,7 @@
+-- The extensions CASCADE installs depend on the families of the MobilityDB build
+SET client_min_messages = warning;
 CREATE EXTENSION IF NOT EXISTS mobilitydb_mest CASCADE;
+RESET client_min_messages;
 
 DROP TABLE IF EXISTS public.tbl_bigint;
 CREATE TABLE public.tbl_bigint(k integer PRIMARY KEY, b bigint);
