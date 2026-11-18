@@ -1,0 +1,71 @@
+-------------------------------------------------------------------------------
+-- Tests of the multi-entry indexes on a multirange column holding an empty
+-- multirange, a value whose ranges are no keys: each index answers as the
+-- sequential scan
+-------------------------------------------------------------------------------
+
+DROP TABLE IF EXISTS tbl_mr_empty;
+CREATE TABLE tbl_mr_empty(k int, mr int4multirange);
+INSERT INTO tbl_mr_empty VALUES
+  (1, '{}'), (2, '{[1,5)}'), (3, '{[1,3), [10,20)}'), (4, NULL), (5, '{}');
+-- Enough values for the trees to have inner nodes, one in ten empty
+INSERT INTO tbl_mr_empty
+SELECT k, CASE WHEN k % 10 = 0 THEN int4multirange()
+  ELSE int4multirange(int4range(k % 97, k % 97 + 5),
+    int4range(k % 97 + 20, k % 97 + 30)) END
+FROM generate_series(10, 2009) AS k;
+
+DROP TABLE IF EXISTS test_mr_empty;
+CREATE TABLE test_mr_empty(op TEXT, arg TEXT, no_idx BIGINT, mrtree_idx BIGINT,
+  mrtree_opts_idx BIGINT, mquadtree_idx BIGINT);
+
+INSERT INTO test_mr_empty(op, arg, no_idx) VALUES
+  ('&&', '{[2,4)}', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr && int4multirange '{[2,4)}')),
+  ('<@', '{[0,30)}', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr <@ int4multirange '{[0,30)}')),
+  ('<@', '{}', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr <@ int4multirange '{}')),
+  ('@>', '{}', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr @> int4multirange '{}')),
+  ('=', '{}', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr = int4multirange '{}')),
+  ('IS NULL', '', (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr IS NULL));
+
+SET enable_seqscan = off;
+
+CREATE INDEX tbl_mr_empty_idx ON tbl_mr_empty USING MGIST(mr);
+UPDATE test_mr_empty SET mrtree_idx = CASE op
+  WHEN '&&' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr && arg::int4multirange)
+  WHEN '<@' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr <@ arg::int4multirange)
+  WHEN '@>' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr @> arg::int4multirange)
+  WHEN '=' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr = arg::int4multirange)
+  ELSE (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr IS NULL) END;
+DROP INDEX tbl_mr_empty_idx;
+
+CREATE INDEX tbl_mr_empty_idx ON tbl_mr_empty USING MGIST(mr multirange_mrtree_ops(max_ranges = 1));
+UPDATE test_mr_empty SET mrtree_opts_idx = CASE op
+  WHEN '&&' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr && arg::int4multirange)
+  WHEN '<@' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr <@ arg::int4multirange)
+  WHEN '@>' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr @> arg::int4multirange)
+  WHEN '=' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr = arg::int4multirange)
+  ELSE (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr IS NULL) END;
+DROP INDEX tbl_mr_empty_idx;
+
+CREATE INDEX tbl_mr_empty_idx ON tbl_mr_empty USING MSPGIST(mr);
+UPDATE test_mr_empty SET mquadtree_idx = CASE op
+  WHEN '&&' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr && arg::int4multirange)
+  WHEN '<@' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr <@ arg::int4multirange)
+  WHEN '@>' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr @> arg::int4multirange)
+  WHEN '=' THEN (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr = arg::int4multirange)
+  ELSE (SELECT COUNT(*) FROM tbl_mr_empty WHERE mr IS NULL) END;
+DROP INDEX tbl_mr_empty_idx;
+
+RESET enable_seqscan;
+
+SELECT * FROM test_mr_empty ORDER BY op, arg;
+
+-- The rows where an index answers otherwise than the sequential scan
+SELECT * FROM test_mr_empty
+WHERE no_idx <> mrtree_idx OR no_idx <> mrtree_opts_idx OR
+  no_idx <> mquadtree_idx OR mrtree_idx IS NULL OR mrtree_opts_idx IS NULL OR
+  mquadtree_idx IS NULL
+ORDER BY op, arg;
+
+DROP TABLE test_mr_empty;
+DROP TABLE tbl_mr_empty;

@@ -850,13 +850,15 @@ mgistExtractItups(MGISTSTATE *mgiststate, Relation index,
 										  PointerGetDatum(&nentries[i]),
 										  PointerGetDatum(&nullFlags[i])));
 		/*
-		 * Generate a placeholder if the item contained no keys.
+		 * An item with no keys contributes no entry to this column, as
+		 * mspgistBuildCallback inserts none for it: a placeholder would be
+		 * read back as a null key, which a search for nulls answers.
 		 */
 		if (entries[i] == NULL || nentries[i] <= 0)
 		{
-			nentries[i] = 1;
-			entries[i] = (Datum *) palloc(sizeof(Datum));
-			entries[i][0] = (Datum) 0;
+			nentries[i] = 0;
+			entries[i] = NULL;
+			nullFlags[i] = NULL;
 			continue;
 		}
 		/*
