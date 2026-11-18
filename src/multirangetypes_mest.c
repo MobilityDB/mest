@@ -109,7 +109,10 @@ multirange_ranges_internal(FunctionCallInfo fcinfo, MultirangeType *mr,
   typcache = multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
 
   if (MultirangeIsEmpty(mr))
+  {
+    *count = 0;
     return NULL;
+  }
 
   multirange_deserialize(typcache->rngtype, mr, &range_count, &ranges);
 
@@ -300,6 +303,17 @@ multirange_mest_extract(PG_FUNCTION_ARGS)
   }
 
   ranges = multirange_ranges_internal(fcinfo, mr, max_ranges, &range_count);
+  /* An empty multirange is keyed by the empty range, as
+   * multirange_gist_compress keys it, so that the operators it satisfies,
+   * such as <@ and =, find it */
+  if (range_count == 0)
+  {
+    TypeCacheEntry *typcache =
+      multirange_get_typcache(fcinfo, MultirangeTypeGetOid(mr));
+    ranges = palloc(sizeof(RangeType *));
+    ranges[0] = make_empty_range(typcache->rngtype);
+    range_count = 1;
+  }
   *nkeys = range_count;
   PG_FREE_IF_COPY(mr, 0);
   PG_RETURN_POINTER(ranges);
@@ -531,10 +545,19 @@ mspg_multirange_quad_inner_consistent(PG_FUNCTION_ARGS)
         if (in->scankeys[i].sk_subtype == ANYMULTIRANGEOID)
         {
           mr = DatumGetMultirangeTypeP(in->scankeys[i].sk_argument);
-          range = multirange_get_range(typcache, mr, 0);
-          range_deserialize(typcache, range, &lower, &bound_tmp, &empty);
-          range = multirange_get_range(typcache, mr, mr->rangeCount - 1);
-          range_deserialize(typcache, range, &bound_tmp, &upper, &empty);
+          if (MultirangeIsEmpty(mr))
+          {
+            /* An empty multirange has no range to read its bounds from */
+            range = NULL;
+            empty = true;
+          }
+          else
+          {
+            range = multirange_get_range(typcache, mr, 0);
+            range_deserialize(typcache, range, &lower, &bound_tmp, &empty);
+            range = multirange_get_range(typcache, mr, mr->rangeCount - 1);
+            range_deserialize(typcache, range, &bound_tmp, &upper, &empty);
+          }
         }
         else 
         {
@@ -711,7 +734,11 @@ mspg_multirange_quad_inner_consistent(PG_FUNCTION_ARGS)
            * argument would be placed to.
            */
           strictEmpty = false;
-          which &= (1 << getQuadrant(typcache, centroid, range));
+          if (empty)
+            /* The empty value is keyed by the empty range */
+            which &= (1 << 5);
+          else
+            which &= (1 << getQuadrant(typcache, centroid, range));
           break;
 
         default:
@@ -1041,6 +1068,9 @@ range_gist_consistent_int_range(TypeCacheEntry *typcache,
         return true;
       return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
+      /* Every value contains the empty range */
+      if (RangeIsEmpty(query))
+        return true;
       return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
 
@@ -1103,6 +1133,9 @@ range_gist_consistent_int_multirange(TypeCacheEntry *typcache,
         return true;
       return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
+      /* Every value contains the empty multirange */
+      if (MultirangeIsEmpty(query))
+        return true;
       return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
 
@@ -1174,10 +1207,14 @@ range_mest_consistent_leaf_range(TypeCacheEntry *typcache,
     case RANGESTRAT_ADJACENT:
       return range_adjacent_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
-      // return range_contains_internal(typcache, key, query);
+      /* Every value contains the empty range */
+      if (RangeIsEmpty(query))
+        return true;
       return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
-      // return range_contained_by_internal(typcache, key, query);
+      /* The empty value, keyed by the empty range, is contained by anything */
+      if (RangeIsEmpty(key))
+        return true;
       return range_overlaps_internal(typcache, key, query);
     case RANGESTRAT_EQ:
       return range_eq_internal(typcache, key, query);
@@ -1204,8 +1241,16 @@ range_mest_consistent_leaf_multirange(TypeCacheEntry *typcache,
     case RANGESTRAT_OVERLEFT:
       return range_overleft_multirange_internal(typcache, key, query);
     case RANGESTRAT_OVERLAPS:
+      return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINS:
+      /* Every value contains the empty multirange */
+      if (MultirangeIsEmpty(query))
+        return true;
+      return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_CONTAINED_BY:
+      /* The empty value, keyed by the empty range, is contained by anything */
+      if (RangeIsEmpty(key))
+        return true;
       return range_overlaps_multirange_internal(typcache, key, query);
     case RANGESTRAT_OVERRIGHT:
       return range_overright_multirange_internal(typcache, key, query);
