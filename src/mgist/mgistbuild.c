@@ -93,6 +93,12 @@ typedef struct
 	int64		indtuples;		/* number of tuples indexed */
 
 	/*
+	 * The index tuples extracted from one heap tuple, kept until the last of
+	 * them is inserted: a buffering build resets tempCxt inside an insertion
+	 */
+	MemoryContext itupCxt;
+
+	/*
 	 * Extra data structures used during a buffering build. 'gfbb' contains
 	 * information related to managing the build buffers. 'parentMap' is a
 	 * lookup table of the parent of each internal page.
@@ -310,9 +316,13 @@ mgistbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 		END_CRIT_SECTION();
 
 		/* Scan the table, inserting all the tuples to the index. */
+		mebuildstate.itupCxt = AllocSetContextCreate(CurrentMemoryContext,
+													 "MGIST build index tuples context",
+													 ALLOCSET_DEFAULT_SIZES);
 		reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
 										   mgistBuildCallback,
 										   &mebuildstate, NULL);
+		MemoryContextDelete(mebuildstate.itupCxt);
 
 		/*
 		 * If buffering was used, flush out all the tuples that are still in
@@ -919,7 +929,7 @@ mgistBuildCallback(Relation index,
 	int32 nitups;
 	MemoryContext oldCtx;
 
-	oldCtx = MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
+	oldCtx = MemoryContextSwitchTo(mebuildstate->itupCxt);
 
 	/* form a set of index tuples and point them at the heap tuple */
 	itups = mgistExtractItups(mebuildstate->mgiststate,
@@ -927,6 +937,9 @@ mgistBuildCallback(Relation index,
 
 	for (int i = 0; i < nitups; ++i)
 		itups[i]->t_tid = *tid;
+
+	/* The insertions work in tempCxt, which they may reset */
+	MemoryContextSwitchTo(mebuildstate->mgiststate->tempCxt);
 
 	for (int i = 0; i < nitups; ++i)
 	{
@@ -961,6 +974,7 @@ mgistBuildCallback(Relation index,
 
 	MemoryContextSwitchTo(oldCtx);
 	MemoryContextReset(mebuildstate->mgiststate->tempCxt);
+	MemoryContextReset(mebuildstate->itupCxt);
 
 	if (mebuildstate->buildMode == GIST_BUFFERING_ACTIVE &&
 		mebuildstate->indtuples % BUFFERING_MODE_TUPLE_SIZE_STATS_TARGET == 0)

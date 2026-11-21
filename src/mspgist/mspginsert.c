@@ -34,6 +34,8 @@ typedef struct
 	SpGistState spgstate;		/* SPGiST's working state */
 	int64		indtuples;		/* total number of tuples indexed */
 	MemoryContext tmpCtx;		/* per-tuple temporary context */
+	MemoryContext insertCtx;	/* per-key temporary context, reset when an
+								 * insertion is retried */
 } SpGistBuildState;
 
 static Datum *
@@ -98,10 +100,18 @@ mspgistBuildCallback(Relation index, ItemPointer tid, Datum *values,
 		 */
 		values[spgKeyColumn] = extracted_values[i];
 		isnull[spgKeyColumn] = null_flags[i];
+		/*
+		 * The keys extracted from the value live in tmpCtx until the last of
+		 * them is inserted, so a retry flushes the context of the insertion
+		 * alone
+		 */
+		MemoryContextSwitchTo(buildstate->insertCtx);
 		while (!mspgdoinsert(index, &buildstate->spgstate, tid, values, isnull))
 		{
-			MemoryContextReset(buildstate->tmpCtx);
+			MemoryContextReset(buildstate->insertCtx);
 		}
+		MemoryContextSwitchTo(buildstate->tmpCtx);
+		MemoryContextReset(buildstate->insertCtx);
 	}
 
 	/* Update total tuple count */
@@ -165,11 +175,15 @@ mspgbuild(Relation heap, Relation index, IndexInfo *indexInfo)
 	buildstate.tmpCtx = AllocSetContextCreate(CurrentMemoryContext,
 											  "SP-GiST build temporary context",
 											  ALLOCSET_DEFAULT_SIZES);
+	buildstate.insertCtx = AllocSetContextCreate(CurrentMemoryContext,
+												 "SP-GiST build insertion context",
+												 ALLOCSET_DEFAULT_SIZES);
 
 	reltuples = table_index_build_scan(heap, index, indexInfo, true, true,
 									   mspgistBuildCallback, &buildstate,
 									   NULL);
 
+	MemoryContextDelete(buildstate.insertCtx);
 	MemoryContextDelete(buildstate.tmpCtx);
 
 	SpGistUpdateMetaPage(index);
@@ -204,6 +218,7 @@ mspginsert(Relation index, Datum *values, bool *isnull,
 {
 	SpGistState spgstate;
 	MemoryContext oldCtx;
+	MemoryContext keysCtx;
 	MemoryContext insertCtx;
 
 	Datum	   *extracted_values;
@@ -211,16 +226,23 @@ mspginsert(Relation index, Datum *values, bool *isnull,
 	int32		i,
 				nentries;
 
+	/*
+	 * The keys extracted from the value live in keysCtx until the last of them
+	 * is inserted, so a retry flushes the context of the insertion alone
+	 */
+	keysCtx = AllocSetContextCreate(CurrentMemoryContext,
+									"SP-GiST insert keys context",
+									ALLOCSET_DEFAULT_SIZES);
 	insertCtx = AllocSetContextCreate(CurrentMemoryContext,
 									  "SP-GiST insert temporary context",
 									  ALLOCSET_DEFAULT_SIZES);
-	oldCtx = MemoryContextSwitchTo(insertCtx);
-
-	initSpGistState(&spgstate, index);
-
+	oldCtx = MemoryContextSwitchTo(keysCtx);
 	extracted_values = mspgExtractKey(index,
 									  values[spgKeyColumn], isnull[spgKeyColumn],
 									  &nentries, &null_flags);
+
+	MemoryContextSwitchTo(insertCtx);
+	initSpGistState(&spgstate, index);
 
 	for (i = 0; i < nentries; ++i)
 	{
@@ -243,6 +265,7 @@ mspginsert(Relation index, Datum *values, bool *isnull,
 
 	MemoryContextSwitchTo(oldCtx);
 	MemoryContextDelete(insertCtx);
+	MemoryContextDelete(keysCtx);
 
 	/* return false since we've not done any unique check */
 	return false;
