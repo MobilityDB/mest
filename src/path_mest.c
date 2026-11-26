@@ -808,6 +808,21 @@ spg_box_quad_get_scankey_bbox(ScanKey sk, bool *recheck)
 				*recheck = true;
 			return &DatumGetPolygonP(sk->sk_argument)->boundbox;
 
+		case PATHOID:
+			{
+				/*
+				 * The operators of the class take a path on the right, which
+				 * is answered by its bounding box with every leaf rechecked,
+				 * as #gist_path_consistent answers it
+				 */
+				BOX		   *box = palloc(sizeof(BOX));
+
+				*box = path_bbox(DatumGetPathP(sk->sk_argument));
+				if (recheck)
+					*recheck = true;
+				return box;
+			}
+
 		default:
 			elog(ERROR, "unrecognized scankey subtype: %d", sk->sk_subtype);
 			return NULL;
