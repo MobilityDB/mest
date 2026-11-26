@@ -1,0 +1,82 @@
+-------------------------------------------------------------------------------
+-- Tests of the multi-entry indexes on a scan of several conditions, each met by
+-- a different key of the same value: each index answers as the sequential
+-- scan, the conditions being index conditions of one scan. A path keyed by the
+-- boxes of its two segments meets the first query path on its first segment
+-- and the second query path on its second, and no key meets both
+-------------------------------------------------------------------------------
+DROP TABLE IF EXISTS tbl_path_multikey;
+NOTICE:  table "tbl_path_multikey" does not exist, skipping
+CREATE TABLE tbl_path_multikey(k int, p path);
+INSERT INTO tbl_path_multikey
+SELECT k, path(('[(' || k % 50 || ',0),(' || k % 50 + 50 || ',50),(' ||
+  k % 50 + 100 || ',0)]')::path)
+FROM generate_series(1, 2000) AS k;
+-- Whether the plan of a query holds its conditions in one index scan
+CREATE FUNCTION pg_temp.two_index_conds(query text)
+RETURNS boolean LANGUAGE plpgsql AS $$
+DECLARE
+  line text;
+BEGIN
+  FOR line IN EXECUTE 'EXPLAIN (COSTS OFF) ' || query LOOP
+    IF line LIKE '%Index Cond:%' AND line LIKE '% AND %' THEN
+      RETURN true;
+    END IF;
+  END LOOP;
+  RETURN false;
+END;
+$$;
+CREATE FUNCTION pg_temp.answer(q text) RETURNS bigint LANGUAGE plpgsql AS $$
+DECLARE
+  result bigint;
+BEGIN
+  EXECUTE 'SELECT COUNT(*) FROM tbl_path_multikey WHERE ' || q INTO result;
+  RETURN result;
+END;
+$$;
+DROP TABLE IF EXISTS test_path_multikey;
+NOTICE:  table "test_path_multikey" does not exist, skipping
+CREATE TABLE test_path_multikey(q TEXT, no_idx BIGINT, mrtree_idx BIGINT,
+  mrtree_conds BOOLEAN, mquadtree_idx BIGINT, mquadtree_conds BOOLEAN);
+INSERT INTO test_path_multikey(q) VALUES
+  ('p && path ''[(1,-1),(1,10)]'''),
+  ('p && path ''[(99,-1),(99,10)]'''),
+  ('p && path ''[(1,-1),(1,10)]'' AND p && path ''[(99,-1),(99,10)]'''),
+  ('p && path ''[(1,-1),(1,10)]'' AND p && path ''[(99,-1),(99,10)]'' AND p && path ''[(30,-1),(30,40)]''');
+UPDATE test_path_multikey SET no_idx = pg_temp.answer(q);
+SET enable_seqscan = off;
+SET enable_bitmapscan = off;
+CREATE INDEX tbl_path_multikey_idx ON tbl_path_multikey
+  USING MGIST(p path_mrtree_ops(max_boxes = 2));
+UPDATE test_path_multikey SET mrtree_idx = pg_temp.answer(q),
+  mrtree_conds = pg_temp.two_index_conds(
+    'SELECT COUNT(*) FROM tbl_path_multikey WHERE ' || q);
+DROP INDEX tbl_path_multikey_idx;
+CREATE INDEX tbl_path_multikey_idx ON tbl_path_multikey
+  USING MSPGIST(p path_mquadtree_ops(max_boxes = 2));
+UPDATE test_path_multikey SET mquadtree_idx = pg_temp.answer(q),
+  mquadtree_conds = pg_temp.two_index_conds(
+    'SELECT COUNT(*) FROM tbl_path_multikey WHERE ' || q);
+DROP INDEX tbl_path_multikey_idx;
+RESET enable_bitmapscan;
+RESET enable_seqscan;
+SELECT * FROM test_path_multikey ORDER BY q;
+                                                q                                                | no_idx | mrtree_idx | mrtree_conds | mquadtree_idx | mquadtree_conds 
+-------------------------------------------------------------------------------------------------+--------+------------+--------------+---------------+-----------------
+ p && path '[(1,-1),(1,10)]'                                                                     |     80 |         80 | f            |            80 | f
+ p && path '[(1,-1),(1,10)]' AND p && path '[(99,-1),(99,10)]'                                   |     80 |         80 | t            |            80 | t
+ p && path '[(1,-1),(1,10)]' AND p && path '[(99,-1),(99,10)]' AND p && path '[(30,-1),(30,40)]' |     80 |         80 | t            |            80 | t
+ p && path '[(99,-1),(99,10)]'                                                                   |    400 |        400 | f            |           400 | f
+(4 rows)
+
+-- The rows where an index answers otherwise than the sequential scan
+SELECT * FROM test_path_multikey
+WHERE no_idx <> mrtree_idx OR no_idx <> mquadtree_idx OR
+  mrtree_idx IS NULL OR mquadtree_idx IS NULL
+ORDER BY q;
+ q | no_idx | mrtree_idx | mrtree_conds | mquadtree_idx | mquadtree_conds 
+---+--------+------------+--------------+---------------+-----------------
+(0 rows)
+
+DROP TABLE test_path_multikey;
+DROP TABLE tbl_path_multikey;
