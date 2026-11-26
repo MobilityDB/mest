@@ -1,0 +1,54 @@
+-------------------------------------------------------------------------------
+-- Tests of the vertical position operators of paths, each answering on the Y
+-- axis: two paths over the same X range, the first strictly below the second,
+-- so that the vertical and the horizontal answers differ
+-------------------------------------------------------------------------------
+SELECT path '[(0,0),(10,1)]' <<| path '[(0,5),(10,6)]' AS below;
+ below 
+-------
+ t
+(1 row)
+
+SELECT path '[(0,0),(10,1)]' &<| path '[(0,5),(10,6)]' AS overbelow;
+ overbelow 
+-----------
+ t
+(1 row)
+
+SELECT path '[(0,5),(10,6)]' |>> path '[(0,0),(10,1)]' AS above;
+ above 
+-------
+ t
+(1 row)
+
+SELECT path '[(0,5),(10,6)]' |&> path '[(0,0),(10,1)]' AS overabove;
+ overabove 
+-----------
+ t
+(1 row)
+
+-- The converse answers
+SELECT path '[(0,5),(10,6)]' <<| path '[(0,0),(10,1)]' AS below;
+ below 
+-------
+ f
+(1 row)
+
+SELECT path '[(0,5),(10,6)]' &<| path '[(0,0),(10,1)]' AS overbelow;
+ overbelow 
+-----------
+ f
+(1 row)
+
+SELECT path '[(0,0),(10,1)]' |>> path '[(0,5),(10,6)]' AS above;
+ above 
+-------
+ f
+(1 row)
+
+SELECT path '[(0,0),(10,1)]' |&> path '[(0,5),(10,6)]' AS overabove;
+ overabove 
+-----------
+ f
+(1 row)
+
