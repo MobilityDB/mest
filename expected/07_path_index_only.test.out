@@ -1,0 +1,52 @@
+-------------------------------------------------------------------------------
+-- Tests of the plans of a path column under the multi-entry indexes: a key
+-- holds the box of a piece of a path and never the path, so no plan is an
+-- index-only scan, which would give the box in place of the path
+-------------------------------------------------------------------------------
+DROP TABLE IF EXISTS tbl_path_index_only;
+NOTICE:  table "tbl_path_index_only" does not exist, skipping
+CREATE TABLE tbl_path_index_only(k int, p path);
+INSERT INTO tbl_path_index_only
+SELECT k, path(('[(' || k % 50 || ',0),(' || k % 50 + 50 || ',50),(' ||
+  k % 50 + 100 || ',0)]')::path)
+FROM generate_series(1, 2000) AS k;
+VACUUM ANALYZE tbl_path_index_only;
+-- Whether the plan of a query is an index-only scan
+CREATE FUNCTION pg_temp.index_only(query text)
+RETURNS boolean LANGUAGE plpgsql AS $$
+DECLARE
+  line text;
+BEGIN
+  FOR line IN EXECUTE 'EXPLAIN (COSTS OFF) ' || query LOOP
+    IF line LIKE '%Index Only Scan%' THEN
+      RETURN true;
+    END IF;
+  END LOOP;
+  RETURN false;
+END;
+$$;
+SET enable_seqscan = off;
+SET enable_bitmapscan = off;
+CREATE INDEX tbl_path_index_only_idx ON tbl_path_index_only USING MGIST(p);
+SELECT pg_temp.index_only(
+  'SELECT COUNT(*) FROM tbl_path_index_only WHERE p && path ''[(1,-1),(1,10)]''')
+  AS mrtree_index_only;
+ mrtree_index_only 
+-------------------
+ f
+(1 row)
+
+DROP INDEX tbl_path_index_only_idx;
+CREATE INDEX tbl_path_index_only_idx ON tbl_path_index_only USING MSPGIST(p);
+SELECT pg_temp.index_only(
+  'SELECT COUNT(*) FROM tbl_path_index_only WHERE p && path ''[(1,-1),(1,10)]''')
+  AS mquadtree_index_only;
+ mquadtree_index_only 
+----------------------
+ f
+(1 row)
+
+DROP INDEX tbl_path_index_only_idx;
+RESET enable_bitmapscan;
+RESET enable_seqscan;
+DROP TABLE tbl_path_index_only;

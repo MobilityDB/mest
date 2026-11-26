@@ -335,6 +335,10 @@ DEFAULT FOR TYPE path USING mgist AS
 
 -- Functions
 
+CREATE FUNCTION mspg_path_quad_config(internal, internal)
+  RETURNS internal
+  AS 'MODULE_PATHNAME'
+  LANGUAGE C IMMUTABLE STRICT;
 CREATE FUNCTION mspg_path_compress(internal)
   RETURNS internal
   AS 'MODULE_PATHNAME'
@@ -365,7 +369,7 @@ DEFAULT FOR TYPE path USING mspgist AS
     OPERATOR   11   |>> (path, path),
     OPERATOR   12   |&> (path, path),
     -- Functions
-    FUNCTION    1   spg_box_quad_config(internal, internal),
+    FUNCTION    1   mspg_path_quad_config(internal, internal),
     FUNCTION    2   spg_box_quad_choose(internal, internal),
     FUNCTION    3   spg_box_quad_picksplit(internal, internal),
     FUNCTION    4   mspg_path_quad_inner_consistent(internal, internal),

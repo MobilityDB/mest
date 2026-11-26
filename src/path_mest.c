@@ -735,6 +735,27 @@ mest_path_extract(PG_FUNCTION_ARGS)
  * Multi-Entry SP-GiST functions for paths
  *****************************************************************************/
 
+PG_FUNCTION_INFO_V1(mspg_path_quad_config);
+/*
+ * ME-SP-GiST config method for path types
+ *
+ * The keys are the boxes of the pieces of a path, as in the quad-tree of boxes
+ * of PostgreSQL, but a leaf holds the box of a piece and never the path, so
+ * the index cannot return the indexed value, as #mspg_multirange_config
+ * states for the ranges of a multirange
+ */
+PGDLLEXPORT Datum
+mspg_path_quad_config(PG_FUNCTION_ARGS)
+{
+  /* spgConfigIn *cfgin = (spgConfigIn *) PG_GETARG_POINTER(0); */
+  spgConfigOut *cfg = (spgConfigOut *) PG_GETARG_POINTER(1);
+  cfg->prefixType = BOXOID;
+  cfg->labelType = VOIDOID; /* we don't need node labels */
+  cfg->canReturnData = false;
+  cfg->longValuesOK = false;
+  PG_RETURN_VOID();
+}
+
 PG_FUNCTION_INFO_V1(mspg_path_compress);
 /**
  * ME-SP-GiST compress method for path types
