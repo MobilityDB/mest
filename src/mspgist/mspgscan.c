@@ -601,11 +601,32 @@ mspgLeafTest(MSpGistScanOpaque so, SpGistSearchItem *item,
 		out.distances = NULL;
 		out.recheckDistances = false;
 
-		result = DatumGetBool(FunctionCall2Coll(&so->leafConsistentFn,
-												so->indexCollation,
-												PointerGetDatum(&in),
-												PointerGetDatum(&out)));
-		recheck = out.recheck;
+		/*
+		 * A leaf holds one of the keys of a value, so each scan key may be
+		 * satisfied by a different key of the same value: with several scan
+		 * keys the leaf passes when any of them is satisfied, tested one at a
+		 * time, and the quals are rechecked on the heap tuple, as
+		 * #mgistindex_keytest tests an entry of a multi-entry GiST index
+		 */
+		if (so->numberOfKeys > 1)
+			in.nkeys = 1;
+		result = false;
+		for (int i = 0; i < Max(so->numberOfKeys, 1) && !result; i++)
+		{
+			if (so->numberOfKeys > 1)
+			{
+				in.scankeys = &so->keyData[i];
+				out.recheck = false;
+				out.distances = NULL;
+				out.recheckDistances = false;
+			}
+
+			result = DatumGetBool(FunctionCall2Coll(&so->leafConsistentFn,
+													so->indexCollation,
+													PointerGetDatum(&in),
+													PointerGetDatum(&out)));
+		}
+		recheck = (so->numberOfKeys > 1) ? true : out.recheck;
 		recheckDistances = out.recheckDistances;
 		leafValue = out.leafValue;
 		distances = out.distances;
@@ -702,9 +723,14 @@ mspgInitInnerConsistentIn(spgInnerConsistentIn *in,
 						  SpGistSearchItem *item,
 						  SpGistInnerTuple innerTuple)
 {
+	/*
+	 * With several scan keys, each may be satisfied by a different key of the
+	 * same value, under a different node: every node is visited, and the
+	 * leaves are tested one scan key at a time (#mspgLeafTest)
+	 */
 	in->scankeys = so->keyData;
 	in->orderbys = so->orderByData;
-	in->nkeys = so->numberOfKeys;
+	in->nkeys = (so->numberOfKeys > 1) ? 0 : so->numberOfKeys;
 	in->norderbys = so->numberOfNonNullOrderBys;
 	Assert(!item->isLeaf);		/* else reconstructedValue would be wrong type */
 	in->reconstructedValue = item->value;

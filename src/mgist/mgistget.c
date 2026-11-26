@@ -158,6 +158,15 @@ mgistkillitems(IndexScanDesc scan)
  * Note that this function is always invoked in a short-lived memory context,
  * so we don't need to worry about cleaning up allocated memory, either here
  * or in the implementation of any Consistent or Distance methods.
+ *
+ * An index tuple holds one of the keys of a value, so each scan key may be
+ * satisfied by a different key of the same value: a value satisfies the scan
+ * when, for every scan key, some key of the value satisfies it. With several
+ * scan keys, a tuple therefore passes when any of them is satisfied, and the
+ * quals are rechecked on the heap tuple, which the value then satisfies or
+ * not as a whole, as #mspgLeafTest tests a leaf of a multi-entry SP-GiST
+ * index.  An index tuple satisfying every scan key would lose the values
+ * whose scan keys are satisfied by different keys.
  */
 static bool
 mgistindex_keytest(IndexScanDesc scan,
@@ -173,9 +182,18 @@ mgistindex_keytest(IndexScanDesc scan,
 	int			keySize = scan->numberOfKeys;
 	IndexOrderByDistance *distance_p;
 	Relation	r = scan->indexRelation;
+	int			nops = 0;
+	bool		anyKey;
+	bool		passed = false;
 
 	*recheck_p = false;
 	*recheck_distances_p = false;
+
+	/* The scan keys that call a consistent method, the others testing NULL */
+	for (int i = 0; i < scan->numberOfKeys; i++)
+		if (!(scan->keyData[i].sk_flags & SK_ISNULL))
+			nops++;
+	anyKey = (nops > 1);
 
 	/*
 	 * If it's a leftover invalid tuple from pre-9.1, treat it as a match with
@@ -265,12 +283,26 @@ mgistindex_keytest(IndexScanDesc scan,
 									 PointerGetDatum(&recheck));
 
 			if (!DatumGetBool(test))
-				return false;
-			*recheck_p |= recheck;
+			{
+				if (!anyKey)
+					return false;
+			}
+			else
+			{
+				passed = true;
+				*recheck_p |= recheck;
+			}
 		}
 
 		key++;
 		keySize--;
+	}
+
+	if (anyKey)
+	{
+		if (!passed)
+			return false;
+		*recheck_p = true;
 	}
 
 	/* OK, it passes --- now let's compute the distances */
