@@ -226,24 +226,24 @@ CREATE OPERATOR &> (
 );
 
 CREATE OPERATOR <<| (
-  PROCEDURE = path_left,
+  PROCEDURE = path_below,
   LEFTARG = path, RIGHTARG = path,
   COMMUTATOR = |>>
 );
 
 CREATE OPERATOR &<| (
-  PROCEDURE = path_overleft,
+  PROCEDURE = path_overbelow,
   LEFTARG = path, RIGHTARG = path
 );
 
 CREATE OPERATOR |>> (
-  PROCEDURE = path_right,
+  PROCEDURE = path_above,
   LEFTARG = path, RIGHTARG = path,
   COMMUTATOR = <<|
 );
 
 CREATE OPERATOR |&> (
-  PROCEDURE = path_overright,
+  PROCEDURE = path_overabove,
   LEFTARG = path, RIGHTARG = path
 );
 
