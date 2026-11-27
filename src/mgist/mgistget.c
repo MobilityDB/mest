@@ -271,16 +271,25 @@ mgistindex_keytest(IndexScanDesc scan,
 			 *
 			 * We initialize the recheck flag to true (the safest assumption)
 			 * in case the Consistent function forgets to set it.
+			 *
+			 * A sixth argument states whether the scan is ordered.  A value
+			 * of several keys may key its whole extent beside its pieces, so
+			 * that an ordered scan reads the distance of the value from the
+			 * key of the extent; that key then answers the quals too, and in
+			 * a scan that is not ordered it leaves them to the keys of the
+			 * pieces.  A Consistent function of GiST, which takes five
+			 * arguments, ignores it.
 			 */
 			recheck = true;
 
-			test = FunctionCall5Coll(&key->sk_func,
+			test = FunctionCall6Coll(&key->sk_func,
 									 key->sk_collation,
 									 PointerGetDatum(&de),
 									 key->sk_argument,
 									 Int16GetDatum(key->sk_strategy),
 									 ObjectIdGetDatum(key->sk_subtype),
-									 PointerGetDatum(&recheck));
+									 PointerGetDatum(&recheck),
+									 BoolGetDatum(scan->numberOfOrderBys > 0));
 
 			if (!DatumGetBool(test))
 			{
