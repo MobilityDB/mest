@@ -27,7 +27,7 @@ Example use-cases
 
 Below are the extensions using the Multi-Entry SP-GiST index to index complex data types.
 
-  * MobilityDB trajectories: [MobilityDB MEST](../../contrib/mobilitydb)
+  * MobilityDB sets, span sets and temporal types: the extension `mobilitydb_mest` of [MobilityDB](https://github.com/MobilityDB/MobilityDB)
 
 
 Contact:
