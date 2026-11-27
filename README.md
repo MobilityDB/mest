@@ -9,15 +9,18 @@ data types.
 Contents
 --------
 
-The repository contains 3 PostgreSQL extensions split into 3 separate folders:
+The repository contains 2 PostgreSQL extensions split into 2 separate folders:
 
 - [MEST](./): 
     - contains the Multi-Entry GiST access method and an implementation of a multi-entry R-tree for the PostgreSQL `multirange` and `path` types.
     - contains the Multi-Entry SP-GiST access method and an implementation of a multi-entry Quadtree for the PostgreSQL `multirange` and `path` types.
 - [PostGIS MEST](contrib/postgis): 
     - contains the implementation of a multi-entry R-tree for the PostGIS `geometry` type.
-- [MobilityDB MEST](contrib/mobilitydb): 
-    - contains the implementation of a multi-entry R-tree, multi-entry Quadtree, and multi-entry Kd-tree for the MobilityDB `spanset`, temporal, and `tgeompoint` types.
+
+The multi-entry R-tree, Quadtree and Kd-tree of the MobilityDB sets, span sets
+and temporal types are the extension `mobilitydb_mest` of
+[MobilityDB](https://github.com/MobilityDB/MobilityDB), generated with its other
+indexes and built with `-DMEST=ON`.
     
 For more information about each extension, please refer to their associated README file.
 
